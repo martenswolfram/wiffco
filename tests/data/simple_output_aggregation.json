@@ -1,0 +1,9 @@
+{
+    "name": "revenue_aggregation",
+    "aggregation_type": "simple_product",
+    "aggregation_params":{
+        "from_model": ["electrical_power"],
+        "from_context": ["electricity_price"],
+        "single_output": "revenue_rate"
+    }
+}
