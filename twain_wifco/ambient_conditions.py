@@ -2,11 +2,7 @@ from typing import Dict, Any
 from abc import ABC, abstractmethod
 from enum import Enum
 import numpy as np
-
-class AmbientVariable(Enum):
-    WIND_SPEED = "wind_speed"
-    WIND_DIRECTION = "wind_direction"
-    ELECTRICITY_PRICE = "electricity_price"
+from twain_wifco.interface import AmbientVariable
 
 class AmbientStatisticsType(Enum):
     DISCRETE_ABIENT_STATISTICS = "discrete_ambient_statistics"

@@ -1,10 +1,9 @@
 import pathlib
 import pytest
 import numpy as np
-from twain_wiffco.config import parse_json_file, ambient_statistics_from_dict
-from twain_wiffco.ambient_conditions import AmbientVariable
+from twain_wifco.config import parse_json_file, ambient_statistics_from_dict
+from twain_wifco.interface import AmbientVariable
 
-    
 def test_simple_ambient_statistics():
     json_path = pathlib.Path(__file__).parent / "data" / "simple_ambient_statistics.json"
     param_dict = parse_json_file(path=json_path)

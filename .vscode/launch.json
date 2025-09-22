@@ -1,0 +1,19 @@
+{
+    // .vscode/launch.json
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug Pytest",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "pytest",
+            "python": "${workspaceFolder}/.venv/bin/python",
+            "args": [
+                "-s",
+                "-v",
+                "tests"
+            ],
+            "justMyCode": true,
+        },
+    ]
+}

@@ -2,39 +2,38 @@ from typing import Dict, Any
 from abc import ABC, abstractmethod
 from enum import Enum
 import numpy as np
-from twain_wiffco.ambient_conditions import AmbientVariable
-
-class ControlVariable(Enum):
-    POWER_REGULATION = "power_regulation"
-    YAW_STEERING = "yaw_steering"
-
-class ControlPolicyType(Enum):
-    DISCRETE_CONTROL_POLICY = "discrete_control_policy"
+from twain_wifco.interface import (
+    Interface,
+    AmbientVariable,
+    ControlVariable,
+    Component,
+    ComponentParams)
 
 class ControlPolicy(ABC):
-    def __init__(self, name: str):
-        self.name = name
+    def __init__(self,
+                 params: ComponentParams):
+        self.interface = params.interface()
 
     def get_control_setpoints(self,
                               ambient_condition: Dict[AmbientVariable, float]):
         
-        self._validate_input(ambient_condition=ambient_condition)
+        self.interface.validate_inputs(ambient_condition=ambient_condition)
         
         return self._get_control_setpoints(ambient_condition=ambient_condition)
-
-    @abstractmethod
-    def _validate_input(self,
-                        ambient_condition: Dict[AmbientVariable, float]):
-        pass
 
     @abstractmethod
     def _get_control_setpoints(self,
                                ambient_condition: Dict[AmbientVariable, float]):
         pass
 
-class DiscreteControlPolicyParams:
+class ControlPolicyType(Enum):
+    DISCRETE_CONTROL_POLICY = "discrete_control_policy"
+
+class DiscreteControlPolicyParams(ComponentParams):
     def __init__(self,
-                 param_dict: Dict[str, Any]):
+                 name: str,
+                 param_dict: Dict[str, Dict | Any]):
+        super().__init__(name=name)
         self.ambient_variables = self.ambient_variables = \
             [AmbientVariable(ambient_var) for ambient_var in param_dict["ambient_variables"]]
         self.ambient_conditions_support = np.array(param_dict["ambient_conditions_support"])
@@ -47,11 +46,15 @@ class DiscreteControlPolicyParams:
             # Determine tolerance depending on the range of ambient variable values
             self.ambient_condition_tols = np.ptp(self.ambient_conditions_support, axis=1) * 1e-5
 
+    def interface(self):
+        return Interface(component=Component.CONTROL_POLICY,
+                         name=self.name,
+                         ambient_variables=set(self.ambient_variables))
+    
 class DiscreteControlPolicy(ControlPolicy):
     def __init__(self,
-                 name: str,
                  params: DiscreteControlPolicyParams):
-        super().__init__(name=name)
+        super().__init__(params=params)
         self.params = params
         self.control_setpoints = None
 
@@ -61,14 +64,8 @@ class DiscreteControlPolicy(ControlPolicy):
             self.control_setpoints.shape[1] != self.params.ambient_conditions_support.shape[1]:
             raise ValueError("DiscreteControlPolicy: Control setpoints dimensions mismatch.")
     
-    def _validate_input(self,
-                        ambient_condition: Dict[AmbientVariable, float]):
-        if not (set(self.params.ambient_variables) <= ambient_condition.keys()):
-            raise ValueError("DiscreteControlPolicy: Insufficient ambient condition as input for model '{}'.".format(self.name))
-
     def _get_control_setpoints(self,
                                ambient_condition: Dict[AmbientVariable, float]):
-        self._validate_input(ambient_condition=ambient_condition)
         ambient_variables = np.array([ambient_condition[amb_var] for amb_var in self.params.ambient_variables])
         # Find correct support point
         mask = np.all(np.isclose(self.params.ambient_conditions_support,

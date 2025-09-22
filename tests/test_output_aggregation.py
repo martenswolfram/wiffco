@@ -1,8 +1,7 @@
 import pathlib
 import pytest
-from twain_wiffco.config import parse_json_file, output_aggregation_from_dict
-from twain_wiffco.ambient_conditions import AmbientVariable
-from twain_wiffco.output_aggregation import OutputVariable
+from twain_wifco.config import parse_json_file, output_aggregation_from_dict
+from twain_wifco.interface import AmbientVariable, OutputVariable
 
     
 def test_simple_product_aggregation():
@@ -11,16 +10,16 @@ def test_simple_product_aggregation():
     simple_product_aggregation = output_aggregation_from_dict(param_dict=param_dict)
         
     # Initialization
-    assert simple_product_aggregation.name == "revenue_aggregation"
-    assert simple_product_aggregation.params.from_model == \
+    assert simple_product_aggregation.interface.name == "Output Aggregator 'revenue_aggregation'"
+    assert simple_product_aggregation.from_model == \
         set([OutputVariable.ELECTRICAL_POWER])
-    assert simple_product_aggregation.params.from_context == \
+    assert simple_product_aggregation.from_context == \
         set([AmbientVariable.ELECTRICITY_PRICE])
-    assert simple_product_aggregation.params.single_output == OutputVariable.REVENUE_RATE
+    assert simple_product_aggregation.single_output == OutputVariable.REVENUE_RATE
 
     # Output aggregation
     aggregated_output = simple_product_aggregation.compute_aggregate(
-        model_outputs={OutputVariable.ELECTRICAL_POWER: 5},
+        output_variables={OutputVariable.ELECTRICAL_POWER: 5},
         ambient_condition={AmbientVariable.ELECTRICITY_PRICE: 3})
     assert aggregated_output == pytest.approx({OutputVariable.REVENUE_RATE: 15})
         

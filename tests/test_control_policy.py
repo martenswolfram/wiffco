@@ -1,9 +1,8 @@
 import pathlib
 import pytest
 import numpy as np
-from twain_wiffco.config import parse_json_file, control_policy_from_dict
-from twain_wiffco.ambient_conditions import AmbientVariable
-from twain_wiffco.control_input import ControlVariable
+from twain_wifco.config import parse_json_file, control_policy_from_dict
+from twain_wifco.interface import AmbientVariable, ControlVariable
 
     
 def test_discrete_control_policy():
@@ -18,7 +17,7 @@ def test_discrete_control_policy():
         ])
     
     # Initialization
-    assert simple_control_policy.name == "simple_control_policy"
+    assert simple_control_policy.interface.name == "Control Policy 'simple_control_policy'"
     assert simple_control_policy.params.ambient_variables == \
         [AmbientVariable.WIND_SPEED, AmbientVariable.WIND_DIRECTION, AmbientVariable.ELECTRICITY_PRICE]
     assert simple_control_policy.params.ambient_conditions_support == \
@@ -45,7 +44,7 @@ def test_discrete_control_policy():
                          AmbientVariable.WIND_DIRECTION: 0}
     with pytest.raises(ValueError) as excinfo: 
         simple_control_policy.get_control_setpoints(ambient_condition)
-    assert "Insufficient ambient condition" in str(excinfo.value)
+    assert "Insufficient Ambient Condition" in str(excinfo.value)
 
     # Invalid ambient condition values
     ambient_condition = {AmbientVariable.WIND_SPEED: 1,
