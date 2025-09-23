@@ -18,8 +18,8 @@ class OutputAggregation(ABC):
                           output_variables: Dict[OutputVariable, float],
                           ambient_condition: Dict[AmbientVariable, float]):
         
-        self.interface.validate_inputs(output_variables=output_variables,
-                                       ambient_condition=ambient_condition)
+        self.interface.validate_inputs(output_variables=output_variables.keys(),
+                                       ambient_condition=ambient_condition.keys())
 
         return self._compute_aggregate(output_variables=output_variables,
                                        ambient_condition=ambient_condition)

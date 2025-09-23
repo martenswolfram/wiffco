@@ -59,14 +59,14 @@ class Interface:
         self.outputs = outputs
 
     def validate_inputs(self,
-                        ambient_condition: Dict[AmbientVariable, Any] = {},
-                        control_input: Dict[ControlVariable, Any] = {},
-                        output_variables: Dict[OutputVariable, Any] = {}):
-        if not (self.inputs.ambient_variables <= ambient_condition.keys()):
+                        ambient_condition: Set[AmbientVariable] = set([]),
+                        control_input: Set[ControlVariable] = set([]),
+                        output_variables: Set[OutputVariable] = set([])):
+        if not (self.inputs.ambient_variables <= ambient_condition):
             raise ValueError("Insufficient Ambient Condition as input for {}.".format(self.name))
-        if not (self.inputs.control_inputs <= control_input.keys()):
+        if not (self.inputs.control_inputs <= control_input):
             raise ValueError("Insufficient Control Input for {}.".format(self.name))
-        if not (self.inputs.output_variables <= output_variables.keys()):
+        if not (self.inputs.output_variables <= output_variables):
             raise ValueError("Insufficient Output Variable as input for {}.".format(self.name))
 
 class ComponentParams(ABC):

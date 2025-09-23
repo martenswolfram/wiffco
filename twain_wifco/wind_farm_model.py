@@ -21,8 +21,8 @@ class WindFarmModel(ABC):
                  meteorological_condition: Dict[AmbientVariable, float],
                  control_input: Dict[ControlVariable, float]):
 
-        self.interface.validate_inputs(ambient_condition=meteorological_condition,
-                                       control_input=control_input)
+        self.interface.validate_inputs(ambient_condition=meteorological_condition.keys(),
+                                       control_input=control_input.keys())
 
         return self._evaluate(meteorological_condition=meteorological_condition,
                               control_input=control_input)
