@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 from enum import Enum
 
 class ComponentType(Enum):
+    STATISTICS = "statistics"
     WIND_FARM_MODEL = "wind_farm_model"
     OUTPUT_AGGREGATOR = "output_aggregator"
     CONTROL_POLICY = "control_policy"
@@ -46,6 +47,8 @@ class Interface:
                  inputs: InterfaceInputs = InterfaceInputs(),
                  outputs: InterfaceOutputs = InterfaceOutputs()):
         match component_type:
+            case ComponentType.STATISTICS:
+                self.name = "Statistics '{}'".format(component_name)
             case ComponentType.WIND_FARM_MODEL:
                 self.name = "Model '{}'".format(component_name)
             case ComponentType.OUTPUT_AGGREGATOR:

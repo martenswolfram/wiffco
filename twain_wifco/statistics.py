@@ -2,14 +2,18 @@ from typing import Dict, Any, List
 from abc import ABC, abstractmethod
 from enum import Enum
 import numpy as np
-from twain_wifco.interface import AmbientVariable, OutputVariable
-
-class StatisticsType(Enum):
-    DISCRETE_STATISTICS = "discrete_statistics"
+from twain_wifco.interface import (
+    AmbientVariable,
+    OutputVariable,
+    InterfaceInputs,
+    InterfaceOutputs,
+    ComponentParams,
+    ComponentType)
     
 class Statistics(ABC):
-    def __init__(self, name: str):
-        self.name = name
+    def __init__(self,
+                 params: ComponentParams):
+        self.interface = params.interface()
 
     @abstractmethod
     def systematic_sample(self, N: int = None):
@@ -27,21 +31,28 @@ class SystematicSample:
         self.probability_covered = probability_covered
         self.N = len(self.normalized_weights)
 
-class DiscreteStatisticsParams:
+class StatisticsType(Enum):
+    DISCRETE_STATISTICS = "discrete_statistics"
+
+class DiscreteStatisticsParams(ComponentParams):
     def __init__(self,
+                 component_name: str,
                  support_variables: List[AmbientVariable | OutputVariable],
                  prevalence: np.ndarray,
                  support_points: np.ndarray):
+        super().__init__(component_type=ComponentType.STATISTICS,
+                         component_name=component_name)
         self.support_variables = support_variables
         self.prevalence = prevalence
         self.support_points = support_points
-        if self.support_points.shape[0] != len(self.support_variables):
-            raise ValueError("DiscreteAmbientStatisticsParams: Support data and ambient variables dimensions mismatch.")
-        if len(self.prevalence.shape) != 1 or self.prevalence.shape[0] != self.support_points.shape[1]:
-            raise ValueError("DiscreteAmbientStatisticsParams: Prevalence and support data dimensions mismatch.")
-        self.prevalence = self.prevalence / np.sum(self.prevalence)
-
-def discrete_statistics_params_from_dict(param_dict: Dict[str, Any]):
+    
+    def _interface(self):
+        inputs=InterfaceInputs()
+        outputs=InterfaceOutputs()
+        return inputs, outputs
+        
+def discrete_statistics_params_from_dict(name: str,
+                                         param_dict: Dict[str, Any]):
     if "ambient_variables" in param_dict.keys():
         support_variables = \
             [AmbientVariable(support_var) for support_var in param_dict["ambient_variables"]]
@@ -50,15 +61,21 @@ def discrete_statistics_params_from_dict(param_dict: Dict[str, Any]):
             [OutputVariable(support_var) for support_var in param_dict["output_variables"]]
     prevalence = np.array(param_dict["prevalence"])
     support_points = np.array(param_dict["support_points"])
-    return DiscreteStatisticsParams(support_variables=support_variables,
+    if support_points.shape[0] != len(support_variables):
+        raise ValueError("DiscreteAmbientStatisticsParams: Support data and ambient variables dimensions mismatch.")
+    if len(prevalence.shape) != 1 or prevalence.shape[0] != support_points.shape[1]:
+        raise ValueError("DiscreteAmbientStatisticsParams: Prevalence and support data dimensions mismatch.")
+    prevalence = prevalence / np.sum(prevalence)
+    
+    return DiscreteStatisticsParams(component_name=name,
+                                    support_variables=support_variables,
                                     prevalence=prevalence,
                                     support_points=support_points)
 
 class DiscreteStatistics(Statistics):
     def __init__(self,
-                 name: str,
                  params: DiscreteStatisticsParams):
-        super().__init__(name=name)
+        super().__init__(params=params)
         
         # Ordered by prevalence
         prevalence_index = np.argsort(params.prevalence)[::-1]

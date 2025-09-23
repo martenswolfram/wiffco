@@ -26,9 +26,9 @@ def ambient_statistics_from_dict(param_dict: Dict[str, Any]):
     name = param_dict["name"]
     statistics_type = StatisticsType(param_dict["statistics_type"])
     if statistics_type == StatisticsType.DISCRETE_STATISTICS:
-        params = discrete_statistics_params_from_dict(param_dict=param_dict["statistics_params"])
-        return DiscreteStatistics(name=name,
-                                         params=params)
+        params = discrete_statistics_params_from_dict(name=name,
+                                                      param_dict=param_dict["statistics_params"])
+        return DiscreteStatistics(params=params)
     else:
         raise NotImplementedError("Only discrete_ambient_statistics implemented.")
 

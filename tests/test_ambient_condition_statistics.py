@@ -15,7 +15,7 @@ def test_simple_ambient_statistics():
                                        [  180,  240, 120,  60, 300,   0],
                                        [    5,    5,   2,   5,  10,  10]])
     # Initialization
-    assert simple_ambient_statistics.name == "simple_ambient_statistics"
+    assert simple_ambient_statistics.interface.name == "Statistics 'simple_ambient_statistics'"
     assert simple_ambient_statistics.support_variables == \
         [AmbientVariable.WIND_SPEED, AmbientVariable.WIND_DIRECTION, AmbientVariable.ELECTRICITY_PRICE]
     assert simple_ambient_statistics.ordered_prevalence == pytest.approx(ordered_prevalence)
