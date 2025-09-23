@@ -5,7 +5,8 @@ from twain_wifco.config import parse_json_file, ambient_statistics_from_dict
 from twain_wifco.interface import AmbientVariable
 
 def test_simple_ambient_statistics():
-    json_path = pathlib.Path(__file__).parent / "data" / "simple_ambient_statistics.json"
+    test_data_folder = pathlib.Path(__file__).parent / "data"
+    json_path = test_data_folder / "simple_ambient_statistics.json"
     param_dict = parse_json_file(path=json_path)
     simple_ambient_statistics = ambient_statistics_from_dict(param_dict=param_dict)
     
@@ -24,7 +25,7 @@ def test_simple_ambient_statistics():
     sys_sample_default = simple_ambient_statistics.systematic_sample()
     assert sys_sample_default.support_variables == simple_ambient_statistics.support_variables
     assert sys_sample_default.normalized_weights == pytest.approx(ordered_prevalence)
-    assert sys_sample_default.values == pytest.approx(ordered_support_points)
+    assert sys_sample_default.support_values == pytest.approx(ordered_support_points)
     assert sys_sample_default.probability_covered == pytest.approx(1)
 
     # Invalid N
@@ -37,7 +38,7 @@ def test_simple_ambient_statistics():
     sys_sample_larger = simple_ambient_statistics.systematic_sample(N=N)
     assert sys_sample_larger.support_variables == simple_ambient_statistics.support_variables
     assert sys_sample_larger.normalized_weights == pytest.approx(ordered_prevalence)
-    assert sys_sample_larger.values == pytest.approx(ordered_support_points)
+    assert sys_sample_larger.support_values == pytest.approx(ordered_support_points)
     assert sys_sample_larger.probability_covered == pytest.approx(1)
 
     # Sample with smaller N specifed
@@ -46,7 +47,7 @@ def test_simple_ambient_statistics():
     probability_covered = np.sum(ordered_prevalence[:N])
     assert sys_sample_smaller.support_variables == simple_ambient_statistics.support_variables
     assert sys_sample_smaller.normalized_weights == pytest.approx(ordered_prevalence[:N] / probability_covered)
-    assert sys_sample_smaller.values == pytest.approx(ordered_support_points[:, :N])
+    assert sys_sample_smaller.support_values == pytest.approx(ordered_support_points[:, :N])
     assert sys_sample_smaller.probability_covered == pytest.approx(probability_covered)
     
 

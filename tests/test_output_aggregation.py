@@ -5,7 +5,8 @@ from twain_wifco.interface import AmbientVariable, OutputVariable
 
     
 def test_simple_product_aggregation():
-    json_path = pathlib.Path(__file__).parent / "data" / "simple_output_aggregation.json"
+    test_data_folder = pathlib.Path(__file__).parent / "data"
+    json_path = test_data_folder / "simple_output_aggregation.json"
     param_dict = parse_json_file(path=json_path)
     simple_product_aggregation = output_aggregation_from_dict(param_dict=param_dict)
         

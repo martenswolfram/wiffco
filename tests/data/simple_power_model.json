@@ -4,14 +4,14 @@
     "model_params":{
         "control_input_data": { 
             "power_regulation": [
-                [0, 1, 2,   3,   4],
+                [0, 1,   2,   3, 4],
                 [0, 1, 1.4, 1.7, 2]
             ]
         },
         "meteorological_condition_data": { 
             "wind_speed": [
-                [0, 1, 2, 3, 4],
-                [0, 1, 4, 9, 16]
+                [0, 10, 20, 30, 40],
+                [0,  1,  4,  9, 16]
             ]
         },
         "single_output": "electrical_power"

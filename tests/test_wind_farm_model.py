@@ -8,7 +8,8 @@ from twain_wifco.interface import (
 
     
 def test_simple_power_model():
-    json_path = pathlib.Path(__file__).parent / "data" / "simple_power_model.json"
+    test_data_folder = pathlib.Path(__file__).parent / "data"
+    json_path = test_data_folder / "simple_power_model.json"
     param_dict = parse_json_file(path=json_path)
     simple_power_model = wind_farm_model_from_dict(param_dict=param_dict)
     
@@ -19,7 +20,7 @@ def test_simple_power_model():
     assert simple_power_model.single_output == OutputVariable.ELECTRICAL_POWER
 
     # Invalid input
-    valid_met_condition = {AmbientVariable.WIND_SPEED: 2}
+    valid_met_condition = {AmbientVariable.WIND_SPEED: 20}
     invalid_ctrl_input = {ControlVariable.YAW_STEERING: 2}
     with pytest.raises(ValueError) as excinfo: 
         simple_power_model.evaluate(meteorological_condition=valid_met_condition,

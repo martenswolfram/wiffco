@@ -3,12 +3,12 @@ from abc import ABC, abstractmethod
 from enum import Enum
 import numpy as np
 from twain_wifco.interface import (
-    Interface,
     InterfaceInputs,
+    InterfaceOutputs,
     AmbientVariable,
     ControlVariable,
     OutputVariable,
-    Component,
+    ComponentType,
     ComponentParams)
 from scipy.interpolate import CubicSpline
 
@@ -38,24 +38,46 @@ class ModelType(Enum):
 
 class IndependentCubicInterpolatorParams(ComponentParams):
     def __init__(self,
-                 name: str,
-                 param_dict: Dict[str, Dict | Any]):
-        super().__init__(name=name)
-        self.ctrl_input_data = {}
-        for ctrl_var, data in param_dict["control_input_data"].items():
-            self.ctrl_input_data[ControlVariable(ctrl_var)] = np.array(data)
-        self.met_condition_data = {}
-        for met_var, data in param_dict["meteorological_condition_data"].items():
-            self.met_condition_data[AmbientVariable(met_var)] = np.array(data)
-        self.single_output = OutputVariable(param_dict["single_output"])
+                 component_name: str,
+                 control_input_data: Dict[ControlVariable, np.ndarray],
+                 meteorological_condition_data: Dict[AmbientVariable, np.ndarray],
+                 single_output: OutputVariable):
+        super().__init__(component_type=ComponentType.WIND_FARM_MODEL,
+                         component_name=component_name)
+        self.control_input_data = control_input_data
+        self.meteorological_condition_data = meteorological_condition_data
+        self.single_output = single_output
 
-    def interface(self):
-        inputs=InterfaceInputs(ambient_variables=self.met_condition_data.keys(),
-                               control_inputs=self.ctrl_input_data.keys())
-        return Interface(component=Component.WIND_FARM_MODEL,
-                         name=self.name,
-                         inputs=inputs)
-        
+    def _interface(self):
+        inputs=InterfaceInputs(ambient_variables=self.meteorological_condition_data.keys(),
+                               control_inputs=self.control_input_data.keys())
+        outputs=InterfaceOutputs(output_variables=set([self.single_output]))
+        return inputs, outputs
+
+def independent_cubic_interp_params_from_dict(name: str,
+                                              param_dict: Dict[str, Any]):
+    ctrl_input_data = {}
+    for ctrl_var, data in param_dict["control_input_data"].items():
+        ctrl_input_data[ControlVariable(ctrl_var)] = np.array(data)
+    met_condition_data = {}
+    for met_var, data in param_dict["meteorological_condition_data"].items():
+        met_condition_data[AmbientVariable(met_var)] = np.array(data)
+    single_output = OutputVariable(param_dict["single_output"])
+    return IndependentCubicInterpolatorParams(component_name=name,
+                                              control_input_data=ctrl_input_data,
+                                              meteorological_condition_data=met_condition_data,
+                                              single_output=single_output)
+       
+class CubicSplineWrapper:
+    def __init__(self, x: np.ndarray, y: np.ndarray):
+        self.spline = CubicSpline(x=x, y=y, extrapolate=False)
+
+    def evaluate(self, x):
+        out = self.spline(x)
+        if np.isnan(out):
+            raise ValueError("CubicSplineWrapper: Extrapolation not implemented.")
+        return out
+
 class IndependentCubicInterpolator(WindFarmModel):
     def __init__(self,
                  params: IndependentCubicInterpolatorParams):
@@ -63,9 +85,9 @@ class IndependentCubicInterpolator(WindFarmModel):
 
         # Initialize models
         self.control_input_models = \
-            {ctrl_var: CubicSpline(data[0], data[1], extrapolate=False) for ctrl_var, data in params.ctrl_input_data.items()}
+            {ctrl_var: CubicSplineWrapper(data[0], data[1]) for ctrl_var, data in params.control_input_data.items()}
         self.meteorological_condition_models = \
-            {met_var: CubicSpline(data[0], data[1], extrapolate=False) for met_var, data in params.met_condition_data.items()}
+            {met_var: CubicSplineWrapper(data[0], data[1]) for met_var, data in params.meteorological_condition_data.items()}
         self.single_output = params.single_output
             
     def _evaluate(self,
@@ -73,9 +95,9 @@ class IndependentCubicInterpolator(WindFarmModel):
                  control_input: Dict[ControlVariable, float]):
         
         out_value = 1
-        for met_var, met_value in meteorological_condition.items():
-            out_value *= self.meteorological_condition_models[met_var](met_value)
-        for ctrl_var, ctrl_value in control_input.items():
-            out_value *= self.control_input_models[ctrl_var](ctrl_value)
+        for met_var, met_model in self.meteorological_condition_models.items():
+            out_value *= met_model.evaluate(meteorological_condition[met_var])
+        for ctrl_var, ctrl_model in self.control_input_models.items():
+            out_value *= ctrl_model.evaluate(control_input[ctrl_var])
 
         return {self.single_output: out_value}

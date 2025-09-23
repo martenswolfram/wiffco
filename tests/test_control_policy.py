@@ -6,7 +6,8 @@ from twain_wifco.interface import AmbientVariable, ControlVariable
 
     
 def test_discrete_control_policy():
-    json_path = pathlib.Path(__file__).parent / "data" / "simple_control_policy.json"
+    test_data_folder = pathlib.Path(__file__).parent / "data"
+    json_path = test_data_folder / "simple_control_policy.json"
     param_dict = parse_json_file(path=json_path)
     simple_control_policy = control_policy_from_dict(param_dict=param_dict)
     
@@ -24,19 +25,6 @@ def test_discrete_control_policy():
         pytest.approx(ambient_conditions_support)
     assert simple_control_policy.params.control_inputs == \
         [ControlVariable.POWER_REGULATION, ControlVariable.YAW_STEERING]
-
-    # Set control policy
-    # Invalid input
-    invalid_setpoints = np.array([[1, 2],
-                                  [3, 4]])
-    with pytest.raises(ValueError) as excinfo: 
-        simple_control_policy.set_control_policy(control_setpoints=invalid_setpoints)
-    assert "Control setpoints dimensions mismatch" in str(excinfo.value)
-
-    # Valid input
-    valid_setpoints = np.array([[1, 2, 3,  4,  5,  6],
-                                [7, 8, 9, 10, 11, 12]])
-    simple_control_policy.set_control_policy(control_setpoints=valid_setpoints)
 
     # retrieve control setpoints for dicrete ambient conditions
     # Invalid ambient condition keys
@@ -59,7 +47,8 @@ def test_discrete_control_policy():
                          AmbientVariable.WIND_DIRECTION: 180,
                          AmbientVariable.ELECTRICITY_PRICE: 5}
     control_setpoints = simple_control_policy.get_control_setpoints(ambient_condition)
-    assert control_setpoints == pytest.approx(np.array([4, 10]))
+    assert control_setpoints == pytest.approx({ControlVariable.POWER_REGULATION: 4,
+                                               ControlVariable.YAW_STEERING: 8})
 
     
 

@@ -1,13 +1,13 @@
-from typing import Dict, Any
+from typing import Dict, Any, List
 from abc import ABC, abstractmethod
 from enum import Enum
 import numpy as np
 from twain_wifco.interface import (
-    Interface,
     InterfaceInputs,
+    InterfaceOutputs,
     AmbientVariable,
     ControlVariable,
-    Component,
+    ComponentType,
     ComponentParams)
 
 class ControlPolicy(ABC):
@@ -32,39 +32,50 @@ class ControlPolicyType(Enum):
 
 class DiscreteControlPolicyParams(ComponentParams):
     def __init__(self,
-                 name: str,
-                 param_dict: Dict[str, Dict | Any]):
-        super().__init__(name=name)
-        self.ambient_variables = self.ambient_variables = \
-            [AmbientVariable(ambient_var) for ambient_var in param_dict["ambient_variables"]]
-        self.ambient_conditions_support = np.array(param_dict["ambient_conditions_support"])
-        if self.ambient_conditions_support.shape[0] != len(self.ambient_variables):
-            raise ValueError("DiscreteControlPolicyParams: Ambient conditions support data and ambient variables dimensions mismatch.")
-        self.control_inputs = \
-            [ControlVariable(ctrl_var) for ctrl_var in param_dict["control_variables"]]
-        self.ambient_condition_tols = param_dict.get("ambient_condition_tols", None)
-        if self.ambient_condition_tols is None:
-            # Determine tolerance depending on the range of ambient variable values
-            self.ambient_condition_tols = np.ptp(self.ambient_conditions_support, axis=1) * 1e-5
-
-    def interface(self):
+                 component_name: str,
+                 ambient_variables: List[AmbientVariable],
+                 ambient_conditions_support: np.ndarray,
+                 control_inputs: List[ControlVariable],
+                 control_setpoints: np.ndarray,
+                 ambient_condition_tols: np.ndarray):
+        super().__init__(component_type=ComponentType.CONTROL_POLICY,
+                         component_name=component_name)
+        self.ambient_variables = ambient_variables
+        self.ambient_conditions_support = ambient_conditions_support
+        self.control_inputs = control_inputs
+        self.control_setpoints = control_setpoints
+        self.ambient_condition_tols = ambient_condition_tols
+        
+    def _interface(self):
         inputs = InterfaceInputs(ambient_variables=set(self.ambient_variables))
-        return Interface(component=Component.CONTROL_POLICY,
-                         name=self.name,
-                         inputs=inputs)
+        outputs = InterfaceOutputs(control_inputs=self.control_inputs)
+        return inputs, outputs
+
+def discrete_policy_params_from_dict(name: str,
+                                     param_dict: Dict[str, Any]):
+    ambient_variables = [AmbientVariable(ambient_var) for ambient_var in param_dict["ambient_variables"]]
+    ambient_conditions_support = np.array(param_dict["ambient_conditions_support"])
+    if ambient_conditions_support.shape[0] != len(ambient_variables):
+        raise ValueError("DiscreteControlPolicyParams: Ambient conditions support data and ambient variables dimensions mismatch.")
+    control_inputs = [ControlVariable(ctrl_var) for ctrl_var in param_dict["control_variables"]]
+    control_setpoints = np.array(param_dict["control_setpoints"])
     
+    ambient_condition_tols = param_dict.get("ambient_condition_tols", None)
+    if ambient_condition_tols is None:
+        # Determine tolerance depending on the range of ambient variable values
+        ambient_condition_tols = np.ptp(ambient_conditions_support, axis=1) * 1e-5
+    return DiscreteControlPolicyParams(component_name=name,
+                                       ambient_variables=ambient_variables,
+                                       ambient_conditions_support=ambient_conditions_support,
+                                       control_inputs=control_inputs,
+                                       control_setpoints=control_setpoints,
+                                       ambient_condition_tols=ambient_condition_tols)
+        
 class DiscreteControlPolicy(ControlPolicy):
     def __init__(self,
                  params: DiscreteControlPolicyParams):
         super().__init__(params=params)
         self.params = params
-        self.control_setpoints = None
-
-    def set_control_policy(self, control_setpoints: np.ndarray):
-        self.control_setpoints = control_setpoints
-        if self.control_setpoints.shape[0] != len(self.params.control_inputs) or \
-            self.control_setpoints.shape[1] != self.params.ambient_conditions_support.shape[1]:
-            raise ValueError("DiscreteControlPolicy: Control setpoints dimensions mismatch.")
     
     def _get_control_setpoints(self,
                                ambient_condition: Dict[AmbientVariable, float]):
@@ -78,4 +89,4 @@ class DiscreteControlPolicy(ControlPolicy):
         if not len(col_index):
             raise ValueError("DiscreteControlPolicy: Ambient condition not found in support points.")
 
-        return self.control_setpoints[:, col_index[0]]
+        return {ctrl_var: ctrl_val for ctrl_var, ctrl_val in zip(self.params.control_inputs, self.params.control_setpoints[:, col_index[0]])}

@@ -1,12 +1,12 @@
-from typing import Dict, Any
+from typing import Dict, Any, Set
 from abc import ABC, abstractmethod
 from enum import Enum
 from twain_wifco.interface import (
-    Interface,
     InterfaceInputs,
+    InterfaceOutputs,
     AmbientVariable,
     OutputVariable,
-    Component,
+    ComponentType,
     ComponentParams)
 
 class OutputAggregation(ABC):
@@ -35,21 +35,31 @@ class AggregationType(Enum):
 
 class SimpleProductParams(ComponentParams):
     def __init__(self,
-                 name: str,
-                 param_dict: Dict[str, Any]):
-        super().__init__(name=name)
-        from_model_list = [OutputVariable(out_var) for out_var in param_dict["from_model"]]
-        self.from_model = set(from_model_list)
-        from_context_list = [AmbientVariable(ambient_var) for ambient_var in param_dict["from_context"]]
-        self.from_context = set(from_context_list)
-        self.single_output = OutputVariable(param_dict["single_output"])
+                 component_name: str,
+                 from_model: Set[OutputVariable],
+                 from_context: Set[AmbientVariable],
+                 single_output: OutputVariable):
+        super().__init__(component_type=ComponentType.OUTPUT_AGGREGATOR,
+                         component_name=component_name)
+        self.from_model = from_model
+        self.from_context = from_context
+        self.single_output = single_output
 
-    def interface(self):
+    def _interface(self):
         inputs = InterfaceInputs(output_variables=self.from_model,
                                  ambient_variables=self.from_context)
-        return Interface(component=Component.OUTPUT_AGGREGATOR,
-                         name=self.name,
-                         inputs=inputs)
+        outputs = InterfaceOutputs(output_variables=set([self.single_output]))
+        return inputs, outputs
+
+def simple_product_params_from_dict(name: str,
+                                    param_dict: Dict[str, Any]):
+    from_model = set([OutputVariable(out_var) for out_var in param_dict["from_model"]])
+    from_context = set([AmbientVariable(ambient_var) for ambient_var in param_dict["from_context"]])
+    single_output = OutputVariable(param_dict["single_output"])
+    return SimpleProductParams(component_name=name,
+                               from_model=from_model,
+                               from_context=from_context,
+                               single_output=single_output)
 
 class SimpleProduct(OutputAggregation):
     def __init__(self,
