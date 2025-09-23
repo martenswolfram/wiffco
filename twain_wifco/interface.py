@@ -21,34 +21,49 @@ class OutputVariable(Enum):
     REVENUE_RATE = "revenue_rate"
     DAMAGE_RATE = "damage_rate"
 
+class InterfaceInputs:
+    def __init__(self,
+                 ambient_variables: Set[AmbientVariable] = set([]),
+                 control_inputs: Set[ControlVariable] = set([]),
+                 output_variables: Set[OutputVariable] = set([])):
+        self.ambient_variables = ambient_variables
+        self.control_inputs = control_inputs
+        self.output_variables = output_variables
+
+class InterfaceOutputs:
+    def __init__(self,
+                 ambient_variables: Set[AmbientVariable] = set([]),
+                 control_inputs: Set[ControlVariable] = set([]),
+                 output_variables: Set[OutputVariable] = set([])):
+        self.ambient_variables = ambient_variables
+        self.control_inputs = control_inputs
+        self.output_variables = output_variables
+
 class Interface:
     def __init__(self,
                  component: Component,
                  name: str,
-                 ambient_variables: Set[AmbientVariable] | None = set([]),
-                 control_inputs: Set[ControlVariable] | None = set([]),
-                 output_variables: Set[OutputVariable] | None = set([])):
-        self.component = component
-        match self.component:
+                 inputs: InterfaceInputs = InterfaceInputs(),
+                 outputs: InterfaceOutputs = InterfaceOutputs()):
+        match component:
             case Component.WIND_FARM_MODEL:
                 self.name = "Model '{}'".format(name)
             case Component.OUTPUT_AGGREGATOR:
                 self.name = "Output Aggregator '{}'".format(name)
             case Component.CONTROL_POLICY:
                 self.name = "Control Policy '{}'".format(name)
-        self.ambient_variables = ambient_variables
-        self.control_inputs = control_inputs
-        self.output_variables = output_variables
+        self.inputs = inputs
+        self.outputs = outputs
 
     def validate_inputs(self,
-                        ambient_condition: Dict[AmbientVariable, Any] | None = {},
-                        control_input: Dict[ControlVariable, Any] | None = {},
-                        output_variables: Dict[OutputVariable, Any] | None = {}):
-        if not (self.ambient_variables <= ambient_condition.keys()):
+                        ambient_condition: Dict[AmbientVariable, Any] = {},
+                        control_input: Dict[ControlVariable, Any] = {},
+                        output_variables: Dict[OutputVariable, Any] = {}):
+        if not (self.inputs.ambient_variables <= ambient_condition.keys()):
             raise ValueError("Insufficient Ambient Condition as input for {}.".format(self.name))
-        if not (self.control_inputs <= control_input.keys()):
+        if not (self.inputs.control_inputs <= control_input.keys()):
             raise ValueError("Insufficient Control Input for {}.".format(self.name))
-        if not (self.output_variables <= output_variables.keys()):
+        if not (self.inputs.output_variables <= output_variables.keys()):
             raise ValueError("Insufficient Output Variable as input for {}.".format(self.name))
         
 class ComponentParams(ABC):

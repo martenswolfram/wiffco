@@ -4,10 +4,10 @@ from twain_wifco.wind_farm_model import (
     ModelType,
     IndependentCubicInterpolatorParams,
     IndependentCubicInterpolator)
-from twain_wifco.ambient_conditions import (
-    AmbientStatisticsType,
-    DiscreteAmbientStatisticsParams,
-    DiscreteAmbientStatistics)
+from twain_wifco.statistics import (
+    StatisticsType,
+    DiscreteStatisticsParams,
+    DiscreteStatistics)
 from twain_wifco.output_aggregation import (
     AggregationType,
     SimpleProductParams,
@@ -24,10 +24,10 @@ def parse_json_file(path):
 
 def ambient_statistics_from_dict(param_dict: Dict[str, Any]):
     name = param_dict["name"]
-    statistics_type = AmbientStatisticsType(param_dict["statistics_type"])
-    if statistics_type == AmbientStatisticsType.DISCRETE_ABIENT_STATISTICS:
-        params = DiscreteAmbientStatisticsParams(param_dict=param_dict["statistics_params"])
-        return DiscreteAmbientStatistics(name=name,
+    statistics_type = StatisticsType(param_dict["statistics_type"])
+    if statistics_type == StatisticsType.DISCRETE_STATISTICS:
+        params = DiscreteStatisticsParams(param_dict=param_dict["statistics_params"])
+        return DiscreteStatistics(name=name,
                                          params=params)
     else:
         raise NotImplementedError("Only discrete_ambient_statistics implemented.")

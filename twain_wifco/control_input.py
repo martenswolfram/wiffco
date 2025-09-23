@@ -4,6 +4,7 @@ from enum import Enum
 import numpy as np
 from twain_wifco.interface import (
     Interface,
+    InterfaceInputs,
     AmbientVariable,
     ControlVariable,
     Component,
@@ -47,9 +48,10 @@ class DiscreteControlPolicyParams(ComponentParams):
             self.ambient_condition_tols = np.ptp(self.ambient_conditions_support, axis=1) * 1e-5
 
     def interface(self):
+        inputs = InterfaceInputs(ambient_variables=set(self.ambient_variables))
         return Interface(component=Component.CONTROL_POLICY,
                          name=self.name,
-                         ambient_variables=set(self.ambient_variables))
+                         inputs=inputs)
     
 class DiscreteControlPolicy(ControlPolicy):
     def __init__(self,

@@ -11,7 +11,8 @@
             "args": [
                 "-s",
                 "-v",
-                "tests"
+                "tests",
+                // "--ignore=tests/test_ambient_condition_statistics.py"
             ],
             "justMyCode": true,
         },

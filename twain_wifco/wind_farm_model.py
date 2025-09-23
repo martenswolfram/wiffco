@@ -4,6 +4,7 @@ from enum import Enum
 import numpy as np
 from twain_wifco.interface import (
     Interface,
+    InterfaceInputs,
     AmbientVariable,
     ControlVariable,
     OutputVariable,
@@ -49,10 +50,11 @@ class IndependentCubicInterpolatorParams(ComponentParams):
         self.single_output = OutputVariable(param_dict["single_output"])
 
     def interface(self):
+        inputs=InterfaceInputs(ambient_variables=self.met_condition_data.keys(),
+                               control_inputs=self.ctrl_input_data.keys())
         return Interface(component=Component.WIND_FARM_MODEL,
                          name=self.name,
-                         ambient_variables=self.met_condition_data.keys(),
-                         control_inputs=self.ctrl_input_data.keys())
+                         inputs=inputs)
         
 class IndependentCubicInterpolator(WindFarmModel):
     def __init__(self,

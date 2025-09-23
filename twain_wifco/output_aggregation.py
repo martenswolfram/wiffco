@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 from enum import Enum
 from twain_wifco.interface import (
     Interface,
+    InterfaceInputs,
     AmbientVariable,
     OutputVariable,
     Component,
@@ -44,10 +45,11 @@ class SimpleProductParams(ComponentParams):
         self.single_output = OutputVariable(param_dict["single_output"])
 
     def interface(self):
+        inputs = InterfaceInputs(output_variables=self.from_model,
+                                 ambient_variables=self.from_context)
         return Interface(component=Component.OUTPUT_AGGREGATOR,
                          name=self.name,
-                         output_variables=self.from_model,
-                         ambient_variables=self.from_context)
+                         inputs=inputs)
 
 class SimpleProduct(OutputAggregation):
     def __init__(self,
