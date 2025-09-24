@@ -8,14 +8,19 @@ from twain_wifco.statistics import (
     StatisticsType,
     discrete_statistics_params_from_dict,
     DiscreteStatistics)
-from twain_wifco.output_aggregation import (
-    AggregationType,
-    simple_product_params_from_dict,
-    SimpleProduct)
 from twain_wifco.control_input import (
     ControlPolicyType,
     discrete_policy_params_from_dict,
     DiscreteControlPolicy)
+from twain_wifco.output_aggregation import (
+    AggregationType,
+    simple_product_params_from_dict,
+    SimpleProduct)
+from twain_wifco.output_accumulation import (
+    AccumulationType,
+    discounted_integrator_params_from_dict,
+    DiscountedIntegrator)
+
 
 def parse_json_file(path):
     with open(path, "r") as json_file:
@@ -43,6 +48,16 @@ def wind_farm_model_from_dict(param_dict: Dict[str, Any]):
     else:
         raise NotImplementedError("Only independent_cubic_interpolator model implemented.")
 
+def control_policy_from_dict(param_dict: Dict[str, Any]):
+    name = param_dict["name"]
+    policy_type = ControlPolicyType(param_dict["policy_type"])
+    if policy_type == ControlPolicyType.DISCRETE_CONTROL_POLICY:
+        params = discrete_policy_params_from_dict(name=name,
+                                                  param_dict=param_dict["policy_params"])
+        return DiscreteControlPolicy(params=params)
+    else:
+        raise NotImplementedError("Only discrete_control_policy implemented.")
+
 def output_aggregation_from_dict(param_dict: Dict[str, Any]):
     name = param_dict["name"]
     aggregation_type = AggregationType(param_dict["aggregation_type"])
@@ -53,12 +68,12 @@ def output_aggregation_from_dict(param_dict: Dict[str, Any]):
     else:
         raise NotImplementedError("Only simple_product aggregation implemented.")
 
-def control_policy_from_dict(param_dict: Dict[str, Any]):
+def output_accumulation_from_dict(param_dict: Dict[str, Any]):
     name = param_dict["name"]
-    policy_type = ControlPolicyType(param_dict["policy_type"])
-    if policy_type == ControlPolicyType.DISCRETE_CONTROL_POLICY:
-        params = discrete_policy_params_from_dict(name=name,
-                                                  param_dict=param_dict["policy_params"])
-        return DiscreteControlPolicy(params=params)
+    accumulation_type = AccumulationType(param_dict["accumulation_type"])
+    if accumulation_type == AccumulationType.DISCOUNTED_INTEGRATION:
+        params = discounted_integrator_params_from_dict(name=name,
+                                                        param_dict=param_dict["accumulation_params"])
+        return DiscountedIntegrator(params=params)
     else:
-        raise NotImplementedError("Only discrete_control_policy implemented.")
+        raise NotImplementedError("Only disounted_integration accumulator implemented.")

@@ -1,10 +1,12 @@
 {
     "name": "discounted_revenue",
     "accumulation_type": "discounted_integration",
-    "aggregation_params":{
+    "accumulation_params":{
         "in_out_mappings":{
-            "revenue_rate": "revenue"            
+            "revenue_rate": "revenue"
         },
-        "discount_rate": 0.05
+        "discount_rates":{
+            "revenue_rate": 0.05
+        }
     }
 }

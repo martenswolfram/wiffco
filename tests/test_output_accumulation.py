@@ -1,13 +1,15 @@
 import pathlib
+import pytest
 import numpy as np
 from twain_wifco.config import (
     parse_json_file,
     ambient_statistics_from_dict,
     wind_farm_model_from_dict,
     control_policy_from_dict,    
-    output_aggregation_from_dict)
+    output_aggregation_from_dict,
+    output_accumulation_from_dict)
 from twain_wifco.output_accumulation import ambient_to_output_statistics
-# from twain_wifco.interface import AmbientVariable, OutputVariable
+from twain_wifco.interface import OutputVariable, AccumulatedMetric
 
     
 def test_simple_product_accumulation():
@@ -27,18 +29,27 @@ def test_simple_product_accumulation():
         control_policy=simple_control_policy,
         wind_farm_model=simple_power_model,
         output_aggregation=simple_product_aggregation)
-    pass
-    
-    # # Initialization
-    # assert simple_product_aggregation.interface.name == "Output Aggregator 'revenue_aggregation'"
-    # assert simple_product_aggregation.from_model == \
-    #     set([OutputVariable.ELECTRICAL_POWER])
-    # assert simple_product_aggregation.from_context == \
-    #     set([AmbientVariable.ELECTRICITY_PRICE])
-    # assert simple_product_aggregation.single_output == OutputVariable.REVENUE_RATE
 
-    # # Output aggregation
-    # aggregated_output = simple_product_aggregation.compute_aggregate(
+    output_accumulation_dict = parse_json_file(path=(test_data_folder / "simple_output_accumulation.json"))
+    discounted_integrator_accumulation = output_accumulation_from_dict(param_dict=output_accumulation_dict)
+    
+    
+    # Initialization
+    assert discounted_integrator_accumulation.interface.name == "Output Accumulator 'discounted_revenue'"
+    assert discounted_integrator_accumulation.params.discount_rates == pytest.approx({OutputVariable.REVENUE_RATE: 0.05})
+    assert discounted_integrator_accumulation.params.in_out_mappings == {OutputVariable.REVENUE_RATE: AccumulatedMetric.REVENUE}
+    
+    # Output accumulation
+    duration = 50
+    expected_accumulated_metrics = discounted_integrator_accumulation.expected_value(
+        output_statistics=output_statistics,
+        duration=duration)
+    assert expected_accumulated_metrics[AccumulatedMetric.REVENUE] > 0
+    
+    
+    # expected_accumulated_metrics
+    
+    # .compute_aggregate(
     #     output_variables={OutputVariable.ELECTRICAL_POWER: 5},
     #     ambient_condition={AmbientVariable.ELECTRICITY_PRICE: 3})
     # assert aggregated_output == pytest.approx({OutputVariable.REVENUE_RATE: 15})
