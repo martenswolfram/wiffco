@@ -3,8 +3,7 @@ from abc import ABC, abstractmethod
 from enum import Enum
 import numpy as np
 from twain_wifco.interface import (
-    InterfaceInputs,
-    InterfaceOutputs,
+    InterfaceVariables,
     AmbientVariable,
     ControlVariable,
     OutputVariable,
@@ -49,9 +48,9 @@ class IndependentCubicInterpolatorParams(ComponentParams):
         self.single_output = single_output
 
     def _interface(self):
-        inputs=InterfaceInputs(ambient_variables=self.meteorological_condition_data.keys(),
+        inputs=InterfaceVariables(ambient_variables=self.meteorological_condition_data.keys(),
                                control_inputs=self.control_input_data.keys())
-        outputs=InterfaceOutputs(output_variables=set([self.single_output]))
+        outputs=InterfaceVariables(output_variables=set([self.single_output]))
         return inputs, outputs
 
 def independent_cubic_interp_params_from_dict(name: str,

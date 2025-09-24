@@ -5,8 +5,7 @@ import numpy as np
 from twain_wifco.interface import (
     AmbientVariable,
     OutputVariable,
-    InterfaceInputs,
-    InterfaceOutputs,
+    InterfaceVariables,
     ComponentParams,
     ComponentType)
     
@@ -18,6 +17,11 @@ class Statistics(ABC):
     @abstractmethod
     def systematic_sample(self, N: int = None):
         pass
+
+    @abstractmethod
+    def expected_value(self):
+        pass
+    
     
 class SystematicSample:
     def __init__(self,
@@ -47,8 +51,13 @@ class DiscreteStatisticsParams(ComponentParams):
         self.support_points = support_points
     
     def _interface(self):
-        inputs=InterfaceInputs()
-        outputs=InterfaceOutputs()
+        inputs=InterfaceVariables()
+        if all(isinstance(var, AmbientVariable) for var in self.support_variables):
+            outputs=InterfaceVariables(ambient_variables=set(self.support_variables))
+        elif all(isinstance(var, OutputVariable) for var in self.support_variables):
+            outputs=InterfaceVariables(output_variables=set(self.support_variables))
+        else:
+            raise ValueError("DiscreteStatisticsParams: Invalid support variables specified.")
         return inputs, outputs
         
 def discrete_statistics_params_from_dict(name: str,
@@ -98,4 +107,8 @@ class DiscreteStatistics(Statistics):
                                     probability_covered=probability_covered)
         else:
             raise ValueError("DiscreteStatistics: Invalid number of samples N.")
+        
+    def expected_value(self):
+        expectation = self.ordered_support_points @ self.ordered_prevalence.T
+        return {supp_var: val for supp_var, val in zip(self.support_variables, expectation)}
             

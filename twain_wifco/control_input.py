@@ -3,8 +3,7 @@ from abc import ABC, abstractmethod
 from enum import Enum
 import numpy as np
 from twain_wifco.interface import (
-    InterfaceInputs,
-    InterfaceOutputs,
+    InterfaceVariables,
     AmbientVariable,
     ControlVariable,
     ComponentType,
@@ -47,8 +46,8 @@ class DiscreteControlPolicyParams(ComponentParams):
         self.ambient_condition_tols = ambient_condition_tols
         
     def _interface(self):
-        inputs = InterfaceInputs(ambient_variables=set(self.ambient_variables))
-        outputs = InterfaceOutputs(control_inputs=self.control_inputs)
+        inputs = InterfaceVariables(ambient_variables=set(self.ambient_variables))
+        outputs = InterfaceVariables(control_inputs=self.control_inputs)
         return inputs, outputs
 
 def discrete_policy_params_from_dict(name: str,

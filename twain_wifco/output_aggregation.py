@@ -2,8 +2,7 @@ from typing import Dict, Any, Set
 from abc import ABC, abstractmethod
 from enum import Enum
 from twain_wifco.interface import (
-    InterfaceInputs,
-    InterfaceOutputs,
+    InterfaceVariables,
     AmbientVariable,
     OutputVariable,
     ComponentType,
@@ -46,9 +45,9 @@ class SimpleProductParams(ComponentParams):
         self.single_output = single_output
 
     def _interface(self):
-        inputs = InterfaceInputs(output_variables=self.from_model,
+        inputs = InterfaceVariables(output_variables=self.from_model,
                                  ambient_variables=self.from_context)
-        outputs = InterfaceOutputs(output_variables=set([self.single_output]))
+        outputs = InterfaceVariables(output_variables=set([self.single_output]))
         return inputs, outputs
 
 def simple_product_params_from_dict(name: str,

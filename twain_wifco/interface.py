@@ -7,7 +7,8 @@ class ComponentType(Enum):
     WIND_FARM_MODEL = "wind_farm_model"
     OUTPUT_AGGREGATOR = "output_aggregator"
     CONTROL_POLICY = "control_policy"
-    
+    OUTPUT_ACCUMULATOR = "output_accumulator"
+
 class AmbientVariable(Enum):
     WIND_SPEED = "wind_speed"
     WIND_DIRECTION = "wind_direction"
@@ -22,39 +23,37 @@ class OutputVariable(Enum):
     REVENUE_RATE = "revenue_rate"
     DAMAGE_RATE = "damage_rate"
 
-class InterfaceInputs:
-    def __init__(self,
-                 ambient_variables: Set[AmbientVariable] = set([]),
-                 control_inputs: Set[ControlVariable] = set([]),
-                 output_variables: Set[OutputVariable] = set([])):
-        self.ambient_variables = ambient_variables
-        self.control_inputs = control_inputs
-        self.output_variables = output_variables
+class AccumulatedMetric(Enum):
+    REVENUE = "revenue"
 
-class InterfaceOutputs:
+class InterfaceVariables:
     def __init__(self,
                  ambient_variables: Set[AmbientVariable] = set([]),
                  control_inputs: Set[ControlVariable] = set([]),
-                 output_variables: Set[OutputVariable] = set([])):
+                 output_variables: Set[OutputVariable] = set([]),
+                 accumulated_metrics: Set[AccumulatedMetric] = set([])):
         self.ambient_variables = ambient_variables
         self.control_inputs = control_inputs
         self.output_variables = output_variables
+        self.accumulated_metrics = accumulated_metrics
 
 class Interface:
     def __init__(self,
                  component_type: ComponentType,
                  component_name: str,
-                 inputs: InterfaceInputs = InterfaceInputs(),
-                 outputs: InterfaceOutputs = InterfaceOutputs()):
+                 inputs: InterfaceVariables = InterfaceVariables(),
+                 outputs: InterfaceVariables = InterfaceVariables()):
         match component_type:
             case ComponentType.STATISTICS:
                 self.name = "Statistics '{}'".format(component_name)
             case ComponentType.WIND_FARM_MODEL:
                 self.name = "Model '{}'".format(component_name)
-            case ComponentType.OUTPUT_AGGREGATOR:
-                self.name = "Output Aggregator '{}'".format(component_name)
             case ComponentType.CONTROL_POLICY:
                 self.name = "Control Policy '{}'".format(component_name)
+            case ComponentType.OUTPUT_AGGREGATOR:
+                self.name = "Output Aggregator '{}'".format(component_name)
+            case ComponentType.OUTPUT_ACCUMULATOR:
+                self.name = "Output Accumulator '{}'".format(component_name)
         self.inputs = inputs
         self.outputs = outputs
 
@@ -84,6 +83,6 @@ class ComponentParams(ABC):
                          outputs=outputs)
 
     @abstractmethod
-    def _interface(self) -> Tuple[InterfaceInputs, InterfaceOutputs]:
+    def _interface(self) -> Tuple[InterfaceVariables, InterfaceVariables]:
         pass
 
