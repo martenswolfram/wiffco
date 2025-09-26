@@ -11,7 +11,7 @@ from twain_wifco.interface import (
     ComponentParams)
 from scipy.interpolate import CubicSpline
 
-class WindFarmModel(ABC):
+class PlantModel(ABC):
     def __init__(self,
                  params: ComponentParams):
         self.interface = params.interface()
@@ -77,7 +77,7 @@ class CubicSplineWrapper:
             raise ValueError("CubicSplineWrapper: Extrapolation not implemented.")
         return out
 
-class IndependentCubicInterpolator(WindFarmModel):
+class IndependentCubicInterpolator(PlantModel):
     def __init__(self,
                  params: IndependentCubicInterpolatorParams):
         super().__init__(params=params)

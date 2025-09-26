@@ -1,6 +1,6 @@
 import json
 from typing import Dict, Any
-from twain_wifco.wind_farm_model import (
+from twain_wifco.plant_model import (
     ModelType,
     independent_cubic_interp_params_from_dict,
     IndependentCubicInterpolator)
@@ -37,7 +37,7 @@ def ambient_statistics_from_dict(param_dict: Dict[str, Any]):
     else:
         raise NotImplementedError("Only discrete_ambient_statistics implemented.")
 
-def wind_farm_model_from_dict(param_dict: Dict[str, Any]):
+def plant_model_from_dict(param_dict: Dict[str, Any]):
     
     name = param_dict["name"]
     model_type = ModelType(param_dict["model_type"])

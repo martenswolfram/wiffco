@@ -4,7 +4,7 @@ from enum import Enum
 
 class ComponentType(Enum):
     STATISTICS = "statistics"
-    WIND_FARM_MODEL = "wind_farm_model"
+    WIND_FARM_MODEL = "plant_model"
     OUTPUT_AGGREGATOR = "output_aggregator"
     CONTROL_POLICY = "control_policy"
     OUTPUT_ACCUMULATOR = "output_accumulator"
