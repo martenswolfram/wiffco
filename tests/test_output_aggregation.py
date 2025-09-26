@@ -12,17 +12,24 @@ def test_simple_product_aggregation():
         
     # Initialization
     assert simple_product_aggregation.interface.name == "Output Aggregator 'revenue_aggregation'"
-    assert simple_product_aggregation.from_model == \
+    assert simple_product_aggregation.aggregate_mappings.keys() == \
+        set([OutputVariable.REVENUE_RATE, OutputVariable.DAMAGE_RATE])
+    assert simple_product_aggregation.aggregate_mappings[OutputVariable.REVENUE_RATE].from_model == \
         set([OutputVariable.ELECTRICAL_POWER])
-    assert simple_product_aggregation.from_context == \
+    assert simple_product_aggregation.aggregate_mappings[OutputVariable.REVENUE_RATE].from_ambient == \
         set([AmbientVariable.ELECTRICITY_PRICE])
-    assert simple_product_aggregation.single_output == OutputVariable.REVENUE_RATE
-
+    assert simple_product_aggregation.aggregate_mappings[OutputVariable.DAMAGE_RATE].from_model == \
+        set([OutputVariable.DAMAGE_RATE])
+    assert simple_product_aggregation.aggregate_mappings[OutputVariable.DAMAGE_RATE].from_ambient == \
+        set([])
+    
     # Output aggregation
     aggregated_output = simple_product_aggregation.compute_aggregate(
-        output_variables={OutputVariable.ELECTRICAL_POWER: 5},
+        output_variables={OutputVariable.ELECTRICAL_POWER: 5,
+                          OutputVariable.DAMAGE_RATE: 2},
         ambient_condition={AmbientVariable.ELECTRICITY_PRICE: 3})
-    assert aggregated_output == pytest.approx({OutputVariable.REVENUE_RATE: 15})
+    assert aggregated_output == pytest.approx({OutputVariable.REVENUE_RATE: 15,
+                                               OutputVariable.DAMAGE_RATE: 2})
         
     
 

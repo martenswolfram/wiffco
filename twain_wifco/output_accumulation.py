@@ -1,4 +1,4 @@
-from typing import Dict, Any
+from typing import Dict, Any, List
 from abc import ABC, abstractmethod
 from enum import Enum
 import numpy as np
@@ -17,15 +17,26 @@ from twain_wifco.interface import (
     ComponentParams,
     ComponentType)
 
+def validate_model_disambiguation(wind_farm_models: List[WindFarmModel]):
+    # This one is not necessarily a problem, but let's keep it clean:
+    model_names = [model.interface.name for model in wind_farm_models]
+    if len(model_names) != len(set(model_names)):
+        raise ValueError("Ambiguous model names detected for multiple wind farm models.")
+    # Avoid that two models provide a result for the same output variable
+    all_outputs = [out_var for model in wind_farm_models for out_var in model.interface.outputs.output_variables]
+    if len(all_outputs) != len(set(all_outputs)):
+        raise ValueError("Ambiguous model outputs detected for multiple wind farm models.")
+
 def ambient_to_output_statistics(ambient_condition_statistics: Statistics,
                                  control_policy: ControlPolicy,
-                                 wind_farm_model: WindFarmModel,
-                                 output_aggregation: OutputAggregation):
+                                 wind_farm_models: List[WindFarmModel],
+                                 output_aggregation: OutputAggregation,
+                                 N = None):
     
     if not isinstance(ambient_condition_statistics, DiscreteStatistics):
         raise NotImplementedError("Statistics transformation only implemented for DiscreteStatistics.")
     
-    ambient_condition_sample: SystematicSample = ambient_condition_statistics.systematic_sample()
+    ambient_condition_sample: SystematicSample = ambient_condition_statistics.systematic_sample(N=N)
 
     ambient_variables = ambient_condition_sample.support_variables
     aggregated_output_variables = output_aggregation.interface.outputs.output_variables
@@ -34,9 +45,13 @@ def ambient_to_output_statistics(ambient_condition_statistics: Statistics,
         ambient_condition = {
             ambient_var: val for ambient_var, val in zip(ambient_variables, ambient_condition_values)}
         control_input = control_policy.get_control_setpoints(ambient_condition=ambient_condition)
-        model_output = wind_farm_model.evaluate(meteorological_condition=ambient_condition,
-                                                control_input=control_input)
-        aggregated_output = output_aggregation.compute_aggregate(output_variables=model_output,
+        
+        validate_model_disambiguation(wind_farm_models=wind_farm_models)
+        model_outputs = {}
+        for wind_farm_model in wind_farm_models:
+            model_outputs |= wind_farm_model.evaluate(meteorological_condition=ambient_condition,
+                                                      control_input=control_input)
+        aggregated_output = output_aggregation.compute_aggregate(output_variables=model_outputs,
                                                                  ambient_condition=ambient_condition)
         support_values[:, i] = [aggregated_output[out_var] for out_var in aggregated_output_variables]
 

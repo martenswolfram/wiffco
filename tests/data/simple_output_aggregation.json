@@ -1,9 +1,16 @@
 {
     "name": "revenue_aggregation",
     "aggregation_type": "simple_product",
-    "aggregation_params":{
-        "from_model": ["electrical_power"],
-        "from_context": ["electricity_price"],
-        "single_output": "revenue_rate"
+    "aggregation_params": {
+        "aggregate_mappings":{
+            "revenue_rate": {
+                "from_model": ["electrical_power"],
+                "from_ambient": ["electricity_price"]
+            },
+            "damage_rate": {
+                "from_model": ["damage_rate"],
+                "from_ambient": []
+            }
+        }
     }
 }

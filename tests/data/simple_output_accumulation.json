@@ -3,10 +3,12 @@
     "accumulation_type": "discounted_integration",
     "accumulation_params":{
         "in_out_mappings":{
-            "revenue_rate": "revenue"
+            "revenue_rate": "revenue",
+            "damage_rate": "accrued_damage"
         },
         "discount_rates":{
-            "revenue_rate": 0.05
+            "revenue_rate": 0.05,
+            "damage_rate": 0.0
         }
     }
 }

@@ -25,6 +25,7 @@ class OutputVariable(Enum):
 
 class AccumulatedMetric(Enum):
     REVENUE = "revenue"
+    ACCRUED_DAMAGE = "accrued_damage"
 
 class InterfaceVariables:
     def __init__(self,

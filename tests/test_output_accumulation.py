@@ -15,8 +15,10 @@ from twain_wifco.interface import OutputVariable, AccumulatedMetric
 def test_simple_product_accumulation():
     
     test_data_folder = pathlib.Path(__file__).parent / "data"
-    model_dict = parse_json_file(path=(test_data_folder / "simple_power_model.json"))
-    simple_power_model = wind_farm_model_from_dict(param_dict=model_dict)
+    power_model_dict = parse_json_file(path=(test_data_folder / "simple_power_model.json"))
+    simple_power_model = wind_farm_model_from_dict(param_dict=power_model_dict)
+    damage_model_dict = parse_json_file(path=(test_data_folder / "simple_damage_model.json"))
+    simple_damage_model = wind_farm_model_from_dict(param_dict=damage_model_dict)
     ambient_statistics_dict = parse_json_file(path=(test_data_folder / "simple_ambient_statistics.json"))
     simple_ambient_statistics = ambient_statistics_from_dict(param_dict=ambient_statistics_dict)
     control_policy_dict = parse_json_file(path=(test_data_folder / "simple_control_policy.json"))
@@ -27,7 +29,7 @@ def test_simple_product_accumulation():
     output_statistics = ambient_to_output_statistics(
         ambient_condition_statistics=simple_ambient_statistics,
         control_policy=simple_control_policy,
-        wind_farm_model=simple_power_model,
+        wind_farm_models=[simple_power_model, simple_damage_model],
         output_aggregation=simple_product_aggregation)
 
     output_accumulation_dict = parse_json_file(path=(test_data_folder / "simple_output_accumulation.json"))
@@ -36,15 +38,19 @@ def test_simple_product_accumulation():
     
     # Initialization
     assert discounted_integrator_accumulation.interface.name == "Output Accumulator 'discounted_revenue'"
-    assert discounted_integrator_accumulation.params.discount_rates == pytest.approx({OutputVariable.REVENUE_RATE: 0.05})
-    assert discounted_integrator_accumulation.params.in_out_mappings == {OutputVariable.REVENUE_RATE: AccumulatedMetric.REVENUE}
+    assert discounted_integrator_accumulation.params.discount_rates == pytest.approx({OutputVariable.REVENUE_RATE: 0.05,
+                                                                                      OutputVariable.DAMAGE_RATE: 0.0})
+    assert discounted_integrator_accumulation.params.in_out_mappings == {OutputVariable.REVENUE_RATE: AccumulatedMetric.REVENUE,
+                                                                         OutputVariable.DAMAGE_RATE: AccumulatedMetric.ACCRUED_DAMAGE}
     
     # Output accumulation
-    duration = 50
+    duration = 20
     expected_accumulated_metrics = discounted_integrator_accumulation.expected_value(
         output_statistics=output_statistics,
         duration=duration)
     assert expected_accumulated_metrics[AccumulatedMetric.REVENUE] > 0
+    assert expected_accumulated_metrics[AccumulatedMetric.ACCRUED_DAMAGE] > 0
+    
     
     
     # expected_accumulated_metrics
