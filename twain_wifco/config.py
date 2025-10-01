@@ -3,7 +3,7 @@ from typing import Dict, Any
 from twain_wifco.plant_model import (
     ModelType,
     independent_cubic_interp_params_from_dict,
-    IndependentCubicInterpolator)
+    IndependentCubicInterpolation)
 from twain_wifco.statistics import (
     StatisticsType,
     discrete_statistics_params_from_dict,
@@ -41,12 +41,12 @@ def plant_model_from_dict(param_dict: Dict[str, Any]):
     
     plant_name = param_dict["name"]
     model_type = ModelType(param_dict["model_type"])
-    if model_type == ModelType.INDEPENDENT_CUBIC_INTERPOLATOR:
+    if model_type == ModelType.INDEPENDENT_CUBIC_INTERPOLATION:
         params = independent_cubic_interp_params_from_dict(param_dict=param_dict["model_params"])
-        return IndependentCubicInterpolator(plant_name=plant_name,
+        return IndependentCubicInterpolation(plant_name=plant_name,
                                             plant_params=params)
     else:
-        raise NotImplementedError("Only independent_cubic_interpolator model implemented.")
+        raise NotImplementedError("Only independent_cubic_interpolation model implemented.")
 
 def control_policy_from_dict(param_dict: Dict[str, Any]):
     policy_name = param_dict["name"]

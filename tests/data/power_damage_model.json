@@ -1,0 +1,36 @@
+{
+    "name": "power_damage_model",
+    "model_type": "independent_cubic_interpolation",
+    "model_params":{
+        "interpolation_mappings": {
+            "electrical_power": {
+                "control_data": { 
+                    "power_regulation": [
+                        [0, 1,   2,   3, 4],
+                        [0, 1, 1.4, 1.7, 2]
+                    ]
+                },
+                "meteorological_data": { 
+                    "wind_speed": [
+                        [0, 10, 20, 30, 40],
+                        [0,  1,  4,  9, 16]
+                    ]
+                }
+            },
+            "damage_rate": {
+                "control_data": { 
+                    "power_regulation": [
+                        [0, 1, 2, 3,  4],
+                        [0, 1, 4, 9, 16]
+                    ]
+                },
+                "meteorological_data": { 
+                    "wind_speed": [
+                        [0, 10, 20, 30, 40],
+                        [0,  1,  4,  9, 16]
+                    ]
+                }
+            }
+        }
+    }
+}

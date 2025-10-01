@@ -1,4 +1,4 @@
-from typing import Dict, Any
+from typing import Dict, Any, List
 from abc import abstractmethod
 from enum import Enum
 import numpy as np
@@ -33,34 +33,49 @@ class PlantModel(Component):
         pass
 
 class ModelType(Enum):
-    INDEPENDENT_CUBIC_INTERPOLATOR = "independent_cubic_interpolator"
+    INDEPENDENT_CUBIC_INTERPOLATION = "independent_cubic_interpolation"
 
-class IndependentCubicInterpolatorParams(ComponentParams):
+class InterpolationMapping:
     def __init__(self,
-                 control_input_data: Dict[Control, np.ndarray],
-                 meteorological_condition_data: Dict[Ambient, np.ndarray],
-                 single_output: ModelOutput):
-        self.control_input_data = control_input_data
-        self.meteorological_condition_data = meteorological_condition_data
-        self.single_output = single_output
+                 control_data: Dict[Control, np.ndarray],
+                 meteorological_data: Dict[Ambient, np.ndarray]):
+        self.control_data = control_data
+        self.meteorological_data = meteorological_data
+
+class IndependentCubicInterpolationParams(ComponentParams):
+    def __init__(self,
+                 interpolation_mappings: Dict[ModelOutput, InterpolationMapping]):
+        self.interpolation_mappings = interpolation_mappings
 
     def input_variables(self):
-        return set(self.control_input_data.keys() | self.meteorological_condition_data.keys())
+        required_ambient = set().union(*[mapping.meteorological_data.keys() for mapping in self.interpolation_mappings.values()])
+        required_control = set().union(*[mapping.control_data.keys() for mapping in self.interpolation_mappings.values()])        
+        return set().union(required_ambient, required_control)
 
     def output_variables(self):
-        return set([self.single_output])
+        return set(self.interpolation_mappings.keys())
 
 def independent_cubic_interp_params_from_dict(param_dict: Dict[str, Any | Dict]):
-    ctrl_input_data = {}
-    for ctrl_var, data in param_dict["control_input_data"].items():
-        ctrl_input_data[Control(ctrl_var)] = np.array(data)
-    met_condition_data = {}
-    for met_var, data in param_dict["meteorological_condition_data"].items():
-        met_condition_data[Ambient(met_var)] = np.array(data)
-    single_output = ModelOutput(param_dict["single_output"])
-    return IndependentCubicInterpolatorParams(control_input_data=ctrl_input_data,
-                                              meteorological_condition_data=met_condition_data,
-                                              single_output=single_output)
+    interpolation_mappings = {}
+    for out_var, interpolation_mapping in param_dict["interpolation_mappings"].items():
+        interpolation_mapping: Dict[str, Dict]
+        ctrl_data = {}
+        for ctrl_var, data in interpolation_mapping["control_data"].items():
+            ctrl_var: str
+            data: List[List[float]]
+            ctrl_data[Control(ctrl_var)] = np.array(data)
+        met_data = {}
+        for met_var, data in interpolation_mapping["meteorological_data"].items():
+            met_var: str
+            data: List[List[float]]
+            met_data[Ambient(met_var)] = np.array(data)
+        
+        out_var: str
+        interpolation_mappings[ModelOutput(out_var)] = InterpolationMapping(
+              meteorological_data=met_data,
+              control_data=ctrl_data)
+    return IndependentCubicInterpolationParams(
+        interpolation_mappings=interpolation_mappings)
        
 class CubicSplineWrapper:
     def __init__(self, x: np.ndarray, y: np.ndarray):
@@ -72,29 +87,44 @@ class CubicSplineWrapper:
             raise ValueError("CubicSplineWrapper: Extrapolation not implemented.")
         return out
 
-class IndependentCubicInterpolator(PlantModel):
+class ScalarCubicInterpolation:
+    def __init__(self,
+                 interpolation_mapping: InterpolationMapping):
+        self.control_models = \
+            {ctrl_var: CubicSplineWrapper(data[0], data[1]) for ctrl_var, data in interpolation_mapping.control_data.items()}
+        self.meteorological_models = \
+            {met_var: CubicSplineWrapper(data[0], data[1]) for met_var, data in interpolation_mapping.meteorological_data.items()}
+
+    def evaluate(self,
+                 meteorological_condition: Dict[Ambient, float],
+                 control: Dict[Control, float]):
+        out_value = 1
+        for met_var, met_model in self.meteorological_models.items():
+            out_value *= met_model.evaluate(meteorological_condition[met_var])
+        for ctrl_var, ctrl_model in self.control_models.items():
+            out_value *= ctrl_model.evaluate(control[ctrl_var])
+        return out_value
+
+class IndependentCubicInterpolation(PlantModel):
     def __init__(self,
                  plant_name: str,
-                 plant_params: IndependentCubicInterpolatorParams):
+                 plant_params: IndependentCubicInterpolationParams):
         super().__init__(plant_name=plant_name,
                          plant_params=plant_params)
 
         # Initialize models
-        self.control_input_models = \
-            {ctrl_var: CubicSplineWrapper(data[0], data[1]) for ctrl_var, data in plant_params.control_input_data.items()}
-        self.meteorological_condition_models = \
-            {met_var: CubicSplineWrapper(data[0], data[1]) for met_var, data in plant_params.meteorological_condition_data.items()}
-        self.single_output = plant_params.single_output
+        self.scalar_output_models: Dict[ModelOutput, ScalarCubicInterpolation] = {}
+        for out, interpolation_mapping in plant_params.interpolation_mappings.items():
+            self.scalar_output_models[out] = \
+                ScalarCubicInterpolation(interpolation_mapping=interpolation_mapping)
                         
     def _evaluate(self,
                   meteorological_condition: Dict[Ambient, float],
                   control_input: Dict[Control, float]):
         
-        out_value = 1
-        for met_var, met_model in self.meteorological_condition_models.items():
-            out_value *= met_model.evaluate(meteorological_condition[met_var])
-        for ctrl_var, ctrl_model in self.control_input_models.items():
-            out_value *= ctrl_model.evaluate(control_input[ctrl_var])
-
-        return {self.single_output: out_value}
+        model_outputs = {}
+        for out, model in self.scalar_output_models.items():
+            model_outputs[out] = model.evaluate(meteorological_condition=meteorological_condition,
+                                                control=control_input)
+        return model_outputs
     
