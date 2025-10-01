@@ -10,7 +10,7 @@ from twain_wifco.interface import (
     Control,
     AggregatedOutput)
 
-class OutputAggregation(Component):
+class Aggregation(Component):
     def __init__(self,
                  aggregation_name: str,
                  aggregation_params: ComponentParams):
@@ -38,7 +38,7 @@ class OutputAggregation(Component):
         pass
 
 class AggregationType(Enum):
-    SIMPLE_PRODUCT = "simple_product"
+    SIMPLE_PRODUCTS = "simple_products"
 
 class ProductAggregateMapping:
     def __init__(self,
@@ -75,7 +75,7 @@ def simple_product_params_from_dict(param_dict: Dict[str, Dict | Any]):
          )
     return SimpleProductParams(aggregate_mappings=aggregate_mappings)
 
-class SimpleProduct(OutputAggregation):
+class SimpleProduct(Aggregation):
     def __init__(self,
                  aggregation_name: str,
                  aggregation_params: SimpleProductParams):

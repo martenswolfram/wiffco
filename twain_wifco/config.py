@@ -12,7 +12,7 @@ from twain_wifco.control_input import (
     ControlPolicyType,
     discrete_policy_params_from_dict,
     DiscreteControlPolicy)
-from twain_wifco.output_aggregation import (
+from twain_wifco.aggregation import (
     AggregationType,
     simple_product_params_from_dict,
     SimpleProduct)
@@ -58,10 +58,10 @@ def control_policy_from_dict(param_dict: Dict[str, Any]):
     else:
         raise NotImplementedError("Only discrete_control_policy implemented.")
 
-def output_aggregation_from_dict(param_dict: Dict[str, Any]):
+def aggregation_from_dict(param_dict: Dict[str, Any]):
     aggregation_name = param_dict["name"]
     aggregation_type = AggregationType(param_dict["aggregation_type"])
-    if aggregation_type == AggregationType.SIMPLE_PRODUCT:
+    if aggregation_type == AggregationType.SIMPLE_PRODUCTS:
         params = simple_product_params_from_dict(param_dict=param_dict["aggregation_params"])
         return SimpleProduct(aggregation_name=aggregation_name,
                              aggregation_params=params)

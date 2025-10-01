@@ -1,6 +1,6 @@
 {
     "name": "revenue_aggregation",
-    "aggregation_type": "simple_product",
+    "aggregation_type": "simple_products",
     "aggregation_params": {
         "aggregate_mappings":{
             "revenue_rate": {
