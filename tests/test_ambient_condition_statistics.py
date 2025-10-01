@@ -2,7 +2,7 @@ import pathlib
 import pytest
 import numpy as np
 from twain_wifco.config import parse_json_file, ambient_statistics_from_dict
-from twain_wifco.interface import AmbientVariable
+from twain_wifco.interface import Ambient
 
 def test_simple_ambient_statistics():
     test_data_folder = pathlib.Path(__file__).parent / "data"
@@ -15,9 +15,9 @@ def test_simple_ambient_statistics():
                                        [  180,  240, 120,  60, 300,   0],
                                        [    5,    5,   2,   5,  10,  10]])
     # Initialization
-    assert simple_ambient_statistics.interface.name == "Statistics 'simple_ambient_statistics'"
+    assert simple_ambient_statistics.component_name == "simple_ambient_statistics"
     assert simple_ambient_statistics.support_variables == \
-        [AmbientVariable.WIND_SPEED, AmbientVariable.WIND_DIRECTION, AmbientVariable.ELECTRICITY_PRICE]
+        [Ambient.WIND_SPEED, Ambient.WIND_DIRECTION, Ambient.ELECTRICITY_PRICE]
     assert simple_ambient_statistics.ordered_prevalence == pytest.approx(ordered_prevalence)
     assert simple_ambient_statistics.ordered_support_points == pytest.approx(ordered_support_points)
     

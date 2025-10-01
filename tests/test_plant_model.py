@@ -2,9 +2,9 @@ import pathlib
 import pytest
 from twain_wifco.config import parse_json_file, plant_model_from_dict
 from twain_wifco.interface import (
-    AmbientVariable,
-    ControlVariable,
-    OutputVariable)
+    Ambient,
+    Control,
+    ModelOutput)
 
     
 def test_simple_power_model():
@@ -14,22 +14,22 @@ def test_simple_power_model():
     simple_power_model = plant_model_from_dict(param_dict=param_dict)
     
     # Initialization
-    assert simple_power_model.interface.name == "Model 'simple_power_model'"
-    assert simple_power_model.control_input_models.keys() == set([ControlVariable.POWER_REGULATION])
-    assert simple_power_model.meteorological_condition_models.keys() == set([AmbientVariable.WIND_SPEED])
-    assert simple_power_model.single_output == OutputVariable.ELECTRICAL_POWER
+    assert simple_power_model.component_name == "simple_power_model"
+    assert simple_power_model.control_input_models.keys() == set([Control.POWER_REGULATION])
+    assert simple_power_model.meteorological_condition_models.keys() == set([Ambient.WIND_SPEED])
+    assert simple_power_model.single_output == ModelOutput.ELECTRICAL_POWER
 
     # Invalid input
-    valid_met_condition = {AmbientVariable.WIND_SPEED: 20}
-    invalid_ctrl_input = {ControlVariable.YAW_STEERING: 2}
+    valid_met_condition = {Ambient.WIND_SPEED: 20}
+    invalid_ctrl_input = {Control.YAW_STEERING: 2}
     with pytest.raises(ValueError) as excinfo: 
         simple_power_model.evaluate(meteorological_condition=valid_met_condition,
                                     control_input=invalid_ctrl_input)
-    assert "Insufficient Control Input" in str(excinfo.value)
+    assert "Insufficient input variables" in str(excinfo.value)
 
     # Valid input
-    valid_ctrl_input = {ControlVariable.POWER_REGULATION: 2}
-    expected_output = {OutputVariable.ELECTRICAL_POWER: 4 * 1.4}
+    valid_ctrl_input = {Control.POWER_REGULATION: 2}
+    expected_output = {ModelOutput.ELECTRICAL_POWER: 4 * 1.4}
 
     output = simple_power_model.evaluate(meteorological_condition=valid_met_condition,
                                          control_input=valid_ctrl_input)

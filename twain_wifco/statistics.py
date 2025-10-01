@@ -1,18 +1,18 @@
 from typing import Dict, Any, List
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from enum import Enum
 import numpy as np
 from twain_wifco.interface import (
-    AmbientVariable,
-    OutputVariable,
-    InterfaceVariables,
+    Component,
     ComponentParams,
-    ComponentType)
+    Ambient)
     
-class Statistics(ABC):
+class Statistics(Component):
     def __init__(self,
-                 params: ComponentParams):
-        self.interface = params.interface()
+                 statistics_name: str,
+                 statistics_params: ComponentParams):
+        super().__init__(component_name=statistics_name,
+                         component_params=statistics_params)
 
     @abstractmethod
     def systematic_sample(self, N: int = None):
@@ -25,7 +25,7 @@ class Statistics(ABC):
     
 class SystematicSample:
     def __init__(self,
-                 support_variables: List[AmbientVariable | OutputVariable], 
+                 support_variables: List[Ambient], 
                  support_values: np.ndarray,
                  normalized_weights: np.ndarray,
                  probability_covered: float = 1):
@@ -40,34 +40,22 @@ class StatisticsType(Enum):
 
 class DiscreteStatisticsParams(ComponentParams):
     def __init__(self,
-                 component_name: str,
-                 support_variables: List[AmbientVariable | OutputVariable],
+                 support_variables: List[Ambient],
                  prevalence: np.ndarray,
                  support_points: np.ndarray):
-        super().__init__(component_type=ComponentType.STATISTICS,
-                         component_name=component_name)
         self.support_variables = support_variables
         self.prevalence = prevalence
         self.support_points = support_points
-    
-    def _interface(self):
-        inputs=InterfaceVariables()
-        if all(isinstance(var, AmbientVariable) for var in self.support_variables):
-            outputs=InterfaceVariables(ambient_variables=set(self.support_variables))
-        elif all(isinstance(var, OutputVariable) for var in self.support_variables):
-            outputs=InterfaceVariables(output_variables=set(self.support_variables))
-        else:
-            raise ValueError("DiscreteStatisticsParams: Invalid support variables specified.")
-        return inputs, outputs
-        
-def discrete_statistics_params_from_dict(name: str,
-                                         param_dict: Dict[str, Any]):
-    if "ambient_variables" in param_dict.keys():
-        support_variables = \
-            [AmbientVariable(support_var) for support_var in param_dict["ambient_variables"]]
-    elif "output_variables" in param_dict.keys():
-        support_variables = \
-            [OutputVariable(support_var) for support_var in param_dict["output_variables"]]
+
+    def input_variables(self):
+        return set()
+
+    def output_variables(self):
+        return set(self.support_variables)
+                
+def discrete_statistics_params_from_dict(param_dict: Dict[str, Any]):
+    support_variables = \
+        [Ambient(support_var) for support_var in param_dict["ambient_variables"]]
     prevalence = np.array(param_dict["prevalence"])
     support_points = np.array(param_dict["support_points"])
     if support_points.shape[0] != len(support_variables):
@@ -76,21 +64,22 @@ def discrete_statistics_params_from_dict(name: str,
         raise ValueError("DiscreteAmbientStatisticsParams: Prevalence and support data dimensions mismatch.")
     prevalence = prevalence / np.sum(prevalence)
     
-    return DiscreteStatisticsParams(component_name=name,
-                                    support_variables=support_variables,
+    return DiscreteStatisticsParams(support_variables=support_variables,
                                     prevalence=prevalence,
                                     support_points=support_points)
 
 class DiscreteStatistics(Statistics):
     def __init__(self,
-                 params: DiscreteStatisticsParams):
-        super().__init__(params=params)
+                 statistics_name: str,
+                 statistics_params: DiscreteStatisticsParams):
+        super().__init__(statistics_name=statistics_name,
+                         statistics_params=statistics_params)
         
         # Ordered by prevalence
-        prevalence_index = np.argsort(params.prevalence)[::-1]
-        self.support_variables = params.support_variables
-        self.ordered_support_points = params.support_points[:, prevalence_index]
-        self.ordered_prevalence = params.prevalence[prevalence_index]
+        prevalence_index = np.argsort(statistics_params.prevalence)[::-1]
+        self.support_variables = statistics_params.support_variables
+        self.ordered_support_points = statistics_params.support_points[:, prevalence_index]
+        self.ordered_prevalence = statistics_params.prevalence[prevalence_index]
 
     def systematic_sample(self, N: int = None):
         if N is None or N >= len(self.ordered_prevalence):
@@ -111,4 +100,4 @@ class DiscreteStatistics(Statistics):
     def expected_value(self):
         expectation = self.ordered_support_points @ self.ordered_prevalence.T
         return {supp_var: val for supp_var, val in zip(self.support_variables, expectation)}
-            
+

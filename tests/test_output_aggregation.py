@@ -1,7 +1,7 @@
 import pathlib
 import pytest
 from twain_wifco.config import parse_json_file, output_aggregation_from_dict
-from twain_wifco.interface import AmbientVariable, OutputVariable
+from twain_wifco.interface import Ambient, ModelOutput, AggregatedOutput
 
     
 def test_simple_product_aggregation():
@@ -11,25 +11,22 @@ def test_simple_product_aggregation():
     simple_product_aggregation = output_aggregation_from_dict(param_dict=param_dict)
         
     # Initialization
-    assert simple_product_aggregation.interface.name == "Output Aggregator 'revenue_aggregation'"
+    assert simple_product_aggregation.component_name == "revenue_aggregation"
     assert simple_product_aggregation.aggregate_mappings.keys() == \
-        set([OutputVariable.REVENUE_RATE, OutputVariable.DAMAGE_RATE])
-    assert simple_product_aggregation.aggregate_mappings[OutputVariable.REVENUE_RATE].from_model == \
-        set([OutputVariable.ELECTRICAL_POWER])
-    assert simple_product_aggregation.aggregate_mappings[OutputVariable.REVENUE_RATE].from_ambient == \
-        set([AmbientVariable.ELECTRICITY_PRICE])
-    assert simple_product_aggregation.aggregate_mappings[OutputVariable.DAMAGE_RATE].from_model == \
-        set([OutputVariable.DAMAGE_RATE])
-    assert simple_product_aggregation.aggregate_mappings[OutputVariable.DAMAGE_RATE].from_ambient == \
+        set([AggregatedOutput.REVENUE_RATE])
+    assert simple_product_aggregation.aggregate_mappings[AggregatedOutput.REVENUE_RATE].from_model == \
+        set([ModelOutput.ELECTRICAL_POWER])
+    assert simple_product_aggregation.aggregate_mappings[AggregatedOutput.REVENUE_RATE].from_ambient == \
+        set([Ambient.ELECTRICITY_PRICE])
+    assert simple_product_aggregation.aggregate_mappings[AggregatedOutput.REVENUE_RATE].from_control == \
         set([])
     
     # Output aggregation
     aggregated_output = simple_product_aggregation.compute_aggregate(
-        output_variables={OutputVariable.ELECTRICAL_POWER: 5,
-                          OutputVariable.DAMAGE_RATE: 2},
-        ambient_condition={AmbientVariable.ELECTRICITY_PRICE: 3})
-    assert aggregated_output == pytest.approx({OutputVariable.REVENUE_RATE: 15,
-                                               OutputVariable.DAMAGE_RATE: 2})
+        model_output={ModelOutput.ELECTRICAL_POWER: 5},
+        ambient_condition={Ambient.ELECTRICITY_PRICE: 3},
+        control_setpoints={})
+    assert aggregated_output == pytest.approx({AggregatedOutput.REVENUE_RATE: 15})
         
     
 

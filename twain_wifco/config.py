@@ -16,10 +16,10 @@ from twain_wifco.output_aggregation import (
     AggregationType,
     simple_product_params_from_dict,
     SimpleProduct)
-from twain_wifco.output_accumulation import (
-    AccumulationType,
-    discounted_integrator_params_from_dict,
-    DiscountedIntegrator)
+# from twain_wifco.output_accumulation import (
+#     AccumulationType,
+#     discounted_integrator_params_from_dict,
+#     DiscountedIntegrator)
 
 
 def parse_json_file(path):
@@ -28,43 +28,43 @@ def parse_json_file(path):
         return data_dict
 
 def ambient_statistics_from_dict(param_dict: Dict[str, Any]):
-    name = param_dict["name"]
+    statistics_name = param_dict["name"]
     statistics_type = StatisticsType(param_dict["statistics_type"])
     if statistics_type == StatisticsType.DISCRETE_STATISTICS:
-        params = discrete_statistics_params_from_dict(name=name,
-                                                      param_dict=param_dict["statistics_params"])
-        return DiscreteStatistics(params=params)
+        params = discrete_statistics_params_from_dict(param_dict=param_dict["statistics_params"])
+        return DiscreteStatistics(statistics_name=statistics_name,
+                                  statistics_params=params)
     else:
         raise NotImplementedError("Only discrete_ambient_statistics implemented.")
 
 def plant_model_from_dict(param_dict: Dict[str, Any]):
     
-    name = param_dict["name"]
+    plant_name = param_dict["name"]
     model_type = ModelType(param_dict["model_type"])
     if model_type == ModelType.INDEPENDENT_CUBIC_INTERPOLATOR:
-        params = independent_cubic_interp_params_from_dict(name=name,
-                                                           param_dict=param_dict["model_params"])
-        return IndependentCubicInterpolator(params=params)
+        params = independent_cubic_interp_params_from_dict(param_dict=param_dict["model_params"])
+        return IndependentCubicInterpolator(plant_name=plant_name,
+                                            plant_params=params)
     else:
         raise NotImplementedError("Only independent_cubic_interpolator model implemented.")
 
 def control_policy_from_dict(param_dict: Dict[str, Any]):
-    name = param_dict["name"]
+    policy_name = param_dict["name"]
     policy_type = ControlPolicyType(param_dict["policy_type"])
     if policy_type == ControlPolicyType.DISCRETE_CONTROL_POLICY:
-        params = discrete_policy_params_from_dict(name=name,
-                                                  param_dict=param_dict["policy_params"])
-        return DiscreteControlPolicy(params=params)
+        params = discrete_policy_params_from_dict(param_dict=param_dict["policy_params"])
+        return DiscreteControlPolicy(policy_name=policy_name,
+                                     policy_params=params)
     else:
         raise NotImplementedError("Only discrete_control_policy implemented.")
 
 def output_aggregation_from_dict(param_dict: Dict[str, Any]):
-    name = param_dict["name"]
+    aggregation_name = param_dict["name"]
     aggregation_type = AggregationType(param_dict["aggregation_type"])
     if aggregation_type == AggregationType.SIMPLE_PRODUCT:
-        params = simple_product_params_from_dict(name=name,
-                                                 param_dict=param_dict["aggregation_params"])
-        return SimpleProduct(params=params)
+        params = simple_product_params_from_dict(param_dict=param_dict["aggregation_params"])
+        return SimpleProduct(aggregation_name=aggregation_name,
+                             aggregation_params=params)
     else:
         raise NotImplementedError("Only simple_product aggregation implemented.")
 

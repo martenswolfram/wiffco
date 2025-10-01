@@ -5,11 +5,8 @@
         "aggregate_mappings":{
             "revenue_rate": {
                 "from_model": ["electrical_power"],
-                "from_ambient": ["electricity_price"]
-            },
-            "damage_rate": {
-                "from_model": ["damage_rate"],
-                "from_ambient": []
+                "from_ambient": ["electricity_price"],
+                "from_control": []
             }
         }
     }

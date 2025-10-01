@@ -1,89 +1,67 @@
-from typing import Set, Tuple
+from typing import Dict, List, Union
 from abc import ABC, abstractmethod
 from enum import Enum
 
-class ComponentType(Enum):
-    STATISTICS = "statistics"
-    WIND_FARM_MODEL = "plant_model"
-    OUTPUT_AGGREGATOR = "output_aggregator"
-    CONTROL_POLICY = "control_policy"
-    OUTPUT_ACCUMULATOR = "output_accumulator"
-
-class AmbientVariable(Enum):
+class Ambient(Enum):
     WIND_SPEED = "wind_speed"
     WIND_DIRECTION = "wind_direction"
     ELECTRICITY_PRICE = "electricity_price"
 
-class ControlVariable(Enum):
+class Control(Enum):
     POWER_REGULATION = "power_regulation"
     YAW_STEERING = "yaw_steering"
 
-class OutputVariable(Enum):
+class ModelOutput(Enum):
     ELECTRICAL_POWER = "electrical_power"
-    REVENUE_RATE = "revenue_rate"
     DAMAGE_RATE = "damage_rate"
 
+class AggregatedOutput(Enum):
+    REVENUE_RATE = "revenue_rate"
+    
 class AccumulatedMetric(Enum):
     REVENUE = "revenue"
     ACCRUED_DAMAGE = "accrued_damage"
 
-class InterfaceVariables:
-    def __init__(self,
-                 ambient_variables: Set[AmbientVariable] = set([]),
-                 control_inputs: Set[ControlVariable] = set([]),
-                 output_variables: Set[OutputVariable] = set([]),
-                 accumulated_metrics: Set[AccumulatedMetric] = set([])):
-        self.ambient_variables = ambient_variables
-        self.control_inputs = control_inputs
-        self.output_variables = output_variables
-        self.accumulated_metrics = accumulated_metrics
-
-class Interface:
-    def __init__(self,
-                 component_type: ComponentType,
-                 component_name: str,
-                 inputs: InterfaceVariables = InterfaceVariables(),
-                 outputs: InterfaceVariables = InterfaceVariables()):
-        match component_type:
-            case ComponentType.STATISTICS:
-                self.name = "Statistics '{}'".format(component_name)
-            case ComponentType.WIND_FARM_MODEL:
-                self.name = "Model '{}'".format(component_name)
-            case ComponentType.CONTROL_POLICY:
-                self.name = "Control Policy '{}'".format(component_name)
-            case ComponentType.OUTPUT_AGGREGATOR:
-                self.name = "Output Aggregator '{}'".format(component_name)
-            case ComponentType.OUTPUT_ACCUMULATOR:
-                self.name = "Output Accumulator '{}'".format(component_name)
-        self.inputs = inputs
-        self.outputs = outputs
-
-    def validate_inputs(self,
-                        ambient_condition: Set[AmbientVariable] = set([]),
-                        control_input: Set[ControlVariable] = set([]),
-                        output_variables: Set[OutputVariable] = set([])):
-        if not (self.inputs.ambient_variables <= ambient_condition):
-            raise ValueError("Insufficient Ambient Condition as input for {}.".format(self.name))
-        if not (self.inputs.control_inputs <= control_input):
-            raise ValueError("Insufficient Control Input for {}.".format(self.name))
-        if not (self.inputs.output_variables <= output_variables):
-            raise ValueError("Insufficient Output Variable as input for {}.".format(self.name))
+DataVariable = Union[Ambient,
+                      Control,
+                      ModelOutput,
+                      AggregatedOutput,
+                      AccumulatedMetric]
 
 class ComponentParams(ABC):
-    def __init__(self,
-                 component_type: ComponentType,
-                 component_name: str):
-        self.component_type = component_type
-        self.component_name = component_name
 
-    def interface(self) -> Interface:
-        inputs, outputs = self._interface()
-        return Interface(component_type=self.component_type,
-                         component_name=self.component_name,
-                         inputs=inputs,
-                         outputs=outputs)
-
+    def __init__(self):
+        pass
+        
     @abstractmethod
-    def _interface(self) -> Tuple[InterfaceVariables, InterfaceVariables]:
+    def input_variables(self):
+        pass
+    
+    @abstractmethod
+    def output_variables(self):
         pass
 
+class Component(ABC):
+
+    def __init__(self,
+                 component_name: str,
+                 component_params: ComponentParams):
+        self.component_name = component_name
+        self.input_variables = component_params.input_variables()
+        self.output_variables = component_params.output_variables()
+
+    def _validate_inputs(self, inputs: Dict[DataVariable, float]):
+        if not (self.input_variables <= inputs.keys()):
+            msg = (f"Insufficient input variables for component '{self.component_name}'. "
+                   f"Missing variable(s): {[var.value for var in (self.input_variables - inputs.keys())]}")
+            raise ValueError(msg)
+
+def validate_component_disambiguation(components: List[Component]):
+    # This one is not necessarily a problem, but let's keep it clean:
+    component_names = [component.component_name for component in components]
+    if len(component_names) != len(set(component_names)):
+        raise ValueError("Ambiguous component names detected for multiple components.")
+    # Avoid that two components provide a result for the same output variable
+    all_outputs = [out_var for model in components for out_var in model.output_variables]
+    if len(all_outputs) != len(set(all_outputs)):
+        raise ValueError("Ambiguous output variables detected for multiple components.")

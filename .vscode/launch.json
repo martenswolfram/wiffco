@@ -12,8 +12,8 @@
                 "-s",
                 "-v",
                 "tests",
-                // "tests/test_plant_model.py",
-                // "--ignore=tests/test_output_accumulation.py"
+                // "tests/test_output_aggregation.py",
+                "--ignore=tests/test_output_accumulation.py"
             ],
             "justMyCode": true,
         },
