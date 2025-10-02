@@ -22,9 +22,9 @@ class Aggregation(Component):
                           ambient_condition: Dict[Ambient, float],
                           control_setpoints: Dict[Control, float]):
         
-        self._validate_inputs(inputs=(model_output |
-                                      ambient_condition |
-                                      control_setpoints))
+        self._validate_inputs(inputs=(model_output.keys() |
+                                      ambient_condition.keys() |
+                                      control_setpoints.keys()))
 
         return self._compute_aggregate(output_variables=model_output,
                                        ambient_condition=ambient_condition,

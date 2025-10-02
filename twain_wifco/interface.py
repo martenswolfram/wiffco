@@ -54,10 +54,10 @@ class Component(ABC):
         self.input_variables = component_params.input_variables()
         self.output_variables = component_params.output_variables()
 
-    def _validate_inputs(self, inputs: Dict[DataVariable, float]):
-        if not (self.input_variables <= inputs.keys()):
+    def _validate_inputs(self, inputs: Set[DataVariable]):
+        if not (self.input_variables <= inputs):
             msg = (f"Insufficient input variables for component '{self.component_name}'. "
-                   f"Missing variable(s): {[var.value for var in (self.input_variables - inputs.keys())]}")
+                   f"Missing variable(s): {[var.value for var in (self.input_variables - inputs)]}")
             raise ValueError(msg)
 
 def validate_data_flow(components: List[Component]):

@@ -21,7 +21,7 @@ class PlantModel(Component):
                  meteorological_condition: Dict[Ambient, float],
                  control_input: Dict[Control, float]):
 
-        self._validate_inputs(inputs=(meteorological_condition | control_input))
+        self._validate_inputs(inputs=(meteorological_condition.keys() | control_input.keys()))
 
         return self._evaluate(meteorological_condition=meteorological_condition,
                               control_input=control_input)

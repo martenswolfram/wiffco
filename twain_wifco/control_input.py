@@ -18,7 +18,7 @@ class ControlPolicy(Component):
     def get_control_setpoints(self,
                               ambient_condition: Dict[Ambient, float]):
         
-        self._validate_inputs(inputs=ambient_condition)
+        self._validate_inputs(inputs=ambient_condition.keys())
         
         return self._get_control_setpoints(ambient_condition=ambient_condition)
 
