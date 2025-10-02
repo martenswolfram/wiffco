@@ -7,7 +7,7 @@ from twain_wifco.interface import Ambient, Control
     
 def test_discrete_control_policy():
     test_data_folder = pathlib.Path(__file__).parent / "data"
-    json_path = test_data_folder / "simple_control_policy.json"
+    json_path = test_data_folder / "discrete_control_policy.json"
     param_dict = parse_json_file(path=json_path)
     simple_control_policy = control_policy_from_dict(param_dict=param_dict)
     
@@ -18,7 +18,7 @@ def test_discrete_control_policy():
         ])
     
     # Initialization
-    assert simple_control_policy.component_name == "simple_control_policy"
+    assert simple_control_policy.component_name == "discrete_control_policy"
     assert simple_control_policy.ambient_variables == \
         [Ambient.WIND_SPEED, Ambient.WIND_DIRECTION, Ambient.ELECTRICITY_PRICE]
     assert simple_control_policy.ambient_conditions_support == \

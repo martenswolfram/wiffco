@@ -8,7 +8,7 @@ from twain_wifco.interface import (
     Ambient,
     ModelOutput,
     Control,
-    AggregatedOutput)
+    Aggregated)
 
 class Aggregation(Component):
     def __init__(self,
@@ -51,7 +51,7 @@ class ProductAggregateMapping:
 
 class SimpleProductParams(ComponentParams):
     def __init__(self,
-                 aggregate_mappings: Dict[AggregatedOutput, ProductAggregateMapping]):
+                 aggregate_mappings: Dict[Aggregated, ProductAggregateMapping]):
         self.aggregate_mappings = aggregate_mappings
         
     def input_variables(self):
@@ -68,7 +68,7 @@ class SimpleProductParams(ComponentParams):
 def simple_product_params_from_dict(param_dict: Dict[str, Dict | Any]):
     aggregate_mappings = {}
     for out_var, product_mapping in param_dict["aggregate_mappings"].items():
-         aggregate_mappings[AggregatedOutput(out_var)] = ProductAggregateMapping(
+         aggregate_mappings[Aggregated(out_var)] = ProductAggregateMapping(
               from_model=set([ModelOutput(out_var) for out_var in product_mapping["from_model"]]),
               from_ambient=set([Ambient(ambient_var) for ambient_var in product_mapping["from_ambient"]]),
               from_control=set([Control(ctrl_var) for ctrl_var in product_mapping["from_control"]])

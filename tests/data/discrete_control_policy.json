@@ -1,6 +1,6 @@
 {
-    "name": "simple_control_policy",
-    "policy_type": "discrete_control_policy",
+    "name": "discrete_control_policy",
+    "policy_type": "discrete_policy",
     "policy_params":{
         "ambient_variables": ["wind_speed", "wind_direction", "electricity_price"],
         "ambient_conditions_support":

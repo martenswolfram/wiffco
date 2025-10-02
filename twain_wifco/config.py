@@ -16,10 +16,10 @@ from twain_wifco.aggregation import (
     AggregationType,
     simple_product_params_from_dict,
     SimpleProduct)
-# from twain_wifco.output_accumulation import (
-#     AccumulationType,
-#     discounted_integrator_params_from_dict,
-#     DiscountedIntegrator)
+from twain_wifco.metrics_accumulation import (
+    MetricsAccumulationType,
+    discounted_integrator_params_from_dict,
+    DiscountedIntegration)
 
 
 def parse_json_file(path):
@@ -51,12 +51,12 @@ def plant_model_from_dict(param_dict: Dict[str, Any]):
 def control_policy_from_dict(param_dict: Dict[str, Any]):
     policy_name = param_dict["name"]
     policy_type = ControlPolicyType(param_dict["policy_type"])
-    if policy_type == ControlPolicyType.DISCRETE_CONTROL_POLICY:
+    if policy_type == ControlPolicyType.DISCRETE_POLICY:
         params = discrete_policy_params_from_dict(param_dict=param_dict["policy_params"])
         return DiscreteControlPolicy(policy_name=policy_name,
                                      policy_params=params)
     else:
-        raise NotImplementedError("Only discrete_control_policy implemented.")
+        raise NotImplementedError("Only discrete_policy implemented.")
 
 def aggregation_from_dict(param_dict: Dict[str, Any]):
     aggregation_name = param_dict["name"]
@@ -68,12 +68,12 @@ def aggregation_from_dict(param_dict: Dict[str, Any]):
     else:
         raise NotImplementedError("Only simple_product aggregation implemented.")
 
-def output_accumulation_from_dict(param_dict: Dict[str, Any]):
-    name = param_dict["name"]
-    accumulation_type = AccumulationType(param_dict["accumulation_type"])
-    if accumulation_type == AccumulationType.DISCOUNTED_INTEGRATION:
-        params = discounted_integrator_params_from_dict(name=name,
-                                                        param_dict=param_dict["accumulation_params"])
-        return DiscountedIntegrator(params=params)
+def metrics_accumulation_from_dict(param_dict: Dict[str, Any]):
+    accumulation_name = param_dict["name"]
+    accumulation_type = MetricsAccumulationType(param_dict["accumulation_type"])
+    if accumulation_type == MetricsAccumulationType.DISCOUNTED_INTEGRATION:
+        params = discounted_integrator_params_from_dict(param_dict=param_dict["accumulation_params"])
+        return DiscountedIntegration(accumulation_name=accumulation_name,
+                                     accumulation_params=params)
     else:
-        raise NotImplementedError("Only disounted_integration accumulator implemented.")
+        raise NotImplementedError("Only simple_product aggregation implemented.")

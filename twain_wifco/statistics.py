@@ -4,8 +4,10 @@ from enum import Enum
 import numpy as np
 from twain_wifco.interface import (
     Component,
-    ComponentParams,
-    Ambient)
+    ComponentParams,    
+    Statistical,
+    Ambient,
+    Aggregated)
     
 class Statistics(Component):
     def __init__(self,
@@ -25,7 +27,7 @@ class Statistics(Component):
     
 class SystematicSample:
     def __init__(self,
-                 support_variables: List[Ambient], 
+                 support_variables: List[Statistical], 
                  support_values: np.ndarray,
                  normalized_weights: np.ndarray,
                  probability_covered: float = 1):
@@ -40,7 +42,7 @@ class StatisticsType(Enum):
 
 class DiscreteStatisticsParams(ComponentParams):
     def __init__(self,
-                 support_variables: List[Ambient],
+                 support_variables: List[Statistical],
                  prevalence: np.ndarray,
                  support_points: np.ndarray):
         self.support_variables = support_variables
@@ -54,12 +56,19 @@ class DiscreteStatisticsParams(ComponentParams):
         return set(self.support_variables)
                 
 def discrete_statistics_params_from_dict(param_dict: Dict[str, Any]):
-    support_variables = \
-        [Ambient(support_var) for support_var in param_dict["ambient_variables"]]
+    
+    if ("ambient_variables" in param_dict.keys()) == ("aggregated_variables" in param_dict.keys()):
+        raise ValueError(f"DiscreteStatisticsParams config: Exactly one of 'ambient_variables' or 'aggregated_variables' must be specified.")
+    if ("ambient_variables" in param_dict.keys()):
+        support_variables = \
+            [Ambient(support_var) for support_var in param_dict["ambient_variables"]]
+    else:
+        support_variables = \
+            [Aggregated(support_var) for support_var in param_dict["agregated_variables"]]
     prevalence = np.array(param_dict["prevalence"])
     support_points = np.array(param_dict["support_points"])
     if support_points.shape[0] != len(support_variables):
-        raise ValueError("DiscreteAmbientStatisticsParams: Support data and ambient variables dimensions mismatch.")
+        raise ValueError("DiscreteAmbientStatisticsParams: Support data and support variables dimensions mismatch.")
     if len(prevalence.shape) != 1 or prevalence.shape[0] != support_points.shape[1]:
         raise ValueError("DiscreteAmbientStatisticsParams: Prevalence and support data dimensions mismatch.")
     prevalence = prevalence / np.sum(prevalence)

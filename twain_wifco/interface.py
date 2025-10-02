@@ -1,4 +1,4 @@
-from typing import Dict, List, Union
+from typing import Dict, List, Union, Set, TypeVar
 from abc import ABC, abstractmethod
 from enum import Enum
 
@@ -15,8 +15,9 @@ class ModelOutput(Enum):
     ELECTRICAL_POWER = "electrical_power"
     DAMAGE_RATE = "damage_rate"
 
-class AggregatedOutput(Enum):
+class Aggregated(Enum):
     REVENUE_RATE = "revenue_rate"
+    DAMAGE_RATE = "damage_rate"
     
 class AccumulatedMetric(Enum):
     REVENUE = "revenue"
@@ -25,8 +26,11 @@ class AccumulatedMetric(Enum):
 DataVariable = Union[Ambient,
                       Control,
                       ModelOutput,
-                      AggregatedOutput,
+                      Aggregated,
                       AccumulatedMetric]
+
+# Allow statistical distributions only over Ambient condition and Aggregated variables
+Statistical = TypeVar('Statistical', Ambient, Aggregated)
 
 class ComponentParams(ABC):
 
@@ -34,11 +38,11 @@ class ComponentParams(ABC):
         pass
         
     @abstractmethod
-    def input_variables(self):
+    def input_variables(self) -> Set[DataVariable]:
         pass
     
     @abstractmethod
-    def output_variables(self):
+    def output_variables(self) -> Set[DataVariable]:
         pass
 
 class Component(ABC):
@@ -56,12 +60,16 @@ class Component(ABC):
                    f"Missing variable(s): {[var.value for var in (self.input_variables - inputs.keys())]}")
             raise ValueError(msg)
 
-def validate_component_disambiguation(components: List[Component]):
-    # This one is not necessarily a problem, but let's keep it clean:
-    component_names = [component.component_name for component in components]
-    if len(component_names) != len(set(component_names)):
-        raise ValueError("Ambiguous component names detected for multiple components.")
-    # Avoid that two components provide a result for the same output variable
-    all_outputs = [out_var for model in components for out_var in model.output_variables]
-    if len(all_outputs) != len(set(all_outputs)):
-        raise ValueError("Ambiguous output variables detected for multiple components.")
+def validate_data_flow(components: List[Component]):
+    current_out = set()
+    while len(components):
+        current_component = components.pop(0)
+        current_in = current_component.input_variables
+        if not (current_in <= current_out):
+            msg = (f"Insufficient input variables for component "
+                   f"'{current_component.component_name}'. "
+                   f"Missing variable(s): {current_in - current_out}")
+            raise ValueError(msg)
+        current_out = current_component.output_variables
+
+    

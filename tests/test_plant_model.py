@@ -7,7 +7,7 @@ from twain_wifco.interface import (
     ModelOutput)
 
     
-def test_simple_power_model():
+def test_plant_model():
     test_data_folder = pathlib.Path(__file__).parent / "data"
     json_path = test_data_folder / "power_damage_model.json"
     param_dict = parse_json_file(path=json_path)

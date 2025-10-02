@@ -28,7 +28,7 @@ class ControlPolicy(Component):
         pass
 
 class ControlPolicyType(Enum):
-    DISCRETE_CONTROL_POLICY = "discrete_control_policy"
+    DISCRETE_POLICY = "discrete_policy"
 
 class DiscreteControlPolicyParams(ComponentParams):
     def __init__(self,

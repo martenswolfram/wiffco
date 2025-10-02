@@ -11,9 +11,9 @@
             "args": [
                 "-s",
                 "-v",
-                // "tests",
-                // "--ignore=tests/test_output_accumulation.py"
-                "tests/test_aggregation.py",
+                "tests",
+                "--ignore=tests/test_metrics_accumulation.py",
+                // "tests/test_aggregation.py",
             ],
             "justMyCode": true,
         },
