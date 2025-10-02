@@ -1,0 +1,16 @@
+{
+    "name": "linear_accumulated_constraint",
+    "constraint_type": "separate_linear_constraints",
+    "constraint_params":{
+        "constraint_mappings": {
+            "accrued_damage": {
+                "upper_bound": 1000,
+                "lower_bound": null       
+            },
+            "revenue": {
+                "upper_bound": null,
+                "lower_bound": null       
+            }
+        }
+    }
+}

@@ -20,6 +20,10 @@ from twain_wifco.metrics_accumulation import (
     MetricsAccumulationType,
     discounted_integrator_params_from_dict,
     DiscountedIntegration)
+from twain_wifco.accumulated_constraint import (
+    AccumulatedConstraintType,
+    separate_linear_constraints_params_from_dict,
+    SeparateLinearConstraints)
 
 
 def parse_json_file(path):
@@ -76,4 +80,14 @@ def metrics_accumulation_from_dict(param_dict: Dict[str, Any]):
         return DiscountedIntegration(accumulation_name=accumulation_name,
                                      accumulation_params=params)
     else:
-        raise NotImplementedError("Only simple_product aggregation implemented.")
+        raise NotImplementedError("Only discounted-integration metrics accumulation implemented.")
+
+def accumulated_constraint_from_dict(param_dict: Dict[str, Any]):
+    acc_constraint_name = param_dict["name"]
+    acc_constraint_type = AccumulatedConstraintType(param_dict["constraint_type"])
+    if acc_constraint_type == AccumulatedConstraintType.SEPARATE_LINEAR_CONSTRAINTS:
+        params = separate_linear_constraints_params_from_dict(param_dict=param_dict["constraint_params"])
+        return SeparateLinearConstraints(acc_constraint_name=acc_constraint_name,
+                                     acc_constraint_params=params)
+    else:
+        raise NotImplementedError("Only separate-linear constraints implemented.")
