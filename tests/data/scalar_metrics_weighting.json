@@ -1,0 +1,9 @@
+{
+    "name": "scalar_metrics_weighting",
+    "multi_metrics_handling_type": "scalar_weighting",
+    "multi_metrics_handling_params": {
+        "metric_weights": {
+            "revenue": 1
+        }
+    }
+}

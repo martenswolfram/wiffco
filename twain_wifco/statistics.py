@@ -8,23 +8,7 @@ from twain_wifco.interface import (
     Statistical,
     Ambient,
     Aggregated)
-    
-class Statistics(Component):
-    def __init__(self,
-                 statistics_name: str,
-                 statistics_params: ComponentParams):
-        super().__init__(component_name=statistics_name,
-                         component_params=statistics_params)
 
-    @abstractmethod
-    def systematic_sample(self, N: int = None):
-        pass
-
-    @abstractmethod
-    def expected_value(self):
-        pass
-    
-    
 class SystematicSample:
     def __init__(self,
                  support_variables: List[Statistical], 
@@ -37,6 +21,21 @@ class SystematicSample:
         self.probability_covered = probability_covered
         self.N = len(self.normalized_weights)
 
+class Statistics(Component):
+    def __init__(self,
+                 statistics_name: str,
+                 statistics_params: ComponentParams):
+        super().__init__(component_name=statistics_name,
+                         component_params=statistics_params)
+
+    @abstractmethod
+    def systematic_sample(self, N: int = None) -> SystematicSample:
+        pass
+
+    @abstractmethod
+    def expected_value(self):
+        pass
+    
 class StatisticsType(Enum):
     DISCRETE_STATISTICS = "discrete_statistics"
 

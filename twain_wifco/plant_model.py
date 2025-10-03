@@ -16,7 +16,7 @@ class PlantModel(Component):
                  plant_params: ComponentParams):
         super().__init__(component_name=plant_name,
                          component_params=plant_params)
-        
+                
     def evaluate(self,
                  meteorological_condition: Dict[Ambient, float],
                  control_input: Dict[Control, float]):

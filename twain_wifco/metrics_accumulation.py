@@ -13,9 +13,22 @@ from twain_wifco.aggregation import Aggregation
 from twain_wifco.interface import (
     Component,
     ComponentParams,
+    Ambient,
     Aggregated,
     AccumulatedMetric)
 
+def compute_aggregate(
+        ambient_condition: Dict[Ambient, float],
+        control_policy: ControlPolicy,
+        plant_model: PlantModel,
+        aggregation: Aggregation):
+    control_setpoints = control_policy.get_control_setpoints(ambient_condition=ambient_condition)
+    model_output = plant_model.evaluate(meteorological_condition=ambient_condition,
+                                        control_input=control_setpoints)
+    aggregated = aggregation.compute_aggregate(model_output=model_output,
+                                                ambient_condition=ambient_condition,
+                                                control_setpoints=control_setpoints)
+    return aggregated
 
 def ambient_to_discrete_aggregate_statistics(
         ambient_condition_statistics: Statistics,
@@ -32,12 +45,10 @@ def ambient_to_discrete_aggregate_statistics(
     for i, ambient_condition_values in enumerate(ambient_condition_sample.support_values.T):
         ambient_condition = {
             ambient_var: val for ambient_var, val in zip(ambient_variables, ambient_condition_values)}
-        control_input = control_policy.get_control_setpoints(ambient_condition=ambient_condition)
-        model_output = plant_model.evaluate(meteorological_condition=ambient_condition,
-                                            control_input=control_input)
-        aggregated = aggregation.compute_aggregate(model_output=model_output,
-                                                   ambient_condition=ambient_condition,
-                                                   control_setpoints={})
+        aggregated = compute_aggregate(ambient_condition=ambient_condition,
+                                        control_policy=control_policy,
+                                        plant_model=plant_model,
+                                        aggregation=aggregation)
         aggregated_support_values[:, i] = [aggregated[aggr_var] for aggr_var in aggregated_variables]
 
     discrete_statistics_params = DiscreteStatisticsParams(
@@ -71,73 +82,6 @@ class MetricsAccumulation(Component):
                         aggregate_statistics: Statistics,
                         duration: int):
         pass
-
-    # def expected_value(self,
-    #                    ambient_condition_statistics: Statistics,
-    #                    control_policy: ControlPolicy,
-    #                    plant_models: List[PlantModel],
-    #                    output_aggregations: List[Aggregation],
-    #                    duration: int,
-    #                    N: int = None) -> Dict[AccumulatedMetric, float]:
-
-    #     # Input validation
-    #     # Ambient condition statistics
-    #     if not isinstance(ambient_condition_statistics, DiscreteStatistics):
-    #         raise NotImplementedError("Expected Accumulation only implemented for DiscreteStatistics.")
-    #     # Control policy
-    #     if not isinstance(control_policy, DiscreteControlPolicy):
-    #         raise NotImplementedError("Expected Accumulation only implemented for DiscreteControlPolicy.")
-    #     # Plant models
-    #     validate_component_disambiguation(components=plant_models)
-    #     # output aggregations
-    #     validate_component_disambiguation(components=output_aggregations)
-
-    #     # Generate ambient condition samples
-    #     ambient_condition_sample = ambient_condition_statistics.systematic_sample(N=N)
-    #     ambient_variables = ambient_condition_sample.support_variables
-    #     aggregated_output_variables = [out_var for aggregation in output_aggregations for out_var in aggregation.output_variables]
-    #     aggregated_output_values = np.empty(shape=(len(aggregated_output_variables), ambient_condition_sample.N))
-
-    #     for i, ambient_condition_values in enumerate(ambient_condition_sample.support_values.T):
-    #         ambient_condition = {
-    #             ambient_var: val for ambient_var, val in zip(ambient_variables, ambient_condition_values)}
-    #         control_input = control_policy.get_control_setpoints(ambient_condition=ambient_condition)
-    #         model_outputs = {}
-    #         for plant_model in plant_models:
-    #             model_outputs |= plant_model.evaluate(
-    #                 meteorological_condition=ambient_condition,
-    #                 control_input=control_input)
-    #         aggregated_output = {}
-
-    #         for output_aggregation in output_aggregations:
-    #             aggregated_output |= output_aggregation.compute_aggregate(
-    #                 model_output=model_outputs,
-    #                 ambient_condition=ambient_condition,
-    #                 control_setpoints=control_input)
-    #         aggregated_output_values[:, i] = [aggregated_output[out_var] for out_var in aggregated_output_variables]
-
-    #     accumulated_metrics = {}
-    #     output_expectation = output_statistics.expected_value()
-    #     for out_var, acc_metric in self.params.in_out_mappings.items():
-    #         discount_rate = self.params.discount_rates[out_var]
-    #         if discount_rate == 0:
-    #             accumulated_metrics[acc_metric] = duration * output_expectation[out_var]
-    #         else:
-    #             discount_factor = 1 / (1 + discount_rate)
-    #             duration_discount_factor = (1 - discount_factor**duration) / (1 - discount_factor)
-    #             accumulated_metrics[acc_metric] = output_expectation[out_var] * duration_discount_factor
-        
-    #     return accumulated_metrics
-
-
-    #     return self._expected_value(output_statistics=output_statistics,
-    #                                 duration=duration)
-    
-    # @abstractmethod
-    # def _expected_value(self,
-    #                     output_statistics: Statistics,
-    #                     duration: int):
-    #     pass
 
 class MetricsAccumulationType(Enum):
     DISCOUNTED_INTEGRATION = "discounted_integration"

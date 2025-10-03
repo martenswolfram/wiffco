@@ -13,7 +13,7 @@
                 "-v",
                 "tests",
                 // "--ignore=tests/test_metrics_accumulation.py",
-                // "tests/test_metrics_accumulation.py",
+                // "tests/test_accumulated_constraint.py",
             ],
             "justMyCode": true,
         },

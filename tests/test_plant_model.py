@@ -1,6 +1,6 @@
 import pathlib
 import pytest
-from twain_wifco.config import parse_json_file, plant_model_from_dict
+from twain_wifco.config import plant_model_from_json
 from twain_wifco.interface import (
     Ambient,
     Control,
@@ -10,8 +10,7 @@ from twain_wifco.interface import (
 def test_plant_model():
     test_data_folder = pathlib.Path(__file__).parent / "data"
     json_path = test_data_folder / "power_damage_model.json"
-    param_dict = parse_json_file(path=json_path)
-    simple_power_model = plant_model_from_dict(param_dict=param_dict)
+    simple_power_model = plant_model_from_json(json_path=json_path)
     
     # Initialization
     assert simple_power_model.component_name == "power_damage_model"

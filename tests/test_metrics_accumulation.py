@@ -2,31 +2,32 @@ import pathlib
 import pytest
 import numpy as np
 from twain_wifco.config import (
-    parse_json_file,
-    ambient_statistics_from_dict,
-    plant_model_from_dict,
-    control_policy_from_dict,    
-    aggregation_from_dict,
-    metrics_accumulation_from_dict)
+    ambient_statistics_from_json,
+    plant_model_from_json,
+    control_policy_from_json,    
+    aggregation_from_json,
+    metrics_accumulation_from_json)
 from twain_wifco.metrics_accumulation import ambient_to_discrete_aggregate_statistics
-from twain_wifco.interface import ModelOutput, AccumulatedMetric
+from twain_wifco.interface import AccumulatedMetric
 
     
 def test_simple_product_accumulation():
     
     test_data_folder = pathlib.Path(__file__).parent / "data"
     # Ambient statistics
-    discrete_ambient_statistics_dict = parse_json_file(path=(test_data_folder / "discrete_ambient_statistics.json"))
-    discrete_ambient_statistics = ambient_statistics_from_dict(param_dict=discrete_ambient_statistics_dict)
+    discrete_ambient_statistics = ambient_statistics_from_json(
+        json_path=(test_data_folder / "discrete_ambient_statistics.json"))
     # Control policy
-    discrete_control_policy_dict = parse_json_file(path=(test_data_folder / "discrete_control_policy.json"))
-    discrete_control_policy = control_policy_from_dict(param_dict=discrete_control_policy_dict)
+    discrete_control_policy = control_policy_from_json(
+        json_path=(test_data_folder / "discrete_control_policy.json"))
     # Plant model
-    power_damage_model_dict = parse_json_file(path=(test_data_folder / "power_damage_model.json"))
-    power_damage_model = plant_model_from_dict(param_dict=power_damage_model_dict)
+    power_damage_model = plant_model_from_json(
+        json_path=(test_data_folder / "power_damage_model.json")
+    )
     # Aggregation
-    revenue_damage_aggregation_dict = parse_json_file(path=(test_data_folder / "revenue_damage_aggregation.json"))
-    revenue_damage_aggregation = aggregation_from_dict(param_dict=revenue_damage_aggregation_dict)
+    revenue_damage_aggregation = aggregation_from_json(
+        json_path=(test_data_folder / "revenue_damage_aggregation.json")
+    )
     
     # Aggregate statistics
     aggregate_statistics = ambient_to_discrete_aggregate_statistics(
@@ -36,8 +37,8 @@ def test_simple_product_accumulation():
         aggregation=revenue_damage_aggregation)    
     
     # Metrics accumulation
-    revenue_damage_accumulation_dict = parse_json_file(path=(test_data_folder / "revenue_damage_accumulation.json"))
-    revenue_damage_accumulation = metrics_accumulation_from_dict(param_dict=revenue_damage_accumulation_dict)
+    revenue_damage_accumulation = metrics_accumulation_from_json(
+        json_path=(test_data_folder / "revenue_damage_accumulation.json"))
 
     # Initialization
     assert revenue_damage_accumulation.component_name == "revenue_damage_accumulation"

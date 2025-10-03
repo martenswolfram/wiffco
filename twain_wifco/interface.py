@@ -32,6 +32,13 @@ DataVariable = Union[Ambient,
 # Allow statistical distributions only over Ambient condition and Aggregated variables
 Statistical = TypeVar('Statistical', Ambient, Aggregated)
 
+DataType = TypeVar("DataType",
+                   Ambient,
+                   Control,
+                   ModelOutput,
+                   Aggregated,
+                   AccumulatedMetric)
+
 class ComponentParams(ABC):
 
     def __init__(self):
@@ -53,6 +60,9 @@ class Component(ABC):
         self.component_name = component_name
         self.input_variables = component_params.input_variables()
         self.output_variables = component_params.output_variables()
+
+    def input_of_type(self, t: DataType):
+        return set([var for var in self.input_variables if isinstance(var, t)])
 
     def _validate_inputs(self, inputs: Set[DataVariable]):
         if not (self.input_variables <= inputs):

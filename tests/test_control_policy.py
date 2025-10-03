@@ -1,15 +1,14 @@
 import pathlib
 import pytest
 import numpy as np
-from twain_wifco.config import parse_json_file, control_policy_from_dict
+from twain_wifco.config import control_policy_from_json
 from twain_wifco.interface import Ambient, Control
 
     
 def test_discrete_control_policy():
     test_data_folder = pathlib.Path(__file__).parent / "data"
     json_path = test_data_folder / "discrete_control_policy.json"
-    param_dict = parse_json_file(path=json_path)
-    simple_control_policy = control_policy_from_dict(param_dict=param_dict)
+    simple_control_policy = control_policy_from_json(json_path=json_path)
     
     ambient_conditions_support = np.array([
             [ 10,   20,   30,   20,   10,    5],
