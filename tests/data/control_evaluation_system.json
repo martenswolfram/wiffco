@@ -5,6 +5,5 @@
     "aggregation_file": "revenue_damage_aggregation.json",
     "metrics_accumulation_file": "revenue_damage_accumulation.json",
     "accumulated_constraint_file": "linear_accumulated_constraint.json",
-    "multi_metrics_handling_file": "scalar_metrics_weighting.json",
-    "initial_control_policy_file": "discrete_control_policy.json"
+    "multi_metrics_reduction_file": "scalar_metrics_weighting.json"
 }

@@ -25,8 +25,8 @@ from twain_wifco.accumulated_constraint import (
     AccumulatedConstraintType,
     separate_linear_constraints_params_from_dict,
     SeparateLinearConstraints)
-from twain_wifco.multi_metrics_handling import (
-    MultiMetricsHandlingType,
+from twain_wifco.multi_metrics_reduction import (
+    MultiMetricsReductionType,
     scalar_weighting_params_from_dict,
     ScalarWeighting)
 from twain_wifco.optimization import (
@@ -108,14 +108,16 @@ def accumulated_constraint_from_json(json_path: pathlib.Path):
     else:
         raise NotImplementedError("Only separate-linear constraints implemented.")
 
-def multi_metrics_handling_from_json(json_path: pathlib.Path):
+def multi_metrics_reduction_from_json(json_path: pathlib.Path):
     param_dict = parse_json_file(path=json_path)
-    multi_metrics_handling_name = param_dict["name"]
-    multi_metrics_handling_type = MultiMetricsHandlingType(param_dict["multi_metrics_handling_type"])
-    if multi_metrics_handling_type == MultiMetricsHandlingType.SCALAR_WEIGHTING:
-        params = scalar_weighting_params_from_dict(param_dict=param_dict["multi_metrics_handling_params"])
-        return ScalarWeighting(multi_metrics_handling_name=multi_metrics_handling_name,
-                               multi_metrics_handling_params=params)
+    multi_metrics_reduction_name = param_dict["name"]
+    maximize = param_dict["maximize"]
+    multi_metrics_reduction_type = MultiMetricsReductionType(param_dict["multi_metrics_reduction_type"])
+    if multi_metrics_reduction_type == MultiMetricsReductionType.SCALAR_WEIGHTING:
+        params = scalar_weighting_params_from_dict(param_dict=param_dict["multi_metrics_reduction_params"])
+        return ScalarWeighting(multi_metrics_reduction_name=multi_metrics_reduction_name,
+                               maximize=maximize,
+                               multi_metrics_reduction_params=params)
     else:
         raise NotImplementedError("Only scalar weighting implemented.")
 
@@ -141,13 +143,9 @@ def control_evaluation_system_from_json(json_path: pathlib.Path):
     accumulated_constraint = accumulated_constraint_from_json(
         json_path=(config_folder / param_dict["accumulated_constraint_file"]))
 
-    # Multi-metrics handling
-    multi_metrics_handling = multi_metrics_handling_from_json(
-        json_path=(config_folder / param_dict["multi_metrics_handling_file"]))
-
-    # Initial control policy
-    initial_control_policy = control_policy_from_json(
-        json_path=(config_folder / param_dict["initial_control_policy_file"]))
+    # Multi-metrics reduction
+    multi_metrics_reduction = multi_metrics_reduction_from_json(
+        json_path=(config_folder / param_dict["multi_metrics_reduction_file"]))
     
     return ControlEvaluationSystem(
         name=eval_system_name,
@@ -155,8 +153,7 @@ def control_evaluation_system_from_json(json_path: pathlib.Path):
         aggregation=aggregation,
         metrics_accumulation=metrics_accumulation,
         accumulated_constraint=accumulated_constraint,
-        multi_metrics_handling=multi_metrics_handling,
-        initial_control_policy=initial_control_policy)
+        multi_metrics_reduction=multi_metrics_reduction)
 
 def control_optimization_from_json(json_path: pathlib.Path):
     param_dict = parse_json_file(path=json_path)

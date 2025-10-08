@@ -7,12 +7,14 @@ from twain_wifco.interface import (
     ComponentParams,
     AccumulatedMetric)
 
-class MultiMetricsHandling(Component):
+class MultiMetricsReduction(Component):
     def __init__(self,
                  multi_metrics_name: str,
+                 maximize: bool,
                  multi_metrics_params: ComponentParams):
         super().__init__(component_name=multi_metrics_name,
                          component_params=multi_metrics_params)
+        self.maximize = maximize
 
     def evaluate(self,
                  acc_metrics: Dict[AccumulatedMetric, float]):
@@ -26,7 +28,7 @@ class MultiMetricsHandling(Component):
                   acc_metrics: Dict[AccumulatedMetric, float]):
         pass
 
-class MultiMetricsHandlingType(Enum):
+class MultiMetricsReductionType(Enum):
     SCALAR_WEIGHTING = "scalar_weighting"
 
 class ScalarWeightingParams(ComponentParams):
@@ -44,17 +46,18 @@ def scalar_weighting_params_from_dict(param_dict: Dict[str, Dict | Any]):
     metric_weights = {}
     for acc_metric, weight in param_dict["metric_weights"].items():
         metric_weights[AccumulatedMetric(acc_metric)] = float(weight)
-         
     return ScalarWeightingParams(metric_weights=metric_weights)
 
-class ScalarWeighting(MultiMetricsHandling):
+class ScalarWeighting(MultiMetricsReduction):
     def __init__(self,
-                 multi_metrics_handling_name: str,
-                 multi_metrics_handling_params: ScalarWeightingParams):
-        super().__init__(multi_metrics_name=multi_metrics_handling_name,
-                         multi_metrics_params=multi_metrics_handling_params)
-        self.metric_weights = multi_metrics_handling_params.metric_weights
-
+                 multi_metrics_reduction_name: str,
+                 maximize: bool,
+                 multi_metrics_reduction_params: ScalarWeightingParams):
+        super().__init__(multi_metrics_name=multi_metrics_reduction_name,
+                         maximize=maximize,
+                         multi_metrics_params=multi_metrics_reduction_params)
+        self.metric_weights = multi_metrics_reduction_params.metric_weights
+        
     def _evaluate(self,
                   acc_metrics: Dict[AccumulatedMetric, float]):
-        return np.sum(weight * acc_metrics[metric] for metric, weight in self.metric_weights.items())
+        return sum(weight * acc_metrics[metric] for metric, weight in self.metric_weights.items())

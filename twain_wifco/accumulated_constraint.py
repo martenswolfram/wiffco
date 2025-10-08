@@ -14,6 +14,10 @@ class ConstraintEval:
         self.lower_diff = lower_diff
         self.upper_diff = upper_diff
 
+    def satisfied(self):
+        return (self.lower_diff is None or self.lower_diff >= 0) and \
+            (self.upper_diff is None or self.upper_diff <= 0)
+
 class AccumulatedConstraint(Component):
     def __init__(self,
                  acc_constraint_name: str,
@@ -22,7 +26,7 @@ class AccumulatedConstraint(Component):
                          component_params=acc_constraint_params)
 
     def evaluate(self,
-                 acc_metrics: Dict[AccumulatedMetric, float]):
+                 acc_metrics: Dict[AccumulatedMetric, float]) -> Dict[AccumulatedMetric, ConstraintEval]:
         
         self._validate_inputs(inputs=acc_metrics.keys())
 
@@ -30,7 +34,7 @@ class AccumulatedConstraint(Component):
             
     @abstractmethod
     def _evaluate(self,
-                  acc_metrics: Dict[AccumulatedMetric, float]):
+                  acc_metrics: Dict[AccumulatedMetric, float]) -> Dict[AccumulatedMetric, ConstraintEval]:
         pass
 
 class AccumulatedConstraintType(Enum):
@@ -80,15 +84,15 @@ class SeparateLinearConstraints(AccumulatedConstraint):
         self.constraint_mappings = acc_constraint_params.constraint_mappings
 
     def _evaluate(self,
-                  acc_metrics: Dict[AccumulatedMetric, float]):
+                  acc_metrics: Dict[AccumulatedMetric, float]) -> Dict[AccumulatedMetric, ConstraintEval]:
         constraint_evals = {}
-        for acc_metric, value in acc_metrics.items():
-            if self.constraint_mappings[acc_metric].lower_bound is not None:
-                lower_diff = value - self.constraint_mappings[acc_metric].lower_bound
+        for acc_metric, constraint_mapping in self.constraint_mappings.items():
+            if constraint_mapping.lower_bound is not None:
+                lower_diff = acc_metrics[acc_metric] - constraint_mapping.lower_bound
             else:
                 lower_diff = None
             if self.constraint_mappings[acc_metric].upper_bound is not None:
-                upper_diff = value - self.constraint_mappings[acc_metric].upper_bound
+                upper_diff = acc_metrics[acc_metric] - constraint_mapping.upper_bound
             else:
                 upper_diff = None
             constraint_evals[acc_metric] = ConstraintEval(lower_diff=lower_diff,

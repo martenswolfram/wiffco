@@ -9,6 +9,7 @@ from twain_wifco.interface import (
     ModelOutput,
     Control,
     Aggregated)
+from twain_wifco.plant_model import PlantModel
 
 class Aggregation(Component):
     def __init__(self,
@@ -95,3 +96,4 @@ class SimpleProduct(Aggregation):
                 np.prod([ambient_condition[ambient_var] for ambient_var in mapping.from_ambient]) * \
                 np.prod([control_setpoints[ctrl_var] for ctrl_var in mapping.from_control])
         return aggregated_output
+    

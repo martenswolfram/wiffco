@@ -36,11 +36,14 @@ class DiscreteControlPolicyParams(ComponentParams):
                  ambient_conditions_support: np.ndarray,
                  control_inputs: List[Control],
                  control_setpoints: np.ndarray,
-                 ambient_condition_tols: np.ndarray):
+                 ambient_condition_tols: np.ndarray | None = None):
         self.ambient_variables = ambient_variables
         self.ambient_conditions_support = ambient_conditions_support
         self.control_inputs = control_inputs
         self.control_setpoints = control_setpoints
+        if ambient_condition_tols is None:
+            # Determine tolerance depending on the range of ambient variable values
+            ambient_condition_tols = np.ptp(ambient_conditions_support, axis=1) * 1e-5        
         self.ambient_condition_tols = ambient_condition_tols
 
     def input_variables(self):
@@ -58,9 +61,6 @@ def discrete_policy_params_from_dict(param_dict: Dict[str, Any]):
     control_setpoints = np.array(param_dict["control_setpoints"])
     
     ambient_condition_tols = param_dict.get("ambient_condition_tols", None)
-    if ambient_condition_tols is None:
-        # Determine tolerance depending on the range of ambient variable values
-        ambient_condition_tols = np.ptp(ambient_conditions_support, axis=1) * 1e-5
     return DiscreteControlPolicyParams(ambient_variables=ambient_variables,
                                        ambient_conditions_support=ambient_conditions_support,
                                        control_inputs=control_inputs,

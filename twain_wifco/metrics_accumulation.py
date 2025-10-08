@@ -14,21 +14,9 @@ from twain_wifco.interface import (
     Component,
     ComponentParams,
     Ambient,
+    Control,
     Aggregated,
     AccumulatedMetric)
-
-def compute_aggregate(
-        ambient_condition: Dict[Ambient, float],
-        control_policy: ControlPolicy,
-        plant_model: PlantModel,
-        aggregation: Aggregation):
-    control_setpoints = control_policy.get_control_setpoints(ambient_condition=ambient_condition)
-    model_output = plant_model.evaluate(meteorological_condition=ambient_condition,
-                                        control_input=control_setpoints)
-    aggregated = aggregation.compute_aggregate(model_output=model_output,
-                                                ambient_condition=ambient_condition,
-                                                control_setpoints=control_setpoints)
-    return aggregated
 
 def ambient_to_discrete_aggregate_statistics(
         ambient_condition_statistics: Statistics,
@@ -45,10 +33,12 @@ def ambient_to_discrete_aggregate_statistics(
     for i, ambient_condition_values in enumerate(ambient_condition_sample.support_values.T):
         ambient_condition = {
             ambient_var: val for ambient_var, val in zip(ambient_variables, ambient_condition_values)}
-        aggregated = compute_aggregate(ambient_condition=ambient_condition,
-                                        control_policy=control_policy,
-                                        plant_model=plant_model,
-                                        aggregation=aggregation)
+        control_setpoints = control_policy.get_control_setpoints(ambient_condition=ambient_condition)
+        model_output = plant_model.evaluate(meteorological_condition=ambient_condition,
+                                            control_input=control_setpoints)
+        aggregated = aggregation.compute_aggregate(model_output=model_output,
+                                                   ambient_condition=ambient_condition,
+                                                   control_setpoints=control_setpoints)
         aggregated_support_values[:, i] = [aggregated[aggr_var] for aggr_var in aggregated_variables]
 
     discrete_statistics_params = DiscreteStatisticsParams(
