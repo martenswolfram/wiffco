@@ -13,14 +13,14 @@ def test_linear_constraint():
     assert linear_accumulated_constraint.component_name == "linear_accumulated_constraint"
     assert linear_accumulated_constraint.constraint_mappings.keys() == set([AccumulatedMetric.ACCRUED_DAMAGE])
     assert linear_accumulated_constraint.constraint_mappings[AccumulatedMetric.ACCRUED_DAMAGE].lower_bound is None
-    assert linear_accumulated_constraint.constraint_mappings[AccumulatedMetric.ACCRUED_DAMAGE].upper_bound == pytest.approx(1000)
+    assert linear_accumulated_constraint.constraint_mappings[AccumulatedMetric.ACCRUED_DAMAGE].upper_bound == pytest.approx(500)
     
     # Constraint evaluation
-    constraint_evals = linear_accumulated_constraint.evaluate(acc_metrics={AccumulatedMetric.ACCRUED_DAMAGE: 1200})
-    assert constraint_evals.keys() == set([AccumulatedMetric.ACCRUED_DAMAGE])
-    assert constraint_evals[AccumulatedMetric.ACCRUED_DAMAGE].upper_diff == pytest.approx(200)
-    assert constraint_evals[AccumulatedMetric.ACCRUED_DAMAGE].lower_diff is None
     constraint_evals = linear_accumulated_constraint.evaluate(acc_metrics={AccumulatedMetric.ACCRUED_DAMAGE: 800})
+    assert constraint_evals.keys() == set([AccumulatedMetric.ACCRUED_DAMAGE])
+    assert constraint_evals[AccumulatedMetric.ACCRUED_DAMAGE].upper_diff == pytest.approx(300)
+    assert constraint_evals[AccumulatedMetric.ACCRUED_DAMAGE].lower_diff is None
+    constraint_evals = linear_accumulated_constraint.evaluate(acc_metrics={AccumulatedMetric.ACCRUED_DAMAGE: 300})
     assert constraint_evals.keys() == set([AccumulatedMetric.ACCRUED_DAMAGE])
     assert constraint_evals[AccumulatedMetric.ACCRUED_DAMAGE].upper_diff == pytest.approx(-200)
     assert constraint_evals[AccumulatedMetric.ACCRUED_DAMAGE].lower_diff is None

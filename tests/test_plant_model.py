@@ -31,7 +31,7 @@ def test_plant_model():
     # Valid input
     valid_ctrl_input = {Control.POWER_REGULATION: 2}
     expected_output = {ModelOutput.ELECTRICAL_POWER: 4 * 1.4,
-                       ModelOutput.DAMAGE_RATE: 4 * 4}
+                       ModelOutput.DAMAGE_RATE: 4 * 8}
 
     output = simple_power_model.evaluate(meteorological_condition=valid_met_condition,
                                          control_input=valid_ctrl_input)

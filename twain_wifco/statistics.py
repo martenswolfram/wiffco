@@ -21,6 +21,11 @@ class SystematicSample:
         self.probability_covered = probability_covered
         self.N = len(self.normalized_weights)
 
+    def __iter__(self):
+        for values in self.support_values.T:
+            sample_dict = {var: values[m] for m, var in enumerate(self.support_variables)}
+            yield sample_dict
+
 class Statistics(Component):
     def __init__(self,
                  statistics_name: str,

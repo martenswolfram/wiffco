@@ -13,7 +13,7 @@ def test_discrete_control_policy():
     ambient_conditions_support = np.array([
             [ 10,   20,   30,   20,   10,    5],
             [  0,   60,  120,  180,  240,  300],
-            [ 10,    5,    2,    5,    5,   10]
+            [  7,    5,    2,    5,    5,    7]
         ])
     
     # Initialization

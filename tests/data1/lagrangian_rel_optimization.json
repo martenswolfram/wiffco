@@ -1,0 +1,10 @@
+{
+    "name": "lagrangian_relaxation",
+    "optimization_method": "lagrangian_relaxation", 
+    "optimization_params": {
+        "num_ambient_conditions": null,
+        "inner_opt_method": "scipy:slsqp",
+        "inner_max_iter": 100,
+        "outer_max_iter": 100
+    }
+}

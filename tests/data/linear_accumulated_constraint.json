@@ -4,7 +4,7 @@
     "constraint_params":{
         "constraint_mappings": {
             "accrued_damage": {
-                "upper_bound": 1000,
+                "upper_bound": 500,
                 "lower_bound": null       
             },
             "revenue": {

@@ -27,12 +27,9 @@ def ambient_to_discrete_aggregate_statistics(
         
     ambient_condition_sample: SystematicSample = ambient_condition_statistics.systematic_sample(N=N)
 
-    ambient_variables = ambient_condition_sample.support_variables
     aggregated_variables = aggregation.output_variables
     aggregated_support_values = np.empty(shape=(len(aggregated_variables), ambient_condition_sample.N))
-    for i, ambient_condition_values in enumerate(ambient_condition_sample.support_values.T):
-        ambient_condition = {
-            ambient_var: val for ambient_var, val in zip(ambient_variables, ambient_condition_values)}
+    for i, ambient_condition in enumerate(ambient_condition_sample):
         control_setpoints = control_policy.get_control_setpoints(ambient_condition=ambient_condition)
         model_output = plant_model.evaluate(meteorological_condition=ambient_condition,
                                             control_input=control_setpoints)

@@ -12,7 +12,7 @@ def test_statistics():
     ordered_prevalence = np.array([0.4, 0.25, 0.19, 0.1, 0.05, 0.01])
     ordered_support_points = np.array([[   20,   10,  30,  20,   5,  10],
                                        [  180,  240, 120,  60, 300,   0],
-                                       [    5,    5,   2,   5,  10,  10]])
+                                       [    5,    5,   2,   5,  7,  7]])
     # Initialization
     assert discrete_ambient_statistics.component_name == "discrete_ambient_statistics"
     assert discrete_ambient_statistics.support_variables == \
