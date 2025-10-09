@@ -63,7 +63,7 @@ def test_grid_search():
     pass
     
     # Compare with perturbed control policies
-    for control_setpoint in optimal_policy.control_setpoints.T:
+    for control_setpoint in optimal_policy.control_setpoints:
         # Evaluate perturbed result (ramp up control)
         control_setpoint += 1
         # Aggregate statistics

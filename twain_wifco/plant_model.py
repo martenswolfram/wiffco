@@ -41,6 +41,7 @@ class InterpolationMapping:
                  meteorological_data: Dict[Ambient, np.ndarray]):
         self.control_data = control_data
         self.meteorological_data = meteorological_data
+        pass
 
 class IndependentCubicInterpolationParams(ComponentParams):
     def __init__(self,

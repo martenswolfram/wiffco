@@ -10,9 +10,13 @@ def test_statistics():
     discrete_ambient_statistics = ambient_statistics_from_json(json_path=json_path)
     
     ordered_prevalence = np.array([0.4, 0.25, 0.19, 0.1, 0.05, 0.01])
-    ordered_support_points = np.array([[   20,   10,  30,  20,   5,  10],
-                                       [  180,  240, 120,  60, 300,   0],
-                                       [    5,    5,   2,   5,  7,  7]])
+    ordered_support_points = np.array([[ 20, 180, 5],
+                                       [ 10, 240, 5],
+                                       [ 30, 120, 2],
+                                       [ 20,  60, 5],
+                                       [  5, 300, 7],
+                                       [ 10,   0, 7]])
+    
     # Initialization
     assert discrete_ambient_statistics.component_name == "discrete_ambient_statistics"
     assert discrete_ambient_statistics.support_variables == \
@@ -46,13 +50,13 @@ def test_statistics():
     probability_covered = np.sum(ordered_prevalence[:N])
     assert sys_sample_smaller.support_variables == discrete_ambient_statistics.support_variables
     assert sys_sample_smaller.normalized_weights == pytest.approx(ordered_prevalence[:N] / probability_covered)
-    assert sys_sample_smaller.support_values == pytest.approx(ordered_support_points[:, :N])
+    assert sys_sample_smaller.support_values == pytest.approx(ordered_support_points[:N, :])
     assert sys_sample_smaller.probability_covered == pytest.approx(probability_covered)
     
     # Expected value
-    expected_vector = ordered_support_points @ ordered_prevalence
-    expected_value = {Ambient.WIND_SPEED: expected_vector[0],
-                Ambient.WIND_DIRECTION: expected_vector[1],
-                Ambient.ELECTRICITY_PRICE: expected_vector[2]}
+    expected_vector = ordered_prevalence @ ordered_support_points
+    expected_value = {Ambient.WIND_SPEED:        expected_vector[0],
+                      Ambient.WIND_DIRECTION:    expected_vector[1],
+                      Ambient.ELECTRICITY_PRICE: expected_vector[2]}
     assert discrete_ambient_statistics.expected_value() == pytest.approx(expected_value)
 

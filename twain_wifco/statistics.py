@@ -22,7 +22,7 @@ class SystematicSample:
         self.N = len(self.normalized_weights)
 
     def __iter__(self):
-        for values in self.support_values.T:
+        for values in self.support_values:
             sample_dict = {var: values[m] for m, var in enumerate(self.support_variables)}
             yield sample_dict
 
@@ -71,10 +71,10 @@ def discrete_statistics_params_from_dict(param_dict: Dict[str, Any]):
             [Aggregated(support_var) for support_var in param_dict["agregated_variables"]]
     prevalence = np.array(param_dict["prevalence"])
     support_points = np.array(param_dict["support_points"])
-    if support_points.shape[0] != len(support_variables):
-        raise ValueError("DiscreteAmbientStatisticsParams: Support data and support variables dimensions mismatch.")
-    if len(prevalence.shape) != 1 or prevalence.shape[0] != support_points.shape[1]:
-        raise ValueError("DiscreteAmbientStatisticsParams: Prevalence and support data dimensions mismatch.")
+    if support_points.shape[1] != len(support_variables):
+        raise ValueError("DiscreteStatisticsParams: Support data and support variables dimensions mismatch.")
+    if len(prevalence.shape) != 1 or prevalence.shape[0] != support_points.shape[0]:
+        raise ValueError("DiscreteStatisticsParams: Prevalence and support data dimensions mismatch.")
     prevalence = prevalence / np.sum(prevalence)
     
     return DiscreteStatisticsParams(support_variables=support_variables,
@@ -91,7 +91,7 @@ class DiscreteStatistics(Statistics):
         # Ordered by prevalence
         prevalence_index = np.argsort(statistics_params.prevalence)[::-1]
         self.support_variables = statistics_params.support_variables
-        self.ordered_support_points = statistics_params.support_points[:, prevalence_index]
+        self.ordered_support_points = statistics_params.support_points[prevalence_index, :]
         self.ordered_prevalence = statistics_params.prevalence[prevalence_index]
 
     def systematic_sample(self, N: int = None):
@@ -100,7 +100,7 @@ class DiscreteStatistics(Statistics):
                                     support_values=self.ordered_support_points,
                                     normalized_weights=self.ordered_prevalence)    
         elif 1 <= N < len(self.ordered_prevalence):
-            values = self.ordered_support_points[:, :N]
+            values = self.ordered_support_points[:N, :]
             weights = self.ordered_prevalence[:N]
             probability_covered = np.sum(weights)
             return SystematicSample(support_variables=self.support_variables,
@@ -111,6 +111,6 @@ class DiscreteStatistics(Statistics):
             raise ValueError("DiscreteStatistics: Invalid number of samples N.")
         
     def expected_value(self):
-        expectation = self.ordered_support_points @ self.ordered_prevalence.T
+        expectation = self.ordered_prevalence @ self.ordered_support_points
         return {supp_var: val for supp_var, val in zip(self.support_variables, expectation)}
 

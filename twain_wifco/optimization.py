@@ -43,18 +43,6 @@ class ControlEvaluationSystem:
         return self.aggregation.compute_aggregate(model_output=model_output,
                                                   ambient_condition=ambient_condition,
                                                   control_setpoints=control_setpoints)
-
-    # def eval_amb_cond_stats_and_ctrl_policy(
-    #         self,
-    #         ambient_condition_statistics: Statistics,
-    #         control_policy: ControlPolicy):
-    #     ambient_condition_sample = ambient_condition_statistics.systematic_sample()
-    #     for ambient_condition_vec in ambient_condition_sample.support_values.T:
-    #         ambient_condition = {amb_var: amb_val for amb_var, amb_val in zip(ambient_condition_sample.support_variables, ambient_condition_vec)}
-    #         control_setpoints = control_policy.get_control_setpoints(
-    #             ambient_condition=)
-        
-    #     pass
         
 class OptimizationMethod(Enum):
     GRID_SEARCH = "grid_search"
@@ -105,6 +93,7 @@ class GridSearch(ControlPolicyOptimization):
         
         print(f"GridSearch: Find optimal control policy")
         ambient_condition_sample = ambient_condition_statistics.systematic_sample(N=self.num_ambient_conditions)
+        num_ambient_conditions = ambient_condition_sample.N
         ctrl_vars = list(self.control_setpoints.keys())
         ctrl_setpoint_vectors = [
             self.control_setpoints[ctrl_var] for ctrl_var in ctrl_vars]
@@ -113,15 +102,15 @@ class GridSearch(ControlPolicyOptimization):
         num_ctrl_settings = len(ctrl_setpoint_combinations)
         
         aggregate_evaluations = {
-            agg_var: np.empty(shape=(self.num_ambient_conditions, num_ctrl_settings)) \
+            agg_var: np.empty(shape=(num_ambient_conditions, num_ctrl_settings)) \
             for agg_var in control_eval_system.aggregation.output_variables
             }
-        print(f"Number of ambient conditions: {self.num_ambient_conditions}.")
+        print(f"Number of ambient conditions: {num_ambient_conditions}.")
         print(f"Number of ctrl settings: {num_ctrl_settings}.")
-        num_eval = num_ctrl_settings * self.num_ambient_conditions
+        num_eval = num_ctrl_settings * num_ambient_conditions
         print(f"Performing {num_eval} system evaluations.")
         
-        for n_amb, ambient_condition_vec in enumerate(ambient_condition_sample.support_values.T):
+        for n_amb, ambient_condition_vec in enumerate(ambient_condition_sample.support_values):
             ambient_condition={amb_var: val for amb_var, val in \
                                zip(ambient_condition_sample.support_variables, ambient_condition_vec)}
             for n_ctrl, ctrl_setpoints in enumerate(ctrl_setpoint_combinations):
@@ -135,7 +124,7 @@ class GridSearch(ControlPolicyOptimization):
         pass
 
 
-        num_ctrl_policies = self.num_ambient_conditions**len(ctrl_setpoint_combinations)
+        num_ctrl_policies = num_ambient_conditions**len(ctrl_setpoint_combinations)
         print(f"Evaluating {num_ctrl_policies} control policies.")
         
         aggr_vars = list(control_eval_system.aggregation.output_variables)
@@ -143,10 +132,10 @@ class GridSearch(ControlPolicyOptimization):
         multi_metrics_reduced = []
         constraints_satisfied = []
         control_eval_system.multi_metrics_reduction
-        ctrl_settings_indices_product = itertools.product(range(num_ctrl_settings), repeat=self.num_ambient_conditions)
+        ctrl_settings_indices_product = itertools.product(range(num_ctrl_settings), repeat=num_ambient_conditions)
         for ctrl_indices in ctrl_settings_indices_product:
             # Each ctrl_indices corresponds to a discrete control strategy
-            aggr_support_points = np.array([aggregate_evaluations[aggr_var][np.arange(self.num_ambient_conditions), ctrl_indices] for aggr_var in aggr_vars])
+            aggr_support_points = np.array([aggregate_evaluations[aggr_var][np.arange(num_ambient_conditions), ctrl_indices] for aggr_var in aggr_vars]).T
             discrete_stat_params = DiscreteStatisticsParams(
                 support_variables=aggr_vars,
                 prevalence=ambient_condition_sample.normalized_weights,
@@ -170,13 +159,57 @@ class GridSearch(ControlPolicyOptimization):
         
         # Specify discrete control strategy
         # control settings (linear index) for each ambient condition
-        amb_cond_ctrl_indices = np.unravel_index(best_index, [num_ctrl_settings] * self.num_ambient_conditions)
+        amb_cond_ctrl_indices = np.unravel_index(best_index, [num_ctrl_settings] * num_ambient_conditions)
         # controls setpoints for each linear index
-        amb_cond_ctrl_setpoints = np.array([np.unravel_index(ctrl_index, [len(setpt_vec) for setpt_vec in ctrl_setpoint_vectors]) for ctrl_index in amb_cond_ctrl_indices]).T
+        amb_cond_ctrl_setpoints = np.array([np.unravel_index(ctrl_index, [len(setpt_vec) for setpt_vec in ctrl_setpoint_vectors]) for ctrl_index in amb_cond_ctrl_indices])
         discrete_control_policy_params = DiscreteControlPolicyParams(ambient_variables=ambient_condition_sample.support_variables,
                                                                      ambient_conditions_support=ambient_condition_sample.support_values,
                                                                      control_inputs=ctrl_vars,
                                                                      control_setpoints=amb_cond_ctrl_setpoints)
         return DiscreteControlPolicy(policy_name="optimized_discrete_control_policy",
                                      policy_params=discrete_control_policy_params)
+
+class SimultaneousOptimizationParams:
+    def __init__(self,
+                 num_ambient_conditions: int,
+                 max_iter: int):
+        self.max_iter = max_iter
+        self.num_ambient_conditions = num_ambient_conditions
+
+def simulataneous_optimization_params_from_dict(param_dict: Dict[str, Any]):
+    num_ambient_conditions = param_dict["num_ambient_conditions"]
+    max_iter = param_dict["max_iter"]
+    return SimultaneousOptimizationParams(
+        num_ambient_conditions=num_ambient_conditions,
+        max_iter=max_iter)
+
+class SimultaneousOptimization(ControlPolicyOptimization):
+    def __init__(self,
+                 optimization_name: str,
+                 optimization_params: SimultaneousOptimizationParams):
+        super().__init__(optimization_name=optimization_name)
+        self.num_ambient_conditions = optimization_params.num_ambient_conditions
+        self.max_iter = optimization_params.max_iter
+
+    def optimize_policy(self,
+                        control_eval_system: ControlEvaluationSystem,
+                        ambient_condition_statistics: Statistics,
+                        duration: int,
+                        initial_policy: ControlPolicy | None = None):
         
+        ambient_condition_sample = ambient_condition_statistics.systematic_sample(N=self.num_ambient_conditions)
+        num_ambient_conditions = ambient_condition_sample.N
+        ctrl_vars = list(control_eval_system.plant_model.input_of_type(t=Control))
+        num_ctrls = len(ctrl_vars)
+
+        # define objective function
+        def objective(x: np.ndarray):
+            amb_cond_ctrl_setpoints = np.reshape(x, shape=(num_ambient_conditions, num_ctrls))
+            discrete_control_policy_params = DiscreteControlPolicyParams(
+                ambient_variables=ambient_condition_sample.support_variables,
+                ambient_conditions_support=ambient_condition_sample.support_values,
+                control_inputs=ctrl_vars,
+                control_setpoints=amb_cond_ctrl_setpoints)
+            discrete_control_policy = DiscreteControlPolicy(
+                policy_name="optimized_discrete_control_policy",
+                policy_params=discrete_control_policy_params)

@@ -43,7 +43,7 @@ class DiscreteControlPolicyParams(ComponentParams):
         self.control_setpoints = control_setpoints
         if ambient_condition_tols is None:
             # Determine tolerance depending on the range of ambient variable values
-            ambient_condition_tols = np.ptp(ambient_conditions_support, axis=1) * 1e-5        
+            ambient_condition_tols = np.ptp(ambient_conditions_support, axis=0) * 1e-5        
         self.ambient_condition_tols = ambient_condition_tols
 
     def input_variables(self):
@@ -55,7 +55,7 @@ class DiscreteControlPolicyParams(ComponentParams):
 def discrete_policy_params_from_dict(param_dict: Dict[str, Any]):
     ambient_variables = [Ambient(ambient_var) for ambient_var in param_dict["ambient_variables"]]
     ambient_conditions_support = np.array(param_dict["ambient_conditions_support"])
-    if ambient_conditions_support.shape[0] != len(ambient_variables):
+    if ambient_conditions_support.shape[1] != len(ambient_variables):
         raise ValueError("DiscreteControlPolicyParams: Ambient conditions support data and ambient variables dimensions mismatch.")
     control_inputs = [Control(ctrl_var) for ctrl_var in param_dict["control_variables"]]
     control_setpoints = np.array(param_dict["control_setpoints"])
@@ -84,11 +84,11 @@ class DiscreteControlPolicy(ControlPolicy):
         ambient_variables = np.array([ambient_condition[amb_var] for amb_var in self.ambient_variables])
         # Find correct support point
         mask = np.all(np.isclose(self.ambient_conditions_support,
-                                 ambient_variables[:, None],
-                                 atol=self.ambient_condition_tols[:, None]),
-                                 axis=0)
-        col_index = np.where(mask)[0]
-        if not len(col_index):
+                                 ambient_variables,
+                                 atol=self.ambient_condition_tols),
+                                 axis=1)
+        row_index = np.where(mask)[0]
+        if not len(row_index):
             raise ValueError("DiscreteControlPolicy: Ambient condition not found in support points.")
 
-        return {ctrl_var: ctrl_val for ctrl_var, ctrl_val in zip(self.control_inputs, self.control_setpoints[:, col_index[0]])}
+        return {ctrl_var: ctrl_val for ctrl_var, ctrl_val in zip(self.control_inputs, self.control_setpoints[row_index[0], :])}
