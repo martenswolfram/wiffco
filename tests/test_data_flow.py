@@ -1,6 +1,6 @@
 import pathlib
 from twain_wifco.config import (
-    ambient_statistics_from_json,
+    statistics_from_json,
     plant_model_from_json,
     control_policy_from_json,    
     aggregation_from_json,
@@ -12,7 +12,7 @@ def test_data_graph():
     test_data_folder = pathlib.Path(__file__).parent / "data"
     # Ambient statistics
     
-    discrete_ambient_statistics = ambient_statistics_from_json(
+    discrete_ambient_statistics = statistics_from_json(
         json_path=(test_data_folder / "discrete_ambient_statistics.json"))
     # Control policy
     discrete_control_policy = control_policy_from_json(

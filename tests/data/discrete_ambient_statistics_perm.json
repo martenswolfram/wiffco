@@ -1,0 +1,14 @@
+{
+    "name": "discrete_ambient_statistics",
+    "statistics_type": "discrete_statistics",
+    "statistics_params":{
+        "ambient_variables":  ["wind_direction", "wind_speed",  "electricity_price"],
+        "support_points":    [[               0,           10,                    7],
+                              [              60,           20,                    5],
+                              [             120,           30,                    2],
+                              [             180,           20,                    5],
+                              [             240,           10,                    5],
+                              [             300,            5,                    7]],
+        "prevalence": [0.01, 0.1, 0.19,  0.4, 0.25, 0.05]
+    }
+}

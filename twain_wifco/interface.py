@@ -1,6 +1,10 @@
-from typing import Dict, List, Union, Set, TypeVar
+from typing import List, Union, Set, TypeVar
+import numpy as np
 from abc import ABC, abstractmethod
 from enum import Enum
+
+def argsort_enum_list(enum_list: List[Enum]):
+    return np.argsort([elem.value for elem in np.array(enum_list)])
 
 class Ambient(Enum):
     WIND_SPEED = "wind_speed"
@@ -69,6 +73,25 @@ class Component(ABC):
             msg = (f"Insufficient input variables for component '{self.component_name}'. "
                    f"Missing variable(s): {[var.value for var in (self.input_variables - inputs)]}")
             raise ValueError(msg)
+        
+    def equals(self, other) -> bool:
+        """Generic type and name check; delegate detailed comparison to subclass."""
+        if not isinstance(other, self.__class__):
+            return False
+
+        if (self.component_name != other.component_name or \
+            self.input_variables != other.input_variables or \
+            self.output_variables != other.output_variables):
+            return False
+
+        return self._equals_specific(other)
+    
+    def __eq__(self, other):
+        return self.equals(other)
+
+    @abstractmethod
+    def _equals_specific(self, other) -> bool:
+        pass
 
 def validate_data_flow(components: List[Component]):
     current_out = set()

@@ -1,0 +1,20 @@
+{
+    "name": "discrete_control_policy",
+    "policy_type": "discrete_policy",
+    "policy_params":{
+        "ambient_variables":           ["wind_direction", "wind_speed", "electricity_price"],
+        "ambient_conditions_support": [[               0,           10,                   7],
+                                       [              60,           20,                   5],
+                                       [             180,           20,                   5],
+                                       [             120,           30,                   2],
+                                       [             240,           10,                   5],
+                                       [             300,            5,                   7]],
+        "control_variables":  [ "yaw_steering", "power_regulation"],
+        "control_setpoints": [[              5,                  1],
+                              [              6,                  2],
+                              [              8,                  4],
+                              [              7,                  3], 
+                              [              9,                  3],
+                              [             10,                  2]]
+    }
+}

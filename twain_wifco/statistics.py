@@ -26,6 +26,14 @@ class SystematicSample:
             sample_dict = {var: values[m] for m, var in enumerate(self.support_variables)}
             yield sample_dict
 
+    def discrete_statistics(self):
+        discrete_statistics_params =  DiscreteStatisticsParams(
+            support_variables=self.support_variables,
+            prevalence=self.normalized_weights,
+            support_points=self.support_values)
+        return DiscreteStatistics(statistics_name="discrete_stats_from_sample",
+                                  statistics_params=discrete_statistics_params)
+
 class Statistics(Component):
     def __init__(self,
                  statistics_name: str,
@@ -40,6 +48,8 @@ class Statistics(Component):
     @abstractmethod
     def expected_value(self):
         pass
+
+
     
 class StatisticsType(Enum):
     DISCRETE_STATISTICS = "discrete_statistics"
@@ -68,7 +78,7 @@ def discrete_statistics_params_from_dict(param_dict: Dict[str, Any]):
             [Ambient(support_var) for support_var in param_dict["ambient_variables"]]
     else:
         support_variables = \
-            [Aggregated(support_var) for support_var in param_dict["agregated_variables"]]
+            [Aggregated(support_var) for support_var in param_dict["aggregated_variables"]]
     prevalence = np.array(param_dict["prevalence"])
     support_points = np.array(param_dict["support_points"])
     if support_points.shape[1] != len(support_variables):
@@ -114,3 +124,9 @@ class DiscreteStatistics(Statistics):
         expectation = self.ordered_prevalence @ self.ordered_support_points
         return {supp_var: val for supp_var, val in zip(self.support_variables, expectation)}
 
+    def _equals_specific(self, other: "DiscreteStatistics") -> bool:
+        if not set(self.support_variables) == set(other.support_variables):
+            return False
+        perm_other = [other.support_variables.index(label) for label in self.support_variables]
+        return np.array_equal(self.ordered_prevalence, other.ordered_prevalence) and \
+            np.array_equal(self.ordered_support_points, other.ordered_support_points[:, perm_other])

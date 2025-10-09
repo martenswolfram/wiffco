@@ -97,3 +97,5 @@ class SimpleProduct(Aggregation):
                 np.prod([control_setpoints[ctrl_var] for ctrl_var in mapping.from_control])
         return aggregated_output
     
+    def _equals_specific(self, other) -> bool:
+        raise NotImplementedError("SimpleProduct: _equals_specific not implemented.")

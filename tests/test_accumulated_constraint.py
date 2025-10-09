@@ -24,7 +24,10 @@ def test_linear_constraint():
     assert constraint_evals.keys() == set([AccumulatedMetric.ACCRUED_DAMAGE])
     assert constraint_evals[AccumulatedMetric.ACCRUED_DAMAGE].upper_diff == pytest.approx(-200)
     assert constraint_evals[AccumulatedMetric.ACCRUED_DAMAGE].lower_diff is None
-        
+
+    # # scipy constraint:
+    # compute_acc_metrics_fun = lambda x: 
+    # scipy_constraint = linear_accumulated_constraint.scipy_constraint(compute_acc_metrics_fun=compute_acc_metrics_fun)
     
 
     

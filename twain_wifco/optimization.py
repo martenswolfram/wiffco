@@ -1,6 +1,8 @@
-from typing import Dict, Any, List
+from typing import Dict, Any
 from abc import ABC, abstractmethod
+from copy import deepcopy
 import numpy as np
+from scipy.optimize import minimize
 import itertools
 from enum import Enum
 from twain_wifco.interface import Ambient, Control, AccumulatedMetric
@@ -18,6 +20,26 @@ from twain_wifco.metrics_accumulation import MetricsAccumulation
 from twain_wifco.accumulated_constraint import AccumulatedConstraint
 from twain_wifco.multi_metrics_reduction import MultiMetricsReduction
 
+class AccMetricsEvaluationCache:
+    def __init__(self,
+                 ambient_condition_statistics: Statistics,
+                 control_policy: ControlPolicy,
+                 duration: int,
+                 acc_metrics: Dict[AccumulatedMetric, float]):
+        self.ambient_condition_statistics = deepcopy(ambient_condition_statistics)
+        self.control_policy = deepcopy(control_policy)
+        self.duration = duration
+        self.acc_metrics = deepcopy(acc_metrics)
+
+    def matches(self,
+                ambient_condition_statistics: Statistics,
+                control_policy: ControlPolicy,
+                duration: int):
+        return False
+        return self.duration == duration and \
+            self.control_policy == control_policy and \
+            self.ambient_condition_statistics == ambient_condition_statistics
+
 class ControlEvaluationSystem:
     def __init__(self,
                  name: str, 
@@ -26,12 +48,17 @@ class ControlEvaluationSystem:
                  metrics_accumulation: MetricsAccumulation,
                  accumulated_constraint: AccumulatedConstraint,
                  multi_metrics_reduction: MultiMetricsReduction):
+        
+        # Parameters
         self.name = name
         self.plant_model = plant_model
         self.aggregation = aggregation
         self.metrics_accumulation = metrics_accumulation
         self.accumulated_constraint = accumulated_constraint
         self.multi_metrics_reduction = multi_metrics_reduction
+
+        # Cache
+        self.acc_metrics_eval_cache = None
 
     def evaluate_ambient_condition(self,
                                    ambient_condition: Dict[Ambient, float],
@@ -43,9 +70,95 @@ class ControlEvaluationSystem:
         return self.aggregation.compute_aggregate(model_output=model_output,
                                                   ambient_condition=ambient_condition,
                                                   control_setpoints=control_setpoints)
+    
+    def expected_acc_metrics(self,
+                             ambient_condition_statistics: Statistics,
+                             control_policy: ControlPolicy,
+                             duration: int):
+        
+        if self.acc_metrics_eval_cache is not None and \
+            self.acc_metrics_eval_cache.matches(
+                ambient_condition_statistics=ambient_condition_statistics,
+                control_policy=control_policy,
+                duration=duration):
+            return self.acc_metrics_eval_cache.acc_metrics
+        
+        ambient_condition_sample = ambient_condition_statistics.systematic_sample()
+
+        aggregated_variables = self.aggregation.output_variables
+        aggregated_support_values = np.empty(shape=(ambient_condition_sample.N, len(aggregated_variables)))
+        for i, ambient_condition in enumerate(ambient_condition_sample):
+            control_setpoints = control_policy.get_control_setpoints(ambient_condition=ambient_condition)
+            model_output = self.plant_model.evaluate(meteorological_condition=ambient_condition,
+                                                     control_input=control_setpoints)
+            aggregated = self.aggregation.compute_aggregate(model_output=model_output,
+                                                            ambient_condition=ambient_condition,
+                                                            control_setpoints=control_setpoints)
+            aggregated_support_values[i, :] = [aggregated[aggr_var] for aggr_var in aggregated_variables]
+
+        discrete_statistics_params = DiscreteStatisticsParams(
+            support_variables=aggregated_variables,
+            prevalence = ambient_condition_sample.normalized_weights,
+            support_points=aggregated_support_values)
+        
+        new_name = ambient_condition_statistics.component_name + "_transformed_to_aggregated"
+        discrete_aggregate_statistics = DiscreteStatistics(statistics_name=new_name,
+                                                           statistics_params=discrete_statistics_params)
+
+        expected_acc_metrics = self.metrics_accumulation.expected_value(
+            aggregate_statistics=discrete_aggregate_statistics,
+            duration=duration)
+        
+        # Cache result
+        self.acc_metrics_eval_cache = AccMetricsEvaluationCache(
+            ambient_condition_statistics=ambient_condition_statistics,
+            control_policy=control_policy,
+            duration=duration,
+            acc_metrics=expected_acc_metrics)
+        
+        return expected_acc_metrics
+    
+
+    def acc_metrics_eval(self,
+                         x,
+                         ambient_condition_statistics: Statistics,
+                         duration: int):
+        ambient_condition_sample = ambient_condition_statistics.systematic_sample()
+        num_ambient_conditions = ambient_condition_sample.N
+        ctrl_vars = list(self.plant_model.input_of_type(t=Control))
+        num_ctrls = len(ctrl_vars)        
+        
+        # Create discrete control policy
+        amb_cond_ctrl_setpoints = np.reshape(x, shape=(num_ambient_conditions, num_ctrls))
+        discrete_control_policy_params = DiscreteControlPolicyParams(
+            ambient_variables=ambient_condition_sample.support_variables,
+            ambient_conditions_support=ambient_condition_sample.support_values,
+            control_inputs=ctrl_vars,
+            control_setpoints=amb_cond_ctrl_setpoints)
+        discrete_control_policy = DiscreteControlPolicy(
+            policy_name="optimized_discrete_control_policy",
+            policy_params=discrete_control_policy_params)
+        # compute expected accumulated metrics
+        return self.expected_acc_metrics(ambient_condition_statistics=ambient_condition_statistics,
+                                            control_policy=discrete_control_policy,
+                                            duration=duration)
+    
+    
+    def discrete_policy_cost_function(self,
+                                      ambient_condition_statistics: Statistics,
+                                      duration: int):
+        
+        return cost_function
+    
+    def scipy_constraints(self,
+                          ambient_condition_statistics: Statistics,
+                          duration: int):
+        pass
+        
         
 class OptimizationMethod(Enum):
     GRID_SEARCH = "grid_search"
+    SIMULTANEOUS_OPTIMIZATION = "simultaneous_optimization"
     LAGRANGIAN_RELAXATION = "lagrangian_relaxation"
 
 class ControlPolicyOptimization(ABC):
@@ -168,6 +281,10 @@ class GridSearch(ControlPolicyOptimization):
                                                                      control_setpoints=amb_cond_ctrl_setpoints)
         return DiscreteControlPolicy(policy_name="optimized_discrete_control_policy",
                                      policy_params=discrete_control_policy_params)
+    
+    def _equals_specific(self, other) -> bool:
+        raise NotImplementedError("GridSearch: _equals_specific not implemented.")
+
 
 class SimultaneousOptimizationParams:
     def __init__(self,
@@ -176,12 +293,31 @@ class SimultaneousOptimizationParams:
         self.max_iter = max_iter
         self.num_ambient_conditions = num_ambient_conditions
 
-def simulataneous_optimization_params_from_dict(param_dict: Dict[str, Any]):
+def simultaneous_optimization_params_from_dict(param_dict: Dict[str, Any]):
     num_ambient_conditions = param_dict["num_ambient_conditions"]
     max_iter = param_dict["max_iter"]
     return SimultaneousOptimizationParams(
         num_ambient_conditions=num_ambient_conditions,
         max_iter=max_iter)
+
+class SimultaneousOptimizationManager:
+    def __init__(self,
+                 control_eval_system: ControlEvaluationSystem,
+                 ambient_condition_statistics: Statistics,
+                 duration: int,
+                 control_policy: ControlPolicy):
+        self.control_eval_system = control_eval_system
+        self.ambient_condition_statistics = ambient_condition_statistics
+        self.duration = duration
+        self.control_policy = control_policy
+
+    def acc_metrics_from_x(self, x):
+        self.control_policy.set_from_x_vector(x)
+        return self.control_eval_system.expected_acc_metrics(
+            ambient_condition_statistics=self.ambient_condition_statistics,
+            control_policy=self.control_policy,
+            duration=self.duration)
+
 
 class SimultaneousOptimization(ControlPolicyOptimization):
     def __init__(self,
@@ -197,19 +333,29 @@ class SimultaneousOptimization(ControlPolicyOptimization):
                         duration: int,
                         initial_policy: ControlPolicy | None = None):
         
-        ambient_condition_sample = ambient_condition_statistics.systematic_sample(N=self.num_ambient_conditions)
-        num_ambient_conditions = ambient_condition_sample.N
-        ctrl_vars = list(control_eval_system.plant_model.input_of_type(t=Control))
-        num_ctrls = len(ctrl_vars)
-
-        # define objective function
-        def objective(x: np.ndarray):
-            amb_cond_ctrl_setpoints = np.reshape(x, shape=(num_ambient_conditions, num_ctrls))
-            discrete_control_policy_params = DiscreteControlPolicyParams(
-                ambient_variables=ambient_condition_sample.support_variables,
-                ambient_conditions_support=ambient_condition_sample.support_values,
-                control_inputs=ctrl_vars,
-                control_setpoints=amb_cond_ctrl_setpoints)
-            discrete_control_policy = DiscreteControlPolicy(
-                policy_name="optimized_discrete_control_policy",
-                policy_params=discrete_control_policy_params)
+        # OptimizationManager
+        opt_mgr = SimultaneousOptimizationManager(
+            control_eval_system=control_eval_system,
+            ambient_condition_statistics=ambient_condition_statistics,
+            duration=duration,
+            control_policy=initial_policy)
+        
+        # define cost function
+        cost_function = \
+            opt_mgr.control_eval_system.multi_metrics_reduction.cost_function(
+                eval_acc_metrics_from_x=opt_mgr.acc_metrics_from_x)
+            
+        # define constraints
+        constraint = \
+            opt_mgr.control_eval_system.accumulated_constraint.scipy_constraint(
+                eval_acc_metrics_from_x=opt_mgr.acc_metrics_from_x)
+        
+        x0 = initial_policy.get_x_vector()
+        minimize(cost_function, x0, method='trust-constr',
+               constraints=[constraint],
+               options={'verbose': 1})
+        
+        return opt_mgr.control_policy
+                        
+    def _equals_specific(self, other) -> bool:
+        raise NotImplementedError("SimultaneousOptimization: _equals_specific not implemented.")

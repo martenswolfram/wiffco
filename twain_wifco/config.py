@@ -1,6 +1,5 @@
 import json
 import pathlib
-from typing import Dict, Any
 from twain_wifco.plant_model import (
     ModelType,
     independent_cubic_interp_params_from_dict,
@@ -33,7 +32,9 @@ from twain_wifco.optimization import (
     ControlEvaluationSystem,
     OptimizationMethod,
     grid_search_params_from_dict,
-    GridSearch)
+    GridSearch,
+    simultaneous_optimization_params_from_dict,
+    SimultaneousOptimization)
 
 
 def parse_json_file(path):
@@ -41,7 +42,7 @@ def parse_json_file(path):
         data_dict = json.load(json_file)
         return data_dict
 
-def ambient_statistics_from_json(json_path: pathlib.Path):
+def statistics_from_json(json_path: pathlib.Path):
     param_dict = parse_json_file(path=json_path)
     statistics_name = param_dict["name"]
     statistics_type = StatisticsType(param_dict["statistics_type"])
@@ -50,7 +51,7 @@ def ambient_statistics_from_json(json_path: pathlib.Path):
         return DiscreteStatistics(statistics_name=statistics_name,
                                   statistics_params=params)
     else:
-        raise NotImplementedError("Only discrete_ambient_statistics implemented.")
+        raise NotImplementedError("Only discrete_statistics implemented.")
 
 def plant_model_from_json(json_path: pathlib.Path):
     param_dict = parse_json_file(path=json_path)
@@ -163,6 +164,10 @@ def control_optimization_from_json(json_path: pathlib.Path):
         params = grid_search_params_from_dict(param_dict=param_dict["optimization_params"])
         return GridSearch(optimization_name=optimization_name,
                           optimization_params=params)
+    elif optimization_method == OptimizationMethod.SIMULTANEOUS_OPTIMIZATION:
+        params = simultaneous_optimization_params_from_dict(param_dict=param_dict["optimization_params"])
+        return SimultaneousOptimization(optimization_name=optimization_name,
+                                        optimization_params=params)
     else:
         raise NotImplementedError("Only grid-search optimization implemented.")
 

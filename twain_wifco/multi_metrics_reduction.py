@@ -1,6 +1,5 @@
-from typing import Dict, Any, Set
+from typing import Dict, Any
 from abc import abstractmethod
-import numpy as np
 from enum import Enum
 from twain_wifco.interface import (
     Component,
@@ -22,6 +21,17 @@ class MultiMetricsReduction(Component):
         self._validate_inputs(inputs=acc_metrics.keys())
 
         return self._evaluate(acc_metrics=acc_metrics)
+    
+    def cost_function(self, eval_acc_metrics_from_x):
+        
+        def eval_cost(x):
+            acc_metrics_eval = eval_acc_metrics_from_x(x)            
+            result = self.evaluate(acc_metrics=acc_metrics_eval)
+            if self.maximize:
+                return - result
+            else:
+                return result
+        return eval_cost
             
     @abstractmethod
     def _evaluate(self,
@@ -61,3 +71,6 @@ class ScalarWeighting(MultiMetricsReduction):
     def _evaluate(self,
                   acc_metrics: Dict[AccumulatedMetric, float]):
         return sum(weight * acc_metrics[metric] for metric, weight in self.metric_weights.items())
+    
+    def _equals_specific(self, other) -> bool:
+        raise NotImplementedError("ScalarWeighting: _equals_specific not implemented.")

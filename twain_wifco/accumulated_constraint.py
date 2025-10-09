@@ -1,6 +1,7 @@
 from typing import Dict, Any, Set
 from abc import abstractmethod
 import numpy as np
+from scipy.optimize import NonlinearConstraint
 from enum import Enum
 from twain_wifco.interface import (
     Component,
@@ -31,10 +32,14 @@ class AccumulatedConstraint(Component):
         self._validate_inputs(inputs=acc_metrics.keys())
 
         return self._evaluate(acc_metrics=acc_metrics)
-            
+    
     @abstractmethod
     def _evaluate(self,
                   acc_metrics: Dict[AccumulatedMetric, float]) -> Dict[AccumulatedMetric, ConstraintEval]:
+        pass
+
+    @abstractmethod
+    def scipy_constraint(self, eval_acc_metrics_from_x):
         pass
 
 class AccumulatedConstraintType(Enum):
@@ -98,3 +103,27 @@ class SeparateLinearConstraints(AccumulatedConstraint):
             constraint_evals[acc_metric] = ConstraintEval(lower_diff=lower_diff,
                                                           upper_diff=upper_diff)
         return constraint_evals
+
+    def scipy_constraint(self, eval_acc_metrics_from_x):
+        
+        acc_metrics = list(self.constraint_mappings.keys())
+        def eval_nl_constraints(x):
+            acc_metrics_eval = eval_acc_metrics_from_x(x)
+            return np.array(list(acc_metrics_eval[acc_metric] for acc_metric in acc_metrics))
+        
+        lower_bound_list = []
+        upper_bound_list = []
+        for acc_metric in acc_metrics:
+            lb = self.constraint_mappings[acc_metric].lower_bound
+            lower_bound_list.append(lb if lb is not None else -np.inf)
+            ub = self.constraint_mappings[acc_metric].upper_bound
+            upper_bound_list.append(ub if ub is not None else np.inf)
+
+        lower_bound = np.array(lower_bound_list)
+        upper_bound = np.array(upper_bound_list)
+        return NonlinearConstraint(fun=eval_nl_constraints,
+                                   lb=lower_bound,
+                                   ub=upper_bound)
+
+    def _equals_specific(self, other) -> bool:
+        raise NotImplementedError("SeparateLinearConstraints: _equals_specific not implemented.")

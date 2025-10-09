@@ -1,6 +1,4 @@
-from typing import Dict, List, Union, Set
-from abc import ABC, abstractmethod
-from enum import Enum
+from typing import List
 from twain_wifco.interface import Component
 from twain_wifco.statistics import Statistics
 from twain_wifco.control_input import ControlPolicy
@@ -9,7 +7,7 @@ from twain_wifco.aggregation import Aggregation
 from twain_wifco.metrics_accumulation import MetricsAccumulation
 
 
-def validate_inputs(sources: Set[Component],
+def validate_inputs(sources: List[Component],
                     target: Component):
     available_inputs_list = [out_var for source in sources for out_var in source.output_variables]
     available_inputs = set(available_inputs_list)
@@ -29,15 +27,15 @@ def validate_data_graph(statistics: Statistics,
                         aggregation: Aggregation,
                         metrics_accumulation: MetricsAccumulation):
     # Input for control policy
-    validate_inputs(sources=set([statistics]),
+    validate_inputs(sources=[statistics],
                     target=control_policy)
     # Input for plant model
-    validate_inputs(sources=set([statistics, control_policy]),
+    validate_inputs(sources=[statistics, control_policy],
                     target=plant_model)
     # Input for aggregation
-    validate_inputs(sources=set([statistics, control_policy, plant_model]),
+    validate_inputs(sources=[statistics, control_policy, plant_model],
                     target=aggregation)
     # Input for metrics accumulation
-    validate_inputs(sources=set([aggregation]),
+    validate_inputs(sources=[aggregation],
                     target=metrics_accumulation)
     

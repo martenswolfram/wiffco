@@ -1,15 +1,13 @@
 import pathlib
 import pytest
 import numpy as np
-import itertools
 from twain_wifco.config import (
     control_evaluation_system_from_json,
     control_optimization_from_json,
-    ambient_statistics_from_json)
+    statistics_from_json)
 from twain_wifco.interface import (
     Control,
     AccumulatedMetric)
-from twain_wifco.metrics_accumulation import ambient_to_discrete_aggregate_statistics
 from twain_wifco.accumulated_constraint import SeparateLinearConstraints
 
 test_data_folder = pathlib.Path(__file__).parent / "data"
@@ -35,7 +33,7 @@ def test_grid_search():
     
     # Ambient conditions
     json_path = test_data_folder / "discrete_ambient_statistics.json"
-    ambient_statistics = ambient_statistics_from_json(json_path=json_path)
+    ambient_statistics = statistics_from_json(json_path=json_path)
     
     # Optimization
     duration = 20
@@ -44,17 +42,18 @@ def test_grid_search():
                                                  duration=duration)
     
     # Evaluate result
-    # Aggregate statistics
-    aggregate_statistics = ambient_to_discrete_aggregate_statistics(
+    expected_accumulated_metrics = control_evaluation_system.expected_acc_metrics(
         ambient_condition_statistics=ambient_statistics,
         control_policy=optimal_policy,
-        plant_model=control_evaluation_system.plant_model,
-        aggregation=control_evaluation_system.aggregation)
-    
-    # Metrics accumulation
-    expected_accumulated_metrics = control_evaluation_system.metrics_accumulation.expected_value(
-        aggregate_statistics=aggregate_statistics,
         duration=duration)
+    
+    # Test cache
+    expected_accumulated_metrics = control_evaluation_system.expected_acc_metrics(
+        ambient_condition_statistics=ambient_statistics,
+        control_policy=optimal_policy,
+        duration=duration)
+    
+    
     optimal_revenue = expected_accumulated_metrics[AccumulatedMetric.REVENUE]
     assert optimal_revenue > 0
     linear_acc_contraints: SeparateLinearConstraints = control_evaluation_system.accumulated_constraint
@@ -66,33 +65,20 @@ def test_grid_search():
     for control_setpoint in optimal_policy.control_setpoints:
         # Evaluate perturbed result (ramp up control)
         control_setpoint += 1
-        # Aggregate statistics
-        aggregate_statistics = ambient_to_discrete_aggregate_statistics(
+        expected_accumulated_metrics = control_evaluation_system.expected_acc_metrics(
             ambient_condition_statistics=ambient_statistics,
             control_policy=optimal_policy,
-            plant_model=control_evaluation_system.plant_model,
-            aggregation=control_evaluation_system.aggregation)
-        
-        # Metrics accumulation
-        expected_accumulated_metrics = control_evaluation_system.metrics_accumulation.expected_value(
-            aggregate_statistics=aggregate_statistics,
             duration=duration)
+            
         # Constraint violated
         assert expected_accumulated_metrics[AccumulatedMetric.ACCRUED_DAMAGE] > \
             linear_acc_contraints.constraint_mappings[AccumulatedMetric.ACCRUED_DAMAGE].upper_bound
 
         # Evaluate perturbed result (ramp down control)
         control_setpoint -= 2
-        # Aggregate statistics
-        aggregate_statistics = ambient_to_discrete_aggregate_statistics(
+        expected_accumulated_metrics = control_evaluation_system.expected_acc_metrics(
             ambient_condition_statistics=ambient_statistics,
             control_policy=optimal_policy,
-            plant_model=control_evaluation_system.plant_model,
-            aggregation=control_evaluation_system.aggregation)
-        
-        # Metrics accumulation
-        expected_accumulated_metrics = control_evaluation_system.metrics_accumulation.expected_value(
-            aggregate_statistics=aggregate_statistics,
             duration=duration)
         # Sub-optimal result
         assert expected_accumulated_metrics[AccumulatedMetric.REVENUE] < optimal_revenue
@@ -100,3 +86,16 @@ def test_grid_search():
         # back to original
         control_setpoint += 1
 
+    json_path = test_data_folder / "simultaneous_optimization.json"
+    simultaneous_optimization = control_optimization_from_json(json_path=json_path)
+    optimal_policy = simultaneous_optimization.optimize_policy(
+        control_eval_system=control_evaluation_system,
+        ambient_condition_statistics=ambient_statistics,
+        duration=duration,
+        initial_policy=optimal_policy)
+    
+    expected_accumulated_metrics = control_evaluation_system.expected_acc_metrics(
+        ambient_condition_statistics=ambient_statistics,
+        control_policy=optimal_policy,
+        duration=duration)
+    pass
