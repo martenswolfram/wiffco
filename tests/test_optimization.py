@@ -105,7 +105,8 @@ def test_simultaneous_optimization():
     expected_accumulated_metrics = control_evaluation_system.expected_acc_metrics(
         ambient_condition_statistics=ambient_statistics,
         control_policy=optimal_policy,
-        duration=duration)
+        duration=duration,
+        max_num_amb_cond=simultaneous_optimization.max_num_amb_cond)
         
     optimal_revenue = expected_accumulated_metrics[AccumulatedMetric.REVENUE]
     assert optimal_revenue > 0

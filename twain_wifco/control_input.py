@@ -7,7 +7,8 @@ from twain_wifco.interface import (
     ComponentParams,
     Ambient,
     Control,
-    argsort_enum_list)
+    argsort_enum_list,
+    get_abs_tol)
 
 class ControlPolicy(Component):
     def __init__(self,
@@ -82,19 +83,21 @@ class DiscreteControlPolicy(ControlPolicy):
         
         # Lexicographic sort to allow comparison
         amb_sort = argsort_enum_list(policy_params.ambient_variables)
-        self.ambient_variables = [policy_params.ambient_variables[ind] for ind in amb_sort]
+        self.ambient_variables = list(policy_params.ambient_variables[ind] for ind in amb_sort)
         lexsort_index = np.lexsort(policy_params.ambient_conditions_support[:, amb_sort].T[::-1])
         self.ambient_conditions_support = policy_params.ambient_conditions_support[lexsort_index][:, amb_sort]
         ctrl_sort = argsort_enum_list(policy_params.control_inputs)
         self.control_inputs = [policy_params.control_inputs[ind] for ind in ctrl_sort] 
         self.control_setpoints = policy_params.control_setpoints[lexsort_index][:, ctrl_sort]
+        self.amb_abs_tols = list(get_abs_tol(amb_var) for amb_var in self.ambient_variables)
         
     def _get_control_setpoints(self,
                                ambient_condition: Dict[Ambient, float]):
         ambient_variables = np.array([ambient_condition[amb_var] for amb_var in self.ambient_variables])
         # Find correct support point
         mask = np.all(np.isclose(self.ambient_conditions_support,
-                                 ambient_variables),
+                                 ambient_variables,
+                                 atol=self.amb_abs_tols),
                                  axis=1)
         row_index = np.where(mask)[0]
         if not len(row_index):
