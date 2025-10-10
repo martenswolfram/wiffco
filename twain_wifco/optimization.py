@@ -239,9 +239,6 @@ class GridSearch(ControlPolicyOptimization):
                                                                      control_setpoints=amb_cond_ctrl_setpoints)
         return DiscreteControlPolicy(policy_name="optimized_discrete_control_policy",
                                      policy_params=discrete_control_policy_params)
-    
-    def _equals_specific(self, other) -> bool:
-        raise NotImplementedError("GridSearch: _equals_specific not implemented.")
 
 class SimultaneousOptimizationParams:
     def __init__(self,
@@ -337,6 +334,4 @@ class SimultaneousOptimization(ControlPolicyOptimization):
                options={'verbose': 1})
         
         return opt_mgr.control_policy
-                        
-    def _equals_specific(self, other) -> bool:
-        raise NotImplementedError("SimultaneousOptimization: _equals_specific not implemented.")
+     

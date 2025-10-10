@@ -86,7 +86,4 @@ class DiscountedIntegration(MetricsAccumulation):
                 accumulated_metrics[acc_metric] = aggregate_expectation[integration_mapping.aggregate] * duration_discount_factor
         
         return accumulated_metrics
-
-    def _equals_specific(self, other) -> bool:
-        raise NotImplementedError("DiscountedIntegration: _equals_specific not implemented.")
  

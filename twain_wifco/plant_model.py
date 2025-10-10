@@ -128,6 +128,3 @@ class IndependentCubicInterpolation(PlantModel):
             model_outputs[out] = model.evaluate(meteorological_condition=meteorological_condition,
                                                 control=control_input)
         return model_outputs
-    
-    def _equals_specific(self, other) -> bool:
-        raise NotImplementedError("IndependentCubicInterpolation: _equals_specific not implemented.")

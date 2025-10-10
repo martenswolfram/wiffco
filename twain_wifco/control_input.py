@@ -7,7 +7,6 @@ from twain_wifco.interface import (
     ComponentParams,
     Ambient,
     Control,
-    argsort_enum_list,
     get_abs_tol)
 
 class ControlPolicy(Component):
@@ -81,14 +80,10 @@ class DiscreteControlPolicy(ControlPolicy):
         super().__init__(policy_name=policy_name,
                          policy_params=policy_params)
         
-        # Lexicographic sort to allow comparison
-        amb_sort = argsort_enum_list(policy_params.ambient_variables)
-        self.ambient_variables = list(policy_params.ambient_variables[ind] for ind in amb_sort)
-        lexsort_index = np.lexsort(policy_params.ambient_conditions_support[:, amb_sort].T[::-1])
-        self.ambient_conditions_support = policy_params.ambient_conditions_support[lexsort_index][:, amb_sort]
-        ctrl_sort = argsort_enum_list(policy_params.control_inputs)
-        self.control_inputs = [policy_params.control_inputs[ind] for ind in ctrl_sort] 
-        self.control_setpoints = policy_params.control_setpoints[lexsort_index][:, ctrl_sort]
+        self.ambient_variables = policy_params.ambient_variables
+        self.ambient_conditions_support = policy_params.ambient_conditions_support
+        self.control_inputs = policy_params.control_inputs
+        self.control_setpoints = policy_params.control_setpoints
         self.amb_abs_tols = list(get_abs_tol(amb_var) for amb_var in self.ambient_variables)
         
     def _get_control_setpoints(self,
@@ -104,17 +99,6 @@ class DiscreteControlPolicy(ControlPolicy):
             raise ValueError("DiscreteControlPolicy: Ambient condition not found in support points.")
 
         return {ctrl_var: ctrl_val for ctrl_var, ctrl_val in zip(self.control_inputs, self.control_setpoints[row_index[0], :])}
-    
-    def _equals_specific(self, other: "DiscreteControlPolicy") -> bool:
-        if not set(self.control_inputs) == set(other.control_inputs):
-            return False
-        perm_other_controls = [other.control_inputs.index(label) for label in self.control_inputs]
-        if not set(self.ambient_variables) == set(other.ambient_variables):
-            return False
-        perm_other_ambient = [other.ambient_variables.index(label) for label in self.ambient_variables]
-        is_equal = np.array_equal(self.control_setpoints, other.control_setpoints[:, perm_other_controls]) and \
-            np.array_equal(self.ambient_conditions_support, other.ambient_conditions_support[:, perm_other_ambient])
-        return is_equal
 
     def get_x_vector(self):
         # return flattened control setpoints

@@ -123,10 +123,3 @@ class DiscreteStatistics(Statistics):
     def expected_value(self):
         expectation = self.ordered_prevalence @ self.ordered_support_points
         return {supp_var: val for supp_var, val in zip(self.support_variables, expectation)}
-
-    def _equals_specific(self, other: "DiscreteStatistics") -> bool:
-        if not set(self.support_variables) == set(other.support_variables):
-            return False
-        perm_other = [other.support_variables.index(label) for label in self.support_variables]
-        return np.array_equal(self.ordered_prevalence, other.ordered_prevalence) and \
-            np.array_equal(self.ordered_support_points, other.ordered_support_points[:, perm_other])

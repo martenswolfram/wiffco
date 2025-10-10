@@ -124,6 +124,3 @@ class SeparateLinearConstraints(AccumulatedConstraint):
         return NonlinearConstraint(fun=eval_nl_constraints,
                                    lb=lower_bound,
                                    ub=upper_bound)
-
-    def _equals_specific(self, other) -> bool:
-        raise NotImplementedError("SeparateLinearConstraints: _equals_specific not implemented.")

@@ -59,10 +59,3 @@ def test_statistics():
                       Ambient.WIND_DIRECTION:    expected_vector[1],
                       Ambient.ELECTRICITY_PRICE: expected_vector[2]}
     assert discrete_ambient_statistics.expected_value() == pytest.approx(expected_value)
-
-    # Comparison
-    json_path = test_data_folder / "discrete_ambient_statistics_perm.json"
-    discrete_ambient_statistics_permuted = statistics_from_json(json_path=json_path)
-
-    assert discrete_ambient_statistics_permuted == discrete_ambient_statistics
-    

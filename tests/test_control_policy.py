@@ -10,18 +10,17 @@ def test_discrete_control_policy():
     json_path = test_data_folder / "discrete_control_policy.json"
     simple_control_policy = control_policy_from_json(json_path=json_path)
     
-    ambient_conditions_support = np.array([[ 2, 120, 30 ],
-                                           [ 5,  60, 20 ],
-                                           [ 5, 180, 20 ],
-                                           [ 5, 240, 10 ],
-                                           [ 7,   0, 10 ],
-                                           [ 7, 300,  5 ],
-                                           ])
+    ambient_conditions_support = np.array([[ 10,    0,  7],
+                                           [ 20,   60,  5],
+                                           [ 30,  120,  2],
+                                           [ 20,  180,  5],
+                                           [ 10,  240,  5],
+                                           [  5,  300,  7]])
     
     # Initialization
     assert simple_control_policy.component_name == "discrete_control_policy"
     assert simple_control_policy.ambient_variables == \
-        [Ambient.ELECTRICITY_PRICE, Ambient.WIND_DIRECTION, Ambient.WIND_SPEED]
+        [Ambient.WIND_SPEED, Ambient.WIND_DIRECTION, Ambient.ELECTRICITY_PRICE]
     assert simple_control_policy.ambient_conditions_support == \
         pytest.approx(ambient_conditions_support)
     assert simple_control_policy.control_inputs == \
@@ -47,8 +46,3 @@ def test_discrete_control_policy():
     control_setpoints = simple_control_policy.get_control_setpoints(ambient_condition)
     assert control_setpoints == pytest.approx({Control.POWER_REGULATION: 4,
                                                Control.YAW_STEERING: 8})
-
-    # Comparison
-    json_path = test_data_folder / "discrete_control_policy_perm.json"
-    simple_control_policy_permuted = control_policy_from_json(json_path=json_path)
-    assert simple_control_policy_permuted == simple_control_policy

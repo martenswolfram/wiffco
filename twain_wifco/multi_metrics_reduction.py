@@ -72,5 +72,3 @@ class ScalarWeighting(MultiMetricsReduction):
                   acc_metrics: Dict[AccumulatedMetric, float]):
         return sum(weight * acc_metrics[metric] for metric, weight in self.metric_weights.items())
     
-    def _equals_specific(self, other) -> bool:
-        raise NotImplementedError("ScalarWeighting: _equals_specific not implemented.")
