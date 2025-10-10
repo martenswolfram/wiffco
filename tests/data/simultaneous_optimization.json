@@ -1,8 +1,8 @@
 {
-    "name": "grid_search",
+    "name": "simultaneous_optimization",
     "optimization_method": "simultaneous_optimization", 
     "optimization_params": {
-        "num_ambient_conditions": null,
-        "max_iter": null
+        "max_num_ambient_conditions": 10,
+        "max_iter": 1000
     }
 }

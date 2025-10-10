@@ -2,7 +2,7 @@
     "name": "grid_search",
     "optimization_method": "grid_search", 
     "optimization_params": {
-        "num_ambient_conditions": 6,
+        "max_num_ambient_conditions": 6,
         "control_setpoints": {
             "power_regulation": [0, 1, 2, 3, 4]
         }

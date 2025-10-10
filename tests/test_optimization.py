@@ -7,7 +7,11 @@ from twain_wifco.config import (
     statistics_from_json)
 from twain_wifco.interface import (
     Control,
-    AccumulatedMetric)
+    AccumulatedMetric,
+    get_abs_tol)
+from twain_wifco.optimization import (
+    GridSearch,
+    SimultaneousOptimization)
 from twain_wifco.accumulated_constraint import SeparateLinearConstraints
 
 test_data_folder = pathlib.Path(__file__).parent / "data"
@@ -17,26 +21,28 @@ def test_control_evaluation_system():
     control_evaluation_system = control_evaluation_system_from_json(json_path=json_path)
     assert control_evaluation_system.name == "discrete_evaluation_system"
 
+# System
+json_path = test_data_folder / "control_evaluation_system.json"
+control_evaluation_system = control_evaluation_system_from_json(json_path=json_path)
+
+# Ambient conditions
+json_path = test_data_folder / "discrete_ambient_statistics.json"
+ambient_statistics = statistics_from_json(json_path=json_path)
+
+# Duration
+duration = 20
+
 def test_grid_search():
     json_path = test_data_folder / "grid_search_optimization.json"
-    grid_search = control_optimization_from_json(json_path=json_path)
+    grid_search: GridSearch = control_optimization_from_json(json_path=json_path)
     
     # Initialization
     assert grid_search.optimization_name == "grid_search"
     assert grid_search.control_setpoints.keys() == set([Control.POWER_REGULATION])
     assert grid_search.control_setpoints[Control.POWER_REGULATION] == pytest.approx(np.array([0, 1, 2, 3, 4]))
-    assert grid_search.num_ambient_conditions == 6
+    assert grid_search.max_num_amb_cond == 6
 
-    # System
-    json_path = test_data_folder / "control_evaluation_system.json"
-    control_evaluation_system = control_evaluation_system_from_json(json_path=json_path)
-    
-    # Ambient conditions
-    json_path = test_data_folder / "discrete_ambient_statistics.json"
-    ambient_statistics = statistics_from_json(json_path=json_path)
-    
     # Optimization
-    duration = 20
     optimal_policy = grid_search.optimize_policy(control_eval_system=control_evaluation_system,
                                                  ambient_condition_statistics=ambient_statistics,
                                                  duration=duration)
@@ -46,14 +52,7 @@ def test_grid_search():
         ambient_condition_statistics=ambient_statistics,
         control_policy=optimal_policy,
         duration=duration)
-    
-    # Test cache
-    expected_accumulated_metrics = control_evaluation_system.expected_acc_metrics(
-        ambient_condition_statistics=ambient_statistics,
-        control_policy=optimal_policy,
-        duration=duration)
-    
-    
+        
     optimal_revenue = expected_accumulated_metrics[AccumulatedMetric.REVENUE]
     assert optimal_revenue > 0
     linear_acc_contraints: SeparateLinearConstraints = control_evaluation_system.accumulated_constraint
@@ -86,16 +85,34 @@ def test_grid_search():
         # back to original
         control_setpoint += 1
 
+
+def test_simultaneous_optimization():
     json_path = test_data_folder / "simultaneous_optimization.json"
-    simultaneous_optimization = control_optimization_from_json(json_path=json_path)
+    simultaneous_optimization: SimultaneousOptimization = control_optimization_from_json(json_path=json_path)
+
+    # Initialization
+    assert simultaneous_optimization.optimization_name == "simultaneous_optimization"
+    assert simultaneous_optimization.max_num_amb_cond == 10
+    assert simultaneous_optimization.max_iter == 1000
+    
+    # Optimization
     optimal_policy = simultaneous_optimization.optimize_policy(
         control_eval_system=control_evaluation_system,
         ambient_condition_statistics=ambient_statistics,
-        duration=duration,
-        initial_policy=optimal_policy)
+        duration=duration)
     
+    # Evaluate result
     expected_accumulated_metrics = control_evaluation_system.expected_acc_metrics(
         ambient_condition_statistics=ambient_statistics,
         control_policy=optimal_policy,
         duration=duration)
+        
+    optimal_revenue = expected_accumulated_metrics[AccumulatedMetric.REVENUE]
+    assert optimal_revenue > 0
+    linear_acc_contraints: SeparateLinearConstraints = control_evaluation_system.accumulated_constraint
+    assert expected_accumulated_metrics[AccumulatedMetric.ACCRUED_DAMAGE] == \
+        pytest.approx(
+        linear_acc_contraints.constraint_mappings[AccumulatedMetric.ACCRUED_DAMAGE].upper_bound,
+        abs=get_abs_tol(data_var=AccumulatedMetric.ACCRUED_DAMAGE))
     pass
+    

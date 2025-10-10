@@ -1,11 +1,16 @@
-from typing import Dict, Any
+from typing import Dict, Any, Tuple
 from abc import ABC, abstractmethod
 from copy import deepcopy
 import numpy as np
 from scipy.optimize import minimize
+from functools import lru_cache
 import itertools
 from enum import Enum
-from twain_wifco.interface import Ambient, Control, AccumulatedMetric
+from twain_wifco.interface import (
+    Ambient,
+    Control,
+    AccumulatedMetric,
+    get_default_value)
 from twain_wifco.statistics import (
     Statistics,
     DiscreteStatisticsParams,
@@ -19,26 +24,6 @@ from twain_wifco.aggregation import Aggregation
 from twain_wifco.metrics_accumulation import MetricsAccumulation
 from twain_wifco.accumulated_constraint import AccumulatedConstraint
 from twain_wifco.multi_metrics_reduction import MultiMetricsReduction
-
-class AccMetricsEvaluationCache:
-    def __init__(self,
-                 ambient_condition_statistics: Statistics,
-                 control_policy: ControlPolicy,
-                 duration: int,
-                 acc_metrics: Dict[AccumulatedMetric, float]):
-        self.ambient_condition_statistics = deepcopy(ambient_condition_statistics)
-        self.control_policy = deepcopy(control_policy)
-        self.duration = duration
-        self.acc_metrics = deepcopy(acc_metrics)
-
-    def matches(self,
-                ambient_condition_statistics: Statistics,
-                control_policy: ControlPolicy,
-                duration: int):
-        return False
-        return self.duration == duration and \
-            self.control_policy == control_policy and \
-            self.ambient_condition_statistics == ambient_condition_statistics
 
 class ControlEvaluationSystem:
     def __init__(self,
@@ -57,9 +42,6 @@ class ControlEvaluationSystem:
         self.accumulated_constraint = accumulated_constraint
         self.multi_metrics_reduction = multi_metrics_reduction
 
-        # Cache
-        self.acc_metrics_eval_cache = None
-
     def evaluate_ambient_condition(self,
                                    ambient_condition: Dict[Ambient, float],
                                    control_setpoints: Dict[Control, float]):
@@ -74,16 +56,10 @@ class ControlEvaluationSystem:
     def expected_acc_metrics(self,
                              ambient_condition_statistics: Statistics,
                              control_policy: ControlPolicy,
-                             duration: int):
+                             duration: int,
+                             max_num_amb_cond: int | None = None):
         
-        if self.acc_metrics_eval_cache is not None and \
-            self.acc_metrics_eval_cache.matches(
-                ambient_condition_statistics=ambient_condition_statistics,
-                control_policy=control_policy,
-                duration=duration):
-            return self.acc_metrics_eval_cache.acc_metrics
-        
-        ambient_condition_sample = ambient_condition_statistics.systematic_sample()
+        ambient_condition_sample = ambient_condition_statistics.systematic_sample(N_max=max_num_amb_cond)
 
         aggregated_variables = self.aggregation.output_variables
         aggregated_support_values = np.empty(shape=(ambient_condition_sample.N, len(aggregated_variables)))
@@ -101,7 +77,7 @@ class ControlEvaluationSystem:
             prevalence = ambient_condition_sample.normalized_weights,
             support_points=aggregated_support_values)
         
-        new_name = ambient_condition_statistics.component_name + "_transformed_to_aggregated"
+        new_name = ""
         discrete_aggregate_statistics = DiscreteStatistics(statistics_name=new_name,
                                                            statistics_params=discrete_statistics_params)
 
@@ -109,21 +85,15 @@ class ControlEvaluationSystem:
             aggregate_statistics=discrete_aggregate_statistics,
             duration=duration)
         
-        # Cache result
-        self.acc_metrics_eval_cache = AccMetricsEvaluationCache(
-            ambient_condition_statistics=ambient_condition_statistics,
-            control_policy=control_policy,
-            duration=duration,
-            acc_metrics=expected_acc_metrics)
-        
         return expected_acc_metrics
     
 
     def acc_metrics_eval(self,
                          x,
                          ambient_condition_statistics: Statistics,
-                         duration: int):
-        ambient_condition_sample = ambient_condition_statistics.systematic_sample()
+                         duration: int,
+                         max_num_amb_cond: int | None = None):
+        ambient_condition_sample = ambient_condition_statistics.systematic_sample(N_max=max_num_amb_cond)
         num_ambient_conditions = ambient_condition_sample.N
         ctrl_vars = list(self.plant_model.input_of_type(t=Control))
         num_ctrls = len(ctrl_vars)        
@@ -140,21 +110,9 @@ class ControlEvaluationSystem:
             policy_params=discrete_control_policy_params)
         # compute expected accumulated metrics
         return self.expected_acc_metrics(ambient_condition_statistics=ambient_condition_statistics,
-                                            control_policy=discrete_control_policy,
-                                            duration=duration)
-    
-    
-    def discrete_policy_cost_function(self,
-                                      ambient_condition_statistics: Statistics,
-                                      duration: int):
-        
-        return cost_function
-    
-    def scipy_constraints(self,
-                          ambient_condition_statistics: Statistics,
-                          duration: int):
-        pass
-        
+                                         control_policy=discrete_control_policy,
+                                         duration=duration,
+                                         max_num_amb_cond=num_ambient_conditions)
         
 class OptimizationMethod(Enum):
     GRID_SEARCH = "grid_search"
@@ -176,17 +134,17 @@ class ControlPolicyOptimization(ABC):
 
 class GridSearchParams:
     def __init__(self,
-                 num_ambient_conditions: int,
+                 max_num_amb_cond: int,
                  control_setpoints: Dict[Control, np.ndarray]):
-        self.num_ambient_conditions = num_ambient_conditions
+        self.max_num_amb_cond = max_num_amb_cond
         self.control_setpoints = control_setpoints
         
 def grid_search_params_from_dict(param_dict: Dict[str, Dict | Any]):
-    num_ambient_conditions = param_dict["num_ambient_conditions"]
+    max_num_amb_cond = param_dict["max_num_ambient_conditions"]
     control_setpoints = {}
     for ctrl_var, setpoints in param_dict["control_setpoints"].items():
         control_setpoints[Control(ctrl_var)] = np.array(setpoints)
-    return GridSearchParams(num_ambient_conditions=num_ambient_conditions,
+    return GridSearchParams(max_num_amb_cond=max_num_amb_cond,
                             control_setpoints=control_setpoints)
 
 
@@ -195,7 +153,7 @@ class GridSearch(ControlPolicyOptimization):
                  optimization_name: str,
                  optimization_params: GridSearchParams):
         super().__init__(optimization_name=optimization_name)
-        self.num_ambient_conditions = optimization_params.num_ambient_conditions
+        self.max_num_amb_cond = optimization_params.max_num_amb_cond
         self.control_setpoints = optimization_params.control_setpoints
 
     def optimize_policy(self,
@@ -205,7 +163,7 @@ class GridSearch(ControlPolicyOptimization):
                         initial_policy: ControlPolicy | None = None):
         
         print(f"GridSearch: Find optimal control policy")
-        ambient_condition_sample = ambient_condition_statistics.systematic_sample(N=self.num_ambient_conditions)
+        ambient_condition_sample = ambient_condition_statistics.systematic_sample(N_max=self.max_num_amb_cond)
         num_ambient_conditions = ambient_condition_sample.N
         ctrl_vars = list(self.control_setpoints.keys())
         ctrl_setpoint_vectors = [
@@ -285,19 +243,18 @@ class GridSearch(ControlPolicyOptimization):
     def _equals_specific(self, other) -> bool:
         raise NotImplementedError("GridSearch: _equals_specific not implemented.")
 
-
 class SimultaneousOptimizationParams:
     def __init__(self,
-                 num_ambient_conditions: int,
+                 max_num_amb_cond: int,
                  max_iter: int):
         self.max_iter = max_iter
-        self.num_ambient_conditions = num_ambient_conditions
+        self.max_num_amb_cond = max_num_amb_cond
 
 def simultaneous_optimization_params_from_dict(param_dict: Dict[str, Any]):
-    num_ambient_conditions = param_dict["num_ambient_conditions"]
+    max_num_amb_cond = param_dict["max_num_ambient_conditions"]
     max_iter = param_dict["max_iter"]
     return SimultaneousOptimizationParams(
-        num_ambient_conditions=num_ambient_conditions,
+        max_num_amb_cond=max_num_amb_cond,
         max_iter=max_iter)
 
 class SimultaneousOptimizationManager:
@@ -305,26 +262,47 @@ class SimultaneousOptimizationManager:
                  control_eval_system: ControlEvaluationSystem,
                  ambient_condition_statistics: Statistics,
                  duration: int,
-                 control_policy: ControlPolicy):
+                 control_policy: ControlPolicy,
+                 max_num_amb_cond: int | None = None):
         self.control_eval_system = control_eval_system
         self.ambient_condition_statistics = ambient_condition_statistics
         self.duration = duration
+        self.max_num_amb_cond = max_num_amb_cond
+        
         self.control_policy = control_policy
+        if self.control_policy is None:
+            self.guess_initial_discrete_policy()
 
-    def acc_metrics_from_x(self, x):
-        self.control_policy.set_from_x_vector(x)
+    @lru_cache(maxsize=None)
+    def acc_metrics_w_cache(self, x_tuple: Tuple[float]):
+        self.control_policy.set_from_x_vector(np.array(x_tuple))
         return self.control_eval_system.expected_acc_metrics(
             ambient_condition_statistics=self.ambient_condition_statistics,
             control_policy=self.control_policy,
-            duration=self.duration)
-
-
+            duration=self.duration,
+            max_num_amb_cond=self.max_num_amb_cond)
+        
+    def guess_initial_discrete_policy(self):
+        
+        amb_cond_sample = self.ambient_condition_statistics.systematic_sample(N_max=self.max_num_amb_cond)
+        ctrl_vars = list(self.control_eval_system.plant_model.input_of_type(t=Control))
+        default_ctrls = list(get_default_value(ctrl_var) for ctrl_var in ctrl_vars)
+        control_setpoints = np.array([default_ctrls] * amb_cond_sample.N)
+        discrete_control_policy_params = DiscreteControlPolicyParams(
+            ambient_variables=amb_cond_sample.support_variables,
+            ambient_conditions_support=amb_cond_sample.support_values,
+            control_inputs=ctrl_vars,
+            control_setpoints=control_setpoints)
+        self.control_policy = DiscreteControlPolicy(
+            policy_name="discrete_policy_opt",
+            policy_params=discrete_control_policy_params)
+            
 class SimultaneousOptimization(ControlPolicyOptimization):
     def __init__(self,
                  optimization_name: str,
                  optimization_params: SimultaneousOptimizationParams):
         super().__init__(optimization_name=optimization_name)
-        self.num_ambient_conditions = optimization_params.num_ambient_conditions
+        self.max_num_amb_cond = optimization_params.max_num_amb_cond
         self.max_iter = optimization_params.max_iter
 
     def optimize_policy(self,
@@ -338,19 +316,22 @@ class SimultaneousOptimization(ControlPolicyOptimization):
             control_eval_system=control_eval_system,
             ambient_condition_statistics=ambient_condition_statistics,
             duration=duration,
-            control_policy=initial_policy)
+            control_policy=initial_policy,
+            max_num_amb_cond=self.max_num_amb_cond)
         
+
+        acc_metrics_w_cache = lambda x : opt_mgr.acc_metrics_w_cache(tuple(x))
         # define cost function
         cost_function = \
             opt_mgr.control_eval_system.multi_metrics_reduction.cost_function(
-                eval_acc_metrics_from_x=opt_mgr.acc_metrics_from_x)
+                eval_acc_metrics_from_x=acc_metrics_w_cache)
             
         # define constraints
         constraint = \
             opt_mgr.control_eval_system.accumulated_constraint.scipy_constraint(
-                eval_acc_metrics_from_x=opt_mgr.acc_metrics_from_x)
+                eval_acc_metrics_from_x=acc_metrics_w_cache)
         
-        x0 = initial_policy.get_x_vector()
+        x0 = opt_mgr.control_policy.get_x_vector()
         minimize(cost_function, x0, method='trust-constr',
                constraints=[constraint],
                options={'verbose': 1})

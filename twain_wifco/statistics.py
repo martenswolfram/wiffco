@@ -42,7 +42,7 @@ class Statistics(Component):
                          component_params=statistics_params)
 
     @abstractmethod
-    def systematic_sample(self, N: int = None) -> SystematicSample:
+    def systematic_sample(self, N_max: int = None) -> SystematicSample:
         pass
 
     @abstractmethod
@@ -104,14 +104,14 @@ class DiscreteStatistics(Statistics):
         self.ordered_support_points = statistics_params.support_points[prevalence_index, :]
         self.ordered_prevalence = statistics_params.prevalence[prevalence_index]
 
-    def systematic_sample(self, N: int = None):
-        if N is None or N >= len(self.ordered_prevalence):
+    def systematic_sample(self, N_max: int = None):
+        if N_max is None or N_max >= len(self.ordered_prevalence):
             return SystematicSample(support_variables=self.support_variables,
                                     support_values=self.ordered_support_points,
                                     normalized_weights=self.ordered_prevalence)    
-        elif 1 <= N < len(self.ordered_prevalence):
-            values = self.ordered_support_points[:N, :]
-            weights = self.ordered_prevalence[:N]
+        elif 1 <= N_max < len(self.ordered_prevalence):
+            values = self.ordered_support_points[:N_max, :]
+            weights = self.ordered_prevalence[:N_max]
             probability_covered = np.sum(weights)
             return SystematicSample(support_variables=self.support_variables,
                                     support_values=values,

@@ -109,8 +109,9 @@ class DiscreteControlPolicy(ControlPolicy):
         if not set(self.ambient_variables) == set(other.ambient_variables):
             return False
         perm_other_ambient = [other.ambient_variables.index(label) for label in self.ambient_variables]
-        return np.array_equal(self.control_setpoints, other.control_setpoints[:, perm_other_controls]) and \
+        is_equal = np.array_equal(self.control_setpoints, other.control_setpoints[:, perm_other_controls]) and \
             np.array_equal(self.ambient_conditions_support, other.ambient_conditions_support[:, perm_other_ambient])
+        return is_equal
 
     def get_x_vector(self):
         # return flattened control setpoints

@@ -33,12 +33,12 @@ def test_statistics():
 
     # Invalid N
     with pytest.raises(ValueError) as excinfo: 
-        discrete_ambient_statistics.systematic_sample(N=0)
+        discrete_ambient_statistics.systematic_sample(N_max=0)
     assert "Invalid number of samples" in str(excinfo.value)
     
     # Sample with larger N specifed
     N = 100
-    sys_sample_larger = discrete_ambient_statistics.systematic_sample(N=N)
+    sys_sample_larger = discrete_ambient_statistics.systematic_sample(N_max=N)
     assert sys_sample_larger.support_variables == discrete_ambient_statistics.support_variables
     assert sys_sample_larger.normalized_weights == pytest.approx(ordered_prevalence)
     assert sys_sample_larger.support_values == pytest.approx(ordered_support_points)
@@ -46,7 +46,7 @@ def test_statistics():
 
     # Sample with smaller N specifed
     N = 4
-    sys_sample_smaller = discrete_ambient_statistics.systematic_sample(N=N)
+    sys_sample_smaller = discrete_ambient_statistics.systematic_sample(N_max=N)
     probability_covered = np.sum(ordered_prevalence[:N])
     assert sys_sample_smaller.support_variables == discrete_ambient_statistics.support_variables
     assert sys_sample_smaller.normalized_weights == pytest.approx(ordered_prevalence[:N] / probability_covered)

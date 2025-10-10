@@ -33,6 +33,28 @@ DataVariable = Union[Ambient,
                       Aggregated,
                       AccumulatedMetric]
 
+def get_default_value(data_var: DataVariable):
+    # TODO: implement in DataVariable class 
+    if data_var == Control.POWER_REGULATION:
+        return 1.0
+    elif data_var == Control.YAW_STEERING:
+        return 0.0
+    else:
+        raise ValueError(f"No default value for data variable '{data_var}'.") 
+
+def get_abs_tol(data_var: DataVariable):
+    # TODO: implement in DataVariable class 
+    if data_var == Ambient.WIND_DIRECTION:
+        return 0.001
+    elif data_var == Ambient.WIND_SPEED:
+        return 0.001
+    elif data_var == Ambient.ELECTRICITY_PRICE:
+        return 0.001
+    elif data_var == AccumulatedMetric.ACCRUED_DAMAGE:
+        return 0.01
+    else:
+        raise ValueError(f"No abs tol value for data variable '{data_var}'.") 
+
 # Allow statistical distributions only over Ambient condition and Aggregated variables
 Statistical = TypeVar('Statistical', Ambient, Aggregated)
 
