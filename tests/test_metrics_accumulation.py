@@ -21,7 +21,7 @@ def test_simple_product_accumulation():
     
     # Output accumulation
     duration = 20
-    expected_accumulated_metrics = revenue_damage_accumulation.expected_value(
+    expected_accumulated_metrics = revenue_damage_accumulation.expected_acc_metrics(
         aggregate_statistics=aggregate_statistics,
         duration=duration)
     assert expected_accumulated_metrics[AccumulatedMetric.REVENUE] > 0

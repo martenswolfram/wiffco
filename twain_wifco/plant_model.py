@@ -80,7 +80,7 @@ def independent_cubic_interp_params_from_dict(param_dict: Dict[str, Any | Dict])
        
 class CubicSplineWrapper:
     def __init__(self, x: np.ndarray, y: np.ndarray):
-        self.spline = CubicSpline(x=x, y=y, extrapolate=False)
+        self.spline = CubicSpline(x=x, y=y, extrapolate=True)
 
     def evaluate(self, x):
         out = self.spline(x)

@@ -16,21 +16,29 @@ class MetricsAccumulation(Component):
         super().__init__(component_name=accumulation_name,
                          component_params=accumulation_params)
     
+    def acc_metrics(self,
+                    aggregate: Dict[Aggregated, float],
+                    duration: int):
+        
+        self._validate_inputs(inputs=aggregate.keys())
 
-    def expected_value(self,
-                       aggregate_statistics: Statistics,
-                       duration: int) -> Dict[AccumulatedMetric, float]:
+        return self._acc_metrics(aggregate=aggregate,
+                                 duration=duration)
 
-        self._validate_inputs(inputs=aggregate_statistics.output_variables)
-
-        return self._expected_value(aggregate_statistics=aggregate_statistics,
-                                    duration=duration)
-    
     @abstractmethod
-    def _expected_value(self,
-                        aggregate_statistics: Statistics,
-                        duration: int):
+    def _acc_metrics(self,
+                     aggregate: Dict[Aggregated, float],
+                     duration: int):
         pass
+    
+    def expected_acc_metrics(self,
+                       aggregate_statistics: Statistics,
+                       duration: int):
+        aggregate_expectation = aggregate_statistics.expected_value()
+        
+        return self._acc_metrics(aggregate=aggregate_expectation,
+                                 duration=duration)
+        
 
 class MetricsAccumulationType(Enum):
     DISCOUNTED_INTEGRATION = "discounted_integration"
@@ -71,19 +79,18 @@ class DiscountedIntegration(MetricsAccumulation):
                          accumulation_params=accumulation_params)
         self.integration_mappings = accumulation_params.integration_mappings
 
-    def _expected_value(self,
-                        aggregate_statistics: Statistics,
-                        duration: int):
+    def _acc_metrics(self,
+                    aggregate: Dict[Aggregated, float],
+                    duration: int):
         accumulated_metrics = {}
-        aggregate_expectation = aggregate_statistics.expected_value()
         for acc_metric, integration_mapping in self.integration_mappings.items():
             discount_rate = integration_mapping.discount_rate
             if discount_rate == 0:
-                accumulated_metrics[acc_metric] = duration * aggregate_expectation[integration_mapping.aggregate]
+                accumulated_metrics[acc_metric] = duration * aggregate[integration_mapping.aggregate]
             else:
                 discount_factor = 1 / (1 + discount_rate)
                 duration_discount_factor = (1 - discount_factor**duration) / (1 - discount_factor)
-                accumulated_metrics[acc_metric] = aggregate_expectation[integration_mapping.aggregate] * duration_discount_factor
-        
+                accumulated_metrics[acc_metric] = aggregate[integration_mapping.aggregate] * duration_discount_factor
+
         return accumulated_metrics
- 
+     

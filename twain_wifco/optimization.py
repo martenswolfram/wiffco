@@ -42,7 +42,7 @@ class ControlEvaluationSystem:
         self.accumulated_constraint = accumulated_constraint
         self.multi_metrics_reduction = multi_metrics_reduction
 
-    def evaluate_ambient_condition(self,
+    def aggregate_from_ambient_cond(self,
                                    ambient_condition: Dict[Ambient, float],
                                    control_setpoints: Dict[Control, float]):
         
@@ -81,7 +81,7 @@ class ControlEvaluationSystem:
         discrete_aggregate_statistics = DiscreteStatistics(statistics_name=new_name,
                                                            statistics_params=discrete_statistics_params)
 
-        expected_acc_metrics = self.metrics_accumulation.expected_value(
+        expected_acc_metrics = self.metrics_accumulation.expected_acc_metrics(
             aggregate_statistics=discrete_aggregate_statistics,
             duration=duration)
         
@@ -187,7 +187,7 @@ class GridSearch(ControlPolicyOptimization):
             for n_ctrl, ctrl_setpoints in enumerate(ctrl_setpoint_combinations):
                 ctrl_setpoints={ctrl_var: val for ctrl_var, val in \
                                    zip(ctrl_vars, ctrl_setpoints)}
-                aggregate = control_eval_system.evaluate_ambient_condition(
+                aggregate = control_eval_system.aggregate_from_ambient_cond(
                     ambient_condition=ambient_condition,
                     control_setpoints=ctrl_setpoints)
                 for agg_var in control_eval_system.aggregation.output_variables:
@@ -215,7 +215,7 @@ class GridSearch(ControlPolicyOptimization):
                 statistics_name="",
                 statistics_params=discrete_stat_params)
             expected_acc_metrics = \
-                control_eval_system.metrics_accumulation.expected_value(
+                control_eval_system.metrics_accumulation.expected_acc_metrics(
                 aggregate_statistics=discrete_aggr_stat,
                 duration=duration)
             multi_metrics_reduced.append(control_eval_system.multi_metrics_reduction.evaluate(acc_metrics=expected_acc_metrics))
@@ -243,18 +243,22 @@ class GridSearch(ControlPolicyOptimization):
 class SimultaneousOptimizationParams:
     def __init__(self,
                  max_num_amb_cond: int,
-                 max_iter: int):
-        self.max_iter = max_iter
+                 scipy_method: str,
+                 scipy_options: Dict[str, Any]):
         self.max_num_amb_cond = max_num_amb_cond
+        self.scipy_method = scipy_method
+        self.scipy_options = scipy_options
 
 def simultaneous_optimization_params_from_dict(param_dict: Dict[str, Any]):
     max_num_amb_cond = param_dict["max_num_ambient_conditions"]
-    max_iter = param_dict["max_iter"]
+    scipy_method = param_dict["scipy_method"]
+    scipy_options = param_dict["scipy_options"]
     return SimultaneousOptimizationParams(
         max_num_amb_cond=max_num_amb_cond,
-        max_iter=max_iter)
+        scipy_method=scipy_method,
+        scipy_options=scipy_options)
 
-class SimultaneousOptimizationManager:
+class ContinuousOptimizationManager:
     def __init__(self,
                  control_eval_system: ControlEvaluationSystem,
                  ambient_condition_statistics: Statistics,
@@ -300,7 +304,8 @@ class SimultaneousOptimization(ControlPolicyOptimization):
                  optimization_params: SimultaneousOptimizationParams):
         super().__init__(optimization_name=optimization_name)
         self.max_num_amb_cond = optimization_params.max_num_amb_cond
-        self.max_iter = optimization_params.max_iter
+        self.scipy_method = optimization_params.scipy_method
+        self.scipy_options = optimization_params.scipy_options
 
     def optimize_policy(self,
                         control_eval_system: ControlEvaluationSystem,
@@ -309,7 +314,7 @@ class SimultaneousOptimization(ControlPolicyOptimization):
                         initial_policy: ControlPolicy | None = None):
         
         # OptimizationManager
-        opt_mgr = SimultaneousOptimizationManager(
+        opt_mgr = ContinuousOptimizationManager(
             control_eval_system=control_eval_system,
             ambient_condition_statistics=ambient_condition_statistics,
             duration=duration,
@@ -329,9 +334,57 @@ class SimultaneousOptimization(ControlPolicyOptimization):
                 eval_acc_metrics_from_x=acc_metrics_w_cache)
         
         x0 = opt_mgr.control_policy.get_x_vector()
-        minimize(cost_function, x0, method='trust-constr',
+        minimize(cost_function, x0, method=self.scipy_method,
                constraints=[constraint],
-               options={'verbose': 1})
+               options=self.scipy_options)
         
         return opt_mgr.control_policy
+     
+
+class LagrangianRelaxationParams:
+    def __init__(self,
+                 max_num_amb_cond: int):
+        self.max_num_amb_cond = max_num_amb_cond
+
+def lagrangian_relaxation_params_from_dict(param_dict: Dict[str, Any]):
+    max_num_amb_cond = param_dict["max_num_ambient_conditions"]
+    return LagrangianRelaxationParams(
+        max_num_amb_cond=max_num_amb_cond)
+
+ 
+class LagrangianRelaxation(ControlPolicyOptimization):
+    def __init__(self,
+                 optimization_name: str,
+                 optimization_params: LagrangianRelaxationParams):
+        super().__init__(optimization_name=optimization_name)
+        self.max_num_amb_cond = optimization_params.max_num_amb_cond
+        
+    def optimize_policy(self,
+                        control_eval_system: ControlEvaluationSystem,
+                        ambient_condition_statistics: Statistics,
+                        duration: int,
+                        initial_policy: ControlPolicy | None = None):
+        
+        # OptimizationManager
+        opt_mgr = ContinuousOptimizationManager(
+            control_eval_system=control_eval_system,
+            ambient_condition_statistics=ambient_condition_statistics,
+            duration=duration,
+            control_policy=initial_policy,
+            max_num_amb_cond=self.max_num_amb_cond)
+        
+        constrained_acc_metrics = list(control_eval_system.accumulated_constraint.output_variables)
+        lagrangian_lambda = np.ones(len(constrained_acc_metrics))
+
+        ambient_condition_sample = ambient_condition_statistics.systematic_sample(N_max=self.max_num_amb_cond)
+
+        num_ambient_conditions = ambient_condition_sample.N
+
+        for ambient_condition in ambient_condition_sample:
+            control_setpoints = opt_mgr.control_policy.get_control_setpoints(
+                ambient_condition=ambient_condition)
+            aggregate = control_eval_system.aggregate_from_ambient_cond(
+                ambient_condition=ambient_condition,
+                control_setpoints=control_setpoints)
+            acc_metrics = control_eval_system.metrics_accumulation
      

@@ -93,7 +93,6 @@ def test_simultaneous_optimization():
     # Initialization
     assert simultaneous_optimization.optimization_name == "simultaneous_optimization"
     assert simultaneous_optimization.max_num_amb_cond == 10
-    assert simultaneous_optimization.max_iter == 1000
     
     # Optimization
     optimal_policy = simultaneous_optimization.optimize_policy(
