@@ -34,7 +34,9 @@ from twain_wifco.optimization import (
     grid_search_params_from_dict,
     GridSearch,
     simultaneous_optimization_params_from_dict,
-    SimultaneousOptimization)
+    SimultaneousOptimization,
+    lagrangian_relaxation_params_from_dict,
+    LagrangianRelaxation)
 
 
 def parse_json_file(path):
@@ -168,6 +170,10 @@ def control_optimization_from_json(json_path: pathlib.Path):
         params = simultaneous_optimization_params_from_dict(param_dict=param_dict["optimization_params"])
         return SimultaneousOptimization(optimization_name=optimization_name,
                                         optimization_params=params)
+    elif optimization_method == OptimizationMethod.LAGRANGIAN_RELAXATION:
+        params = lagrangian_relaxation_params_from_dict(param_dict=param_dict["optimization_params"])
+        return LagrangianRelaxation(optimization_name=optimization_name,
+                                    optimization_params=params)
     else:
-        raise NotImplementedError("Only grid-search optimization implemented.")
+        raise NotImplementedError("Only grid-search, simultaneous opt. and lagrangian relaxation implemented.")
 

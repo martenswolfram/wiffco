@@ -1,4 +1,4 @@
-from typing import Dict, Any, Set
+from typing import Dict, Any, List
 from abc import abstractmethod
 import numpy as np
 from scipy.optimize import NonlinearConstraint
@@ -7,6 +7,13 @@ from twain_wifco.interface import (
     Component,
     ComponentParams,
     AccumulatedMetric)
+
+class AccMetricsUpperBound:
+    def __init__(self,
+                 upper_bound: float,
+                 constraint_fun):
+        self.upper_bound = upper_bound
+        self.constraint_fun = constraint_fun
 
 class ConstraintEval:
     def __init__(self,
@@ -41,6 +48,11 @@ class AccumulatedConstraint(Component):
     @abstractmethod
     def scipy_constraint(self, eval_acc_metrics_from_x):
         pass
+
+    @abstractmethod
+    def upper_bound_constraints(self) -> List[AccMetricsUpperBound]:
+        pass
+
 
 class AccumulatedConstraintType(Enum):
     SEPARATE_LINEAR_CONSTRAINTS = "separate_linear_constraints"
@@ -124,3 +136,22 @@ class SeparateLinearConstraints(AccumulatedConstraint):
         return NonlinearConstraint(fun=eval_nl_constraints,
                                    lb=lower_bound,
                                    ub=upper_bound)
+    
+    def upper_bound_constraints(self) -> List[AccMetricsUpperBound]:
+        ub_constraints = []
+        for acc_metric, mapping in self.constraint_mappings.items():
+            # lower bound
+            if mapping.lower_bound is not None:
+                def constraint_fun(acc_metric_values, acc_metric=acc_metric):
+                    return -acc_metric_values[acc_metric]
+                ub_constraint = AccMetricsUpperBound(upper_bound=-mapping.lower_bound,
+                                                     constraint_fun=constraint_fun)
+                ub_constraints.append(ub_constraint)
+            # upper bound
+            if mapping.upper_bound is not None:
+                def constraint_fun(acc_metric_values, acc_metric=acc_metric):
+                    return acc_metric_values[acc_metric]
+                ub_constraint = AccMetricsUpperBound(upper_bound=mapping.upper_bound,
+                                                     constraint_fun=constraint_fun)
+                ub_constraints.append(ub_constraint)
+        return ub_constraints

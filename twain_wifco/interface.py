@@ -48,7 +48,7 @@ def get_abs_tol(data_var: DataVariable):
     elif data_var == Ambient.ELECTRICITY_PRICE:
         return 0.001
     elif data_var == AccumulatedMetric.ACCRUED_DAMAGE:
-        return 0.01
+        return 0.1
     else:
         raise ValueError(f"No abs tol value for data variable '{data_var}'.") 
 

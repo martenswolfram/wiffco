@@ -1,6 +1,5 @@
 from typing import Dict, Any, Tuple
 from abc import ABC, abstractmethod
-from copy import deepcopy
 import numpy as np
 from scipy.optimize import minimize
 from functools import lru_cache
@@ -9,7 +8,6 @@ from enum import Enum
 from twain_wifco.interface import (
     Ambient,
     Control,
-    AccumulatedMetric,
     get_default_value)
 from twain_wifco.statistics import (
     Statistics,
@@ -52,7 +50,21 @@ class ControlEvaluationSystem:
         return self.aggregation.compute_aggregate(model_output=model_output,
                                                   ambient_condition=ambient_condition,
                                                   control_setpoints=control_setpoints)
-    
+
+    def acc_metrics_from_ambient_cond(self,
+                                      ambient_condition: Dict[Ambient, float],
+                                      control_setpoints: Dict[Control, float],
+                                      duration: int):
+        
+        model_output = self.plant_model.evaluate(
+             meteorological_condition=ambient_condition,
+             control_input=control_setpoints)    
+        aggregate = self.aggregation.compute_aggregate(model_output=model_output,
+                                                       ambient_condition=ambient_condition,
+                                                       control_setpoints=control_setpoints)
+        return self.metrics_accumulation.acc_metrics(aggregate=aggregate,
+                                                     duration=duration)
+
     def expected_acc_metrics(self,
                              ambient_condition_statistics: Statistics,
                              control_policy: ControlPolicy,
@@ -63,7 +75,7 @@ class ControlEvaluationSystem:
 
         aggregated_variables = self.aggregation.output_variables
         aggregated_support_values = np.empty(shape=(ambient_condition_sample.N, len(aggregated_variables)))
-        for i, ambient_condition in enumerate(ambient_condition_sample):
+        for i, ambient_condition in enumerate(ambient_condition_sample.variables_iter()):
             control_setpoints = control_policy.get_control_setpoints(ambient_condition=ambient_condition)
             model_output = self.plant_model.evaluate(meteorological_condition=ambient_condition,
                                                      control_input=control_setpoints)
@@ -87,33 +99,6 @@ class ControlEvaluationSystem:
         
         return expected_acc_metrics
     
-
-    def acc_metrics_eval(self,
-                         x,
-                         ambient_condition_statistics: Statistics,
-                         duration: int,
-                         max_num_amb_cond: int | None = None):
-        ambient_condition_sample = ambient_condition_statistics.systematic_sample(N_max=max_num_amb_cond)
-        num_ambient_conditions = ambient_condition_sample.N
-        ctrl_vars = list(self.plant_model.input_of_type(t=Control))
-        num_ctrls = len(ctrl_vars)        
-        
-        # Create discrete control policy
-        amb_cond_ctrl_setpoints = np.reshape(x, shape=(num_ambient_conditions, num_ctrls))
-        discrete_control_policy_params = DiscreteControlPolicyParams(
-            ambient_variables=ambient_condition_sample.support_variables,
-            ambient_conditions_support=ambient_condition_sample.support_values,
-            control_inputs=ctrl_vars,
-            control_setpoints=amb_cond_ctrl_setpoints)
-        discrete_control_policy = DiscreteControlPolicy(
-            policy_name="optimized_discrete_control_policy",
-            policy_params=discrete_control_policy_params)
-        # compute expected accumulated metrics
-        return self.expected_acc_metrics(ambient_condition_statistics=ambient_condition_statistics,
-                                         control_policy=discrete_control_policy,
-                                         duration=duration,
-                                         max_num_amb_cond=num_ambient_conditions)
-        
 class OptimizationMethod(Enum):
     GRID_SEARCH = "grid_search"
     SIMULTANEOUS_OPTIMIZATION = "simultaneous_optimization"
@@ -275,8 +260,9 @@ class ContinuousOptimizationManager:
             self.guess_initial_discrete_policy()
 
     @lru_cache(maxsize=None)
-    def acc_metrics_w_cache(self, x_tuple: Tuple[float]):
-        self.control_policy.set_from_x_vector(np.array(x_tuple))
+    def expected_acc_metrics_w_cache(self,
+                                     ctrl_as_tuple: Tuple[float]):
+        self.control_policy.set_ctrl_parameters_full(np.array(ctrl_as_tuple))
         return self.control_eval_system.expected_acc_metrics(
             ambient_condition_statistics=self.ambient_condition_statistics,
             control_policy=self.control_policy,
@@ -322,35 +308,56 @@ class SimultaneousOptimization(ControlPolicyOptimization):
             max_num_amb_cond=self.max_num_amb_cond)
         
 
-        acc_metrics_w_cache = lambda x : opt_mgr.acc_metrics_w_cache(tuple(x))
+        expected_acc_metrics_w_cache = lambda x : opt_mgr.expected_acc_metrics_w_cache(tuple(x))
         # define cost function
         cost_function = \
             opt_mgr.control_eval_system.multi_metrics_reduction.cost_function(
-                eval_acc_metrics_from_x=acc_metrics_w_cache)
+                eval_acc_metrics_from_x=expected_acc_metrics_w_cache)
             
         # define constraints
         constraint = \
             opt_mgr.control_eval_system.accumulated_constraint.scipy_constraint(
-                eval_acc_metrics_from_x=acc_metrics_w_cache)
+                eval_acc_metrics_from_x=expected_acc_metrics_w_cache)
         
-        x0 = opt_mgr.control_policy.get_x_vector()
-        minimize(cost_function, x0, method=self.scipy_method,
-               constraints=[constraint],
-               options=self.scipy_options)
+        x0 = opt_mgr.control_policy.get_ctrl_parameters_full()
+        minimize(cost_function,
+                 x0,
+                 method=self.scipy_method,
+                 constraints=[constraint],
+                 options=self.scipy_options)
         
         return opt_mgr.control_policy
      
 
 class LagrangianRelaxationParams:
     def __init__(self,
-                 max_num_amb_cond: int):
+                 max_num_amb_cond: int,
+                 alpha_0: float,
+                 max_iter: int,
+                 subgradient_tol: float,
+                 scipy_method: str,
+                 scipy_options: Dict[str, Any]):
         self.max_num_amb_cond = max_num_amb_cond
+        self.alpha_0 = alpha_0
+        self.max_iter = max_iter
+        self.subgradient_tol = subgradient_tol
+        self.scipy_method = scipy_method
+        self.scipy_options = scipy_options
 
 def lagrangian_relaxation_params_from_dict(param_dict: Dict[str, Any]):
     max_num_amb_cond = param_dict["max_num_ambient_conditions"]
+    alpha_0 = param_dict["alpha_0"]
+    max_iter = param_dict["max_iter"]
+    subgradient_tol = param_dict["subgradient_tol"]
+    scipy_method = param_dict["scipy_method"]
+    scipy_options = param_dict["scipy_options"]
     return LagrangianRelaxationParams(
-        max_num_amb_cond=max_num_amb_cond)
-
+        max_num_amb_cond=max_num_amb_cond,
+        alpha_0=alpha_0,
+        max_iter=max_iter,
+        subgradient_tol=subgradient_tol,
+        scipy_method=scipy_method,
+        scipy_options=scipy_options)
  
 class LagrangianRelaxation(ControlPolicyOptimization):
     def __init__(self,
@@ -358,6 +365,11 @@ class LagrangianRelaxation(ControlPolicyOptimization):
                  optimization_params: LagrangianRelaxationParams):
         super().__init__(optimization_name=optimization_name)
         self.max_num_amb_cond = optimization_params.max_num_amb_cond
+        self.alpha_0 = optimization_params.alpha_0
+        self.max_iter = optimization_params.max_iter
+        self.subgradient_tol = optimization_params.subgradient_tol
+        self.scipy_method = optimization_params.scipy_method
+        self.scipy_options = optimization_params.scipy_options
         
     def optimize_policy(self,
                         control_eval_system: ControlEvaluationSystem,
@@ -373,18 +385,69 @@ class LagrangianRelaxation(ControlPolicyOptimization):
             control_policy=initial_policy,
             max_num_amb_cond=self.max_num_amb_cond)
         
-        constrained_acc_metrics = list(control_eval_system.accumulated_constraint.output_variables)
-        lagrangian_lambda = np.ones(len(constrained_acc_metrics))
+        ctrl_vars = list(opt_mgr.control_policy.output_variables)
+        
+        # constrained_acc_metrics = list(control_eval_system.accumulated_constraint.output_variables)
 
         ambient_condition_sample = ambient_condition_statistics.systematic_sample(N_max=self.max_num_amb_cond)
 
-        num_ambient_conditions = ambient_condition_sample.N
+        upper_bound_constraints = control_eval_system.accumulated_constraint.upper_bound_constraints()
+        num_constraints = len(upper_bound_constraints)
+        lagrangian_lambdas = np.ones(num_constraints)
+        subgradient = np.empty(num_constraints)
+        # outer-iteration counter
+        for t in range(self.max_iter):
+            expected_constraint_eval = np.zeros(num_constraints)
+            for prob_weight, ambient_condition in ambient_condition_sample.weighted_variables_iter():
+                
+                # Separate optimization for each ambient condition
+                def cost_function(ctrl_setpoints_vec):
+                    ctrl_setpoints = {ctrl_var: ctrl for ctrl_var, ctrl in zip(ctrl_vars, ctrl_setpoints_vec)}
+                    acc_metrics = opt_mgr.control_eval_system.acc_metrics_from_ambient_cond(
+                        ambient_condition=ambient_condition,
+                        control_setpoints=ctrl_setpoints,
+                        duration=opt_mgr.duration)
+                    scalar_objective = opt_mgr.control_eval_system.multi_metrics_reduction.evaluate(
+                        acc_metrics=acc_metrics)
+                    # First assume that we have an objective function (which we want to maximise),
+                    # and upper-bound constraints which must not be exceded.
+                    if not opt_mgr.control_eval_system.multi_metrics_reduction.maximize:
+                        scalar_objective *= -1                
+                    for lagrangian_lambda, ub_constraint in zip(lagrangian_lambdas, upper_bound_constraints):
+                        scalar_objective -= lagrangian_lambda * ub_constraint.constraint_fun(acc_metrics)
+                    # Scipy will minimize a cost function, hence take the negative value
+                    return - scalar_objective
+                
+                # Minimize Lagrangian
+                x0 = opt_mgr.control_policy.get_ctrl_parameters(ambient_condition=ambient_condition)
+                res = minimize(cost_function,
+                               x0,
+                               method=self.scipy_method,
+                               options=self.scipy_options)
+                ctrl_setpoints_vec = res.x
+                opt_mgr.control_policy.set_ctrl_parameters_from_vector(x=ctrl_setpoints_vec,
+                                                            ambient_condition=ambient_condition)
+                
+                # Recompute final accumulated metrics
+                acc_metrics = opt_mgr.control_eval_system.acc_metrics_from_ambient_cond(
+                    ambient_condition=ambient_condition,
+                    control_setpoints={ctrl_var: setpoint for ctrl_var, setpoint in zip(ctrl_vars, ctrl_setpoints_vec)},
+                    duration=opt_mgr.duration)
+                # Constraint evaluation
+                for i_constraint, ub_constraint in enumerate(upper_bound_constraints):
+                    expected_constraint_eval[i_constraint] += prob_weight * ub_constraint.constraint_fun(acc_metrics)
+            
+            # update lagrangian multipliers
+            for i_constraint, ub_constraint in enumerate(upper_bound_constraints):
+                subgradient[i_constraint] = ub_constraint.upper_bound - expected_constraint_eval[i_constraint]
+                step = subgradient[i_constraint] * self.alpha_0 / np.sqrt(t + 1)
+                lagrangian_lambdas[i_constraint] -= step
+            lagrangian_lambdas[lagrangian_lambdas < 0] = 0
+            t += 1
 
-        for ambient_condition in ambient_condition_sample:
-            control_setpoints = opt_mgr.control_policy.get_control_setpoints(
-                ambient_condition=ambient_condition)
-            aggregate = control_eval_system.aggregate_from_ambient_cond(
-                ambient_condition=ambient_condition,
-                control_setpoints=control_setpoints)
-            acc_metrics = control_eval_system.metrics_accumulation
+            if np.linalg.norm(subgradient, ord=np.inf) < self.subgradient_tol:
+                break
+
+        return opt_mgr.control_policy
+        
      

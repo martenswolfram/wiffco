@@ -1,0 +1,14 @@
+{
+    "name": "lagrangian_relaxation",
+    "optimization_method": "lagrangian_relaxation", 
+    "optimization_params": {
+        "max_num_ambient_conditions": 10,
+        "alpha_0": 0.001,
+        "max_iter": 1000,
+        "subgradient_tol": 0.1,
+        "scipy_method": "Nelder-Mead",
+        "scipy_options": {
+            "disp": false
+        }
+    }
+}

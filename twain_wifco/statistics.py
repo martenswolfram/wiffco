@@ -21,10 +21,15 @@ class SystematicSample:
         self.probability_covered = probability_covered
         self.N = len(self.normalized_weights)
 
-    def __iter__(self):
+    def variables_iter(self):
         for values in self.support_values:
             sample_dict = {var: values[m] for m, var in enumerate(self.support_variables)}
             yield sample_dict
+
+    def weighted_variables_iter(self):
+        for weight, values in zip(self.normalized_weights, self.support_values):
+            sample_dict = {var: values[m] for m, var in enumerate(self.support_variables)}
+            yield weight, sample_dict
 
     def discrete_statistics(self):
         discrete_statistics_params =  DiscreteStatisticsParams(

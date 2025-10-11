@@ -23,7 +23,7 @@ def test_discrete_control_policy():
         [Ambient.WIND_SPEED, Ambient.WIND_DIRECTION, Ambient.ELECTRICITY_PRICE]
     assert simple_control_policy.ambient_conditions_support == \
         pytest.approx(ambient_conditions_support)
-    assert simple_control_policy.control_inputs == \
+    assert simple_control_policy.control_variables == \
         [Control.POWER_REGULATION, Control.YAW_STEERING]
 
     # retrieve control setpoints for dicrete ambient conditions

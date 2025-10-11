@@ -116,3 +116,34 @@ def test_simultaneous_optimization():
         abs=get_abs_tol(data_var=AccumulatedMetric.ACCRUED_DAMAGE))
     pass
     
+
+def test_lagrangian_relaxation():
+    json_path = test_data_folder / "lagrangian_relaxation.json"
+    lagrangian_relaxation: SimultaneousOptimization = control_optimization_from_json(json_path=json_path)
+
+    # Initialization
+    assert lagrangian_relaxation.optimization_name == "lagrangian_relaxation"
+    # assert lagrangian_relaxation.max_num_amb_cond == 10
+    
+    # Optimization
+    optimal_policy = lagrangian_relaxation.optimize_policy(
+        control_eval_system=control_evaluation_system,
+        ambient_condition_statistics=ambient_statistics,
+        duration=duration)
+    
+    # Evaluate result
+    expected_accumulated_metrics = control_evaluation_system.expected_acc_metrics(
+        ambient_condition_statistics=ambient_statistics,
+        control_policy=optimal_policy,
+        duration=duration,
+        max_num_amb_cond=lagrangian_relaxation.max_num_amb_cond)
+        
+    optimal_revenue = expected_accumulated_metrics[AccumulatedMetric.REVENUE]
+    assert optimal_revenue > 0
+    linear_acc_contraints: SeparateLinearConstraints = control_evaluation_system.accumulated_constraint
+    assert expected_accumulated_metrics[AccumulatedMetric.ACCRUED_DAMAGE] == \
+        pytest.approx(
+        linear_acc_contraints.constraint_mappings[AccumulatedMetric.ACCRUED_DAMAGE].upper_bound,
+        abs=get_abs_tol(data_var=AccumulatedMetric.ACCRUED_DAMAGE))
+    pass
+    
