@@ -1,0 +1,14 @@
+{
+    "name": "linear_instantaneous_constraint",
+    "constraint_type": "separate_linear_constraints",
+    "constraint_params":{
+        "constraint_mappings":{
+            "control": {
+                "power_regulation": [1, 4],
+                "yaw_steering": [null, null]
+            },
+            "model_output": {},
+            "aggregate": {}
+        }
+    }
+}

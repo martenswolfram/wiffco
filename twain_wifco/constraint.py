@@ -131,12 +131,12 @@ class SeparateLinearConstraints(Constraint):
         return self.bounds[ind, :]
 
     def _evaluate(self,
-                  constr_variables: Dict[DataVariable, float]) -> ConstraintEval:
+                  constr_input_values: Dict[DataVariable, float]) -> ConstraintEval:
         lower_diff = np.empty(len(self.constraint_variables))
         upper_diff = np.empty(len(self.constraint_variables))
         for i, var in enumerate(self.constraint_variables):
-            lower_diff[i] = constr_variables[var] - self.bounds[i, 0]
-            upper_diff[i] = constr_variables[var] - self.bounds[i, 1]
+            lower_diff[i] = constr_input_values[var] - self.bounds[i, 0]
+            upper_diff[i] = constr_input_values[var] - self.bounds[i, 1]
         return ConstraintEval(lower_diff=lower_diff,
                               upper_diff=upper_diff)
 

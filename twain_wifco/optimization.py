@@ -28,6 +28,7 @@ class ControlEvaluationSystem:
                  name: str, 
                  plant_model: PlantModel,
                  aggregation: Aggregation,
+                 instantaneous_constraint: Constraint,
                  metrics_accumulation: MetricsAccumulation,
                  accumulated_constraint: Constraint,
                  multi_metrics_reduction: MultiMetricsReduction):
@@ -36,20 +37,26 @@ class ControlEvaluationSystem:
         self.name = name
         self.plant_model = plant_model
         self.aggregation = aggregation
+        self.instantaneous_constraint = instantaneous_constraint
         self.metrics_accumulation = metrics_accumulation
         self.accumulated_constraint = accumulated_constraint
         self.multi_metrics_reduction = multi_metrics_reduction
 
     def aggregate_from_ambient_cond(self,
-                                   ambient_condition: Dict[Ambient, float],
-                                   control_setpoints: Dict[Control, float]):
+                                    ambient_condition: Dict[Ambient, float],
+                                    control_setpoints: Dict[Control, float],
+                                    instantaneous_constraint: Constraint):
         
         model_output = self.plant_model.evaluate(
              meteorological_condition=ambient_condition,
-             control_input=control_setpoints)    
-        return self.aggregation.compute_aggregate(model_output=model_output,
-                                                  ambient_condition=ambient_condition,
-                                                  control_setpoints=control_setpoints)
+             control_input=control_setpoints)
+        aggregate = self.aggregation.compute_aggregate(model_output=model_output,
+                                                       ambient_condition=ambient_condition,
+                                                       control_setpoints=control_setpoints)
+        constraint_eval = instantaneous_constraint.evaluate(
+            constr_vars=(control_setpoints | model_output | aggregate))
+        
+        return aggregate, constraint_eval.satisfied()
 
     def acc_metrics_from_ambient_cond(self,
                                       ambient_condition: Dict[Ambient, float],
@@ -161,6 +168,8 @@ class GridSearch(ControlPolicyOptimization):
             agg_var: np.empty(shape=(num_ambient_conditions, num_ctrl_settings)) \
             for agg_var in control_eval_system.aggregation.output_variables
             }
+        instant_constraints_satisfied_matrix = np.empty(
+            shape=(num_ambient_conditions, num_ctrl_settings))
         print(f"Number of ambient conditions: {num_ambient_conditions}.")
         print(f"Number of ctrl settings: {num_ctrl_settings}.")
         num_eval = num_ctrl_settings * num_ambient_conditions
@@ -172,9 +181,12 @@ class GridSearch(ControlPolicyOptimization):
             for n_ctrl, ctrl_setpoints in enumerate(ctrl_setpoint_combinations):
                 ctrl_setpoints={ctrl_var: val for ctrl_var, val in \
                                    zip(ctrl_vars, ctrl_setpoints)}
-                aggregate = control_eval_system.aggregate_from_ambient_cond(
-                    ambient_condition=ambient_condition,
-                    control_setpoints=ctrl_setpoints)
+                aggregate, instant_constraint_satisfied = \
+                    control_eval_system.aggregate_from_ambient_cond(
+                        ambient_condition=ambient_condition,
+                        control_setpoints=ctrl_setpoints,
+                        instantaneous_constraint=control_eval_system.instantaneous_constraint)
+                instant_constraints_satisfied_matrix[n_amb, n_ctrl] = instant_constraint_satisfied
                 for agg_var in control_eval_system.aggregation.output_variables:
                     aggregate_evaluations[agg_var][n_amb, n_ctrl] = aggregate[agg_var]
         pass
@@ -190,22 +202,27 @@ class GridSearch(ControlPolicyOptimization):
         control_eval_system.multi_metrics_reduction
         ctrl_settings_indices_product = itertools.product(range(num_ctrl_settings), repeat=num_ambient_conditions)
         for ctrl_indices in ctrl_settings_indices_product:
-            # Each ctrl_indices corresponds to a discrete control strategy
-            aggr_support_points = np.array([aggregate_evaluations[aggr_var][np.arange(num_ambient_conditions), ctrl_indices] for aggr_var in aggr_vars]).T
-            discrete_stat_params = DiscreteStatisticsParams(
-                support_variables=aggr_vars,
-                prevalence=ambient_condition_sample.normalized_weights,
-                support_points=aggr_support_points)
-            discrete_aggr_stat = DiscreteStatistics(
-                statistics_name="",
-                statistics_params=discrete_stat_params)
-            expected_acc_metrics = \
-                control_eval_system.metrics_accumulation.expected_acc_metrics(
-                aggregate_statistics=discrete_aggr_stat,
-                duration=duration)
-            multi_metrics_reduced.append(control_eval_system.multi_metrics_reduction.evaluate(acc_metrics=expected_acc_metrics))
-            constraint_eval = control_eval_system.accumulated_constraint.evaluate(constr_vars=expected_acc_metrics)
-            constraints_satisfied.append(constraint_eval.satisfied())
+            inst_constraints_satisfied = np.all(instant_constraints_satisfied_matrix[np.arange(num_ambient_conditions), ctrl_indices])
+            if not inst_constraints_satisfied:
+                multi_metrics_reduced.append(None)
+                constraints_satisfied.append(False)
+            else:
+                # Each ctrl_indices corresponds to a discrete control strategy
+                aggr_support_points = np.array([aggregate_evaluations[aggr_var][np.arange(num_ambient_conditions), ctrl_indices] for aggr_var in aggr_vars]).T
+                discrete_stat_params = DiscreteStatisticsParams(
+                    support_variables=aggr_vars,
+                    prevalence=ambient_condition_sample.normalized_weights,
+                    support_points=aggr_support_points)
+                discrete_aggr_stat = DiscreteStatistics(
+                    statistics_name="",
+                    statistics_params=discrete_stat_params)
+                expected_acc_metrics = \
+                    control_eval_system.metrics_accumulation.expected_acc_metrics(
+                    aggregate_statistics=discrete_aggr_stat,
+                    duration=duration)
+                multi_metrics_reduced.append(control_eval_system.multi_metrics_reduction.evaluate(acc_metrics=expected_acc_metrics))
+                acc_metrics_constraint_eval = control_eval_system.accumulated_constraint.evaluate(constr_vars=expected_acc_metrics)
+                constraints_satisfied.append(acc_metrics_constraint_eval.satisfied())
             
         # Find the optimal control strategy that satisfies the constraints
         if control_eval_system.multi_metrics_reduction.maximize:
@@ -307,7 +324,6 @@ class SimultaneousOptimization(ControlPolicyOptimization):
             control_policy=initial_policy,
             max_num_amb_cond=self.max_num_amb_cond)
         
-
         expected_acc_metrics_w_cache = lambda x : opt_mgr.expected_acc_metrics_w_cache(tuple(x))
         # define cost function
         cost_function = \

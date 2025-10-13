@@ -3,6 +3,7 @@
     "relative_directory": "./",
     "plant_model_file": "power_damage_model.json",
     "aggregation_file": "revenue_damage_aggregation.json",
+    "instantaneous_constraint_file": "linear_instantaneous_constraint.json",
     "metrics_accumulation_file": "revenue_damage_accumulation.json",
     "accumulated_constraint_file": "linear_accumulated_constraint.json",
     "multi_metrics_reduction_file": "scalar_metrics_weighting.json"

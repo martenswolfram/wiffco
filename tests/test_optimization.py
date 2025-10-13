@@ -57,7 +57,7 @@ def test_grid_search():
     assert optimal_revenue > 0
     linear_acc_contraints: SeparateLinearConstraints = control_evaluation_system.accumulated_constraint
     assert expected_accumulated_metrics[AccumulatedMetric.ACCRUED_DAMAGE] <= \
-        linear_acc_contraints.bounds[0, 1]
+        linear_acc_contraints.scalar_bounds_for_var(AccumulatedMetric.ACCRUED_DAMAGE)[1]
     pass
     
     # Compare with perturbed control policies
