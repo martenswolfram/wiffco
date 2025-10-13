@@ -7,18 +7,16 @@ from twain_wifco.interface import (
     Component,
     ComponentParams,
     Control,
-    ModelOutput,
     Aggregated,
     AccumulatedMetric,
-    DataVariable)
+    ConstraintVar,
+    DataVariable,
+    retrieve_single_key_str)
 
-def numeric_bounds(bounds: List[float]):
-    bounds_array = [bounds[0] if bounds[0] is not None else -np.inf,
-            bounds[1] if bounds[1] is not None else np.inf]
-    if bounds_array[0] == -np.inf and bounds_array[1] == np.inf:
-        return None
-    else:
-        return bounds_array
+def numeric_bounds_array(lower_bounds: List[float], upper_bounds: List[float]):
+    lower_bounds_numeric = [lb if lb is not None else -np.inf for lb in lower_bounds]
+    upper_bounds_numeric = [ub if ub is not None else np.inf for ub in upper_bounds]
+    return np.array([lower_bounds_numeric, upper_bounds_numeric]).T
 
 class UpperBound:
     def __init__(self,
@@ -46,15 +44,15 @@ class Constraint(Component):
                          component_params=constraint_params)
 
     def evaluate(self,
-                 constr_vars: Dict[DataVariable, float]) -> ConstraintEval:
+                 constr_values_dict: Dict[DataVariable, float]) -> ConstraintEval:
         
-        self._validate_inputs(inputs=constr_vars.keys())
+        self._validate_inputs(inputs=constr_values_dict.keys())
 
-        return self._evaluate(constr_variables=constr_vars)
+        return self._evaluate(constr_values_dict=constr_values_dict)
     
     @abstractmethod
     def _evaluate(self,
-                  constr_variables: Dict[DataVariable, float]) -> ConstraintEval:
+                  constr_values_dict: Dict[DataVariable, float]) -> ConstraintEval:
         pass
 
     @abstractmethod
@@ -71,7 +69,7 @@ class ConstraintType(Enum):
 
 class SeparateLinearConstraintsParams(ComponentParams):
     def __init__(self,
-                 constraint_variables: List[DataVariable],
+                 constraint_variables: List[ConstraintVar],
                  bounds: np.ndarray):
         self.constraint_variables = constraint_variables
         self.bounds = bounds
@@ -83,39 +81,31 @@ class SeparateLinearConstraintsParams(ComponentParams):
         return set()
 
 def separate_linear_constraints_params_from_dict(param_dict: Dict[str, Dict | Any]):
-    constraint_mappings = {}
-    constraint_mappings = param_dict["constraint_mappings"]
-    constraint_variables = []
-    bounds = []
-    # control constraints
-    for ctrl_var, scalar_bounds in constraint_mappings.get("control", {}).items():
-        scalar_bounds_array = numeric_bounds(scalar_bounds)
-        if scalar_bounds_array is not None:
-            constraint_variables.append(Control(ctrl_var))
-            bounds.append(scalar_bounds_array)
-    # model output bounds
-    for model_output_var, scalar_bounds in constraint_mappings.get("model_output", {}).items():
-        scalar_bounds_array = numeric_bounds(scalar_bounds)
-        if scalar_bounds_array is not None:
-            constraint_variables.append(ModelOutput(model_output_var))
-            bounds.append(scalar_bounds_array)
-    # aggregate bounds
-    for aggregate_var, scalar_bounds in constraint_mappings.get("aggregate", {}).items():
-        scalar_bounds_array = numeric_bounds(scalar_bounds)
-        if scalar_bounds_array is not None:
-            constraint_variables.append(Aggregated(aggregate_var))
-            bounds.append(scalar_bounds_array)
-    # accumulated metric bounds
-    for acc_metric_var, scalar_bounds in constraint_mappings.get("accumulated_metric", {}).items():
-        scalar_bounds_array = numeric_bounds(scalar_bounds)
-        if scalar_bounds_array is not None:
-            constraint_variables.append(AccumulatedMetric(acc_metric_var))
-            bounds.append(scalar_bounds_array)
-    scalar_bounds_array = np.array(bounds)
-         
+    
+    key_str = retrieve_single_key_str(param_dict, set(["control_variables",
+                                                       "aggregated_variables",
+                                                       "accumulated_metrics"]))
+    if key_str == "control_variables":
+        constraint_variables = \
+            [Control(constr_var) for constr_var in param_dict[key_str]]
+    elif key_str == "aggregated_variables":
+        constraint_variables = \
+            [Aggregated(constr_var) for constr_var in param_dict[key_str]]
+    else:
+        constraint_variables = \
+            [AccumulatedMetric(constr_var) for constr_var in param_dict[key_str]]
+    
+    bounds = numeric_bounds_array(lower_bounds=param_dict["lower_bounds"],
+                                  upper_bounds=param_dict["upper_bounds"])
+    null_row = np.array([-np.inf, np.inf])
+    null_indices = np.where(np.all(bounds == null_row, axis=1))[0]
+    
+    # Remove null-constraints
+    constraint_variables = [constr_var for ind, constr_var in enumerate(constraint_variables) if ind not in null_indices]
+    bounds = np.delete(bounds, null_indices, axis=0)
     return SeparateLinearConstraintsParams(
         constraint_variables=constraint_variables,
-        bounds=scalar_bounds_array)
+        bounds=bounds)
 
 class SeparateLinearConstraints(Constraint):
     def __init__(self,
@@ -126,17 +116,17 @@ class SeparateLinearConstraints(Constraint):
         self.constraint_variables = constraint_params.constraint_variables
         self.bounds = constraint_params.bounds
 
-    def scalar_bounds_for_var(self, var: DataVariable):
+    def scalar_bounds_for_var(self, var: ConstraintVar):
         ind = self.constraint_variables.index(var)
         return self.bounds[ind, :]
 
     def _evaluate(self,
-                  constr_input_values: Dict[DataVariable, float]) -> ConstraintEval:
+                  constr_values_dict: Dict[DataVariable, float]) -> ConstraintEval:
         lower_diff = np.empty(len(self.constraint_variables))
         upper_diff = np.empty(len(self.constraint_variables))
         for i, var in enumerate(self.constraint_variables):
-            lower_diff[i] = constr_input_values[var] - self.bounds[i, 0]
-            upper_diff[i] = constr_input_values[var] - self.bounds[i, 1]
+            lower_diff[i] = constr_values_dict[var] - self.bounds[i, 0]
+            upper_diff[i] = constr_values_dict[var] - self.bounds[i, 1]
         return ConstraintEval(lower_diff=lower_diff,
                               upper_diff=upper_diff)
 

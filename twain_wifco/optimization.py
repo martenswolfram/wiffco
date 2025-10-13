@@ -28,7 +28,7 @@ class ControlEvaluationSystem:
                  name: str, 
                  plant_model: PlantModel,
                  aggregation: Aggregation,
-                 instantaneous_constraint: Constraint,
+                 control_constraint: Constraint,
                  metrics_accumulation: MetricsAccumulation,
                  accumulated_constraint: Constraint,
                  multi_metrics_reduction: MultiMetricsReduction):
@@ -37,15 +37,14 @@ class ControlEvaluationSystem:
         self.name = name
         self.plant_model = plant_model
         self.aggregation = aggregation
-        self.instantaneous_constraint = instantaneous_constraint
+        self.control_constraint = control_constraint
         self.metrics_accumulation = metrics_accumulation
         self.accumulated_constraint = accumulated_constraint
         self.multi_metrics_reduction = multi_metrics_reduction
 
     def aggregate_from_ambient_cond(self,
                                     ambient_condition: Dict[Ambient, float],
-                                    control_setpoints: Dict[Control, float],
-                                    instantaneous_constraint: Constraint):
+                                    control_setpoints: Dict[Control, float]):
         
         model_output = self.plant_model.evaluate(
              meteorological_condition=ambient_condition,
@@ -53,8 +52,8 @@ class ControlEvaluationSystem:
         aggregate = self.aggregation.compute_aggregate(model_output=model_output,
                                                        ambient_condition=ambient_condition,
                                                        control_setpoints=control_setpoints)
-        constraint_eval = instantaneous_constraint.evaluate(
-            constr_vars=(control_setpoints | model_output | aggregate))
+        constraint_eval = self.control_constraint.evaluate(
+            constr_values_dict=control_setpoints)
         
         return aggregate, constraint_eval.satisfied()
 
@@ -184,8 +183,7 @@ class GridSearch(ControlPolicyOptimization):
                 aggregate, instant_constraint_satisfied = \
                     control_eval_system.aggregate_from_ambient_cond(
                         ambient_condition=ambient_condition,
-                        control_setpoints=ctrl_setpoints,
-                        instantaneous_constraint=control_eval_system.instantaneous_constraint)
+                        control_setpoints=ctrl_setpoints)
                 instant_constraints_satisfied_matrix[n_amb, n_ctrl] = instant_constraint_satisfied
                 for agg_var in control_eval_system.aggregation.output_variables:
                     aggregate_evaluations[agg_var][n_amb, n_ctrl] = aggregate[agg_var]
@@ -221,7 +219,7 @@ class GridSearch(ControlPolicyOptimization):
                     aggregate_statistics=discrete_aggr_stat,
                     duration=duration)
                 multi_metrics_reduced.append(control_eval_system.multi_metrics_reduction.evaluate(acc_metrics=expected_acc_metrics))
-                acc_metrics_constraint_eval = control_eval_system.accumulated_constraint.evaluate(constr_vars=expected_acc_metrics)
+                acc_metrics_constraint_eval = control_eval_system.accumulated_constraint.evaluate(constr_values_dict=expected_acc_metrics)
                 constraints_satisfied.append(acc_metrics_constraint_eval.satisfied())
             
         # Find the optimal control strategy that satisfies the constraints
@@ -325,13 +323,14 @@ class SimultaneousOptimization(ControlPolicyOptimization):
             max_num_amb_cond=self.max_num_amb_cond)
         
         expected_acc_metrics_w_cache = lambda x : opt_mgr.expected_acc_metrics_w_cache(tuple(x))
-        # define cost function
+        
+        # define cost function based on accumulated metrics
         cost_function = \
             opt_mgr.control_eval_system.multi_metrics_reduction.cost_function(
                 eval_acc_metrics_from_x=expected_acc_metrics_w_cache)
             
-        # define constraints
-        constraint = \
+        # define constraint based on accumulated metrics
+        acc_metrics_constraint = \
             opt_mgr.control_eval_system.accumulated_constraint.scipy_constraint(
                 eval_constraint_from_x=expected_acc_metrics_w_cache)
         
@@ -339,7 +338,7 @@ class SimultaneousOptimization(ControlPolicyOptimization):
         minimize(cost_function,
                  x0,
                  method=self.scipy_method,
-                 constraints=[constraint],
+                 constraints=[acc_metrics_constraint],
                  options=self.scipy_options)
         
         return opt_mgr.control_policy

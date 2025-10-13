@@ -138,9 +138,9 @@ def control_evaluation_system_from_json(json_path: pathlib.Path):
     aggregation = aggregation_from_json(
         json_path=(config_folder / param_dict["aggregation_file"]))
 
-    # Instantaneous constraint
-    instantaneous_constraint = constraint_from_json(
-        json_path=(config_folder / param_dict["instantaneous_constraint_file"]))
+    # Control constraint
+    control_constraint = constraint_from_json(
+        json_path=(config_folder / param_dict["control_constraint_file"]))
        
     # Metrics accumulation
     metrics_accumulation = metrics_accumulation_from_json(
@@ -158,7 +158,7 @@ def control_evaluation_system_from_json(json_path: pathlib.Path):
         name=eval_system_name,
         plant_model=plant_model,
         aggregation=aggregation,
-        instantaneous_constraint=instantaneous_constraint,
+        control_constraint=control_constraint,
         metrics_accumulation=metrics_accumulation,
         accumulated_constraint=accumulated_constraint,
         multi_metrics_reduction=multi_metrics_reduction)

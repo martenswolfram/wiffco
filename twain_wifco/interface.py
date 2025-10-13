@@ -1,4 +1,4 @@
-from typing import List, Union, Set, TypeVar
+from typing import List, Union, Set, TypeVar, Dict, Any
 import numpy as np
 from abc import ABC, abstractmethod
 from enum import Enum
@@ -53,7 +53,10 @@ def get_abs_tol(data_var: DataVariable):
         raise ValueError(f"No abs tol value for data variable '{data_var}'.") 
 
 # Allow statistical distributions only over Ambient condition and Aggregated variables
-Statistical = TypeVar('Statistical', Ambient, Aggregated)
+StatisticalVar = TypeVar('Statistical', Ambient, Aggregated)
+
+# Allow constraint variables to be only Control, Aggregated or AccumulatedMetric
+ConstraintVar = TypeVar('ConstraintVar', Control, Aggregated, AccumulatedMetric)
 
 DataType = TypeVar("DataType",
                    Ambient,
@@ -105,4 +108,8 @@ def validate_data_flow(components: List[Component]):
             raise ValueError(msg)
         current_out = current_component.output_variables
 
-    
+def retrieve_single_key_str(input_dict: Dict[str, Any], key_strs: Set[str]):
+    single_key = key_strs.intersection(input_dict.keys())
+    if not len(single_key) == 1:
+        raise ValueError(f"Exactly one element of {key_strs} must appear as key in {input_dict}.")
+    return list(single_key)[0]

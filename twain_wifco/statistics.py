@@ -5,13 +5,14 @@ import numpy as np
 from twain_wifco.interface import (
     Component,
     ComponentParams,    
-    Statistical,
+    StatisticalVar,
     Ambient,
-    Aggregated)
+    Aggregated,
+    retrieve_single_key_str)
 
 class SystematicSample:
     def __init__(self,
-                 support_variables: List[Statistical], 
+                 support_variables: List[StatisticalVar], 
                  support_values: np.ndarray,
                  normalized_weights: np.ndarray,
                  probability_covered: float = 1):
@@ -61,7 +62,7 @@ class StatisticsType(Enum):
 
 class DiscreteStatisticsParams(ComponentParams):
     def __init__(self,
-                 support_variables: List[Statistical],
+                 support_variables: List[StatisticalVar],
                  prevalence: np.ndarray,
                  support_points: np.ndarray):
         self.support_variables = support_variables
@@ -76,9 +77,8 @@ class DiscreteStatisticsParams(ComponentParams):
                 
 def discrete_statistics_params_from_dict(param_dict: Dict[str, Any]):
     
-    if ("ambient_variables" in param_dict.keys()) == ("aggregated_variables" in param_dict.keys()):
-        raise ValueError(f"DiscreteStatisticsParams config: Exactly one of 'ambient_variables' or 'aggregated_variables' must be specified.")
-    if ("ambient_variables" in param_dict.keys()):
+    key_str = retrieve_single_key_str(param_dict, set(["aggregated_variables", "ambient_variables"]))    
+    if key_str == "ambient_variables":
         support_variables = \
             [Ambient(support_var) for support_var in param_dict["ambient_variables"]]
     else:
