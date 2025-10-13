@@ -12,7 +12,7 @@ from twain_wifco.interface import (
 from twain_wifco.optimization import (
     GridSearch,
     SimultaneousOptimization)
-from twain_wifco.accumulated_constraint import SeparateLinearConstraints
+from twain_wifco.constraint import SeparateLinearConstraints
 
 test_data_folder = pathlib.Path(__file__).parent / "data"
     
@@ -57,7 +57,7 @@ def test_grid_search():
     assert optimal_revenue > 0
     linear_acc_contraints: SeparateLinearConstraints = control_evaluation_system.accumulated_constraint
     assert expected_accumulated_metrics[AccumulatedMetric.ACCRUED_DAMAGE] <= \
-        linear_acc_contraints.constraint_mappings[AccumulatedMetric.ACCRUED_DAMAGE].upper_bound
+        linear_acc_contraints.bounds[0, 1]
     pass
     
     # Compare with perturbed control policies
@@ -71,7 +71,7 @@ def test_grid_search():
             
         # Constraint violated
         assert expected_accumulated_metrics[AccumulatedMetric.ACCRUED_DAMAGE] > \
-            linear_acc_contraints.constraint_mappings[AccumulatedMetric.ACCRUED_DAMAGE].upper_bound
+            linear_acc_contraints.scalar_bounds_for_var(AccumulatedMetric.ACCRUED_DAMAGE)[1]
 
         # Evaluate perturbed result (ramp down control)
         control_setpoint -= 2
@@ -112,7 +112,7 @@ def test_simultaneous_optimization():
     linear_acc_contraints: SeparateLinearConstraints = control_evaluation_system.accumulated_constraint
     assert expected_accumulated_metrics[AccumulatedMetric.ACCRUED_DAMAGE] == \
         pytest.approx(
-        linear_acc_contraints.constraint_mappings[AccumulatedMetric.ACCRUED_DAMAGE].upper_bound,
+        linear_acc_contraints.scalar_bounds_for_var(AccumulatedMetric.ACCRUED_DAMAGE)[1],
         abs=get_abs_tol(data_var=AccumulatedMetric.ACCRUED_DAMAGE))
     pass
     
@@ -143,7 +143,7 @@ def test_lagrangian_relaxation():
     linear_acc_contraints: SeparateLinearConstraints = control_evaluation_system.accumulated_constraint
     assert expected_accumulated_metrics[AccumulatedMetric.ACCRUED_DAMAGE] == \
         pytest.approx(
-        linear_acc_contraints.constraint_mappings[AccumulatedMetric.ACCRUED_DAMAGE].upper_bound,
+        linear_acc_contraints.scalar_bounds_for_var(AccumulatedMetric.ACCRUED_DAMAGE)[1],
         abs=get_abs_tol(data_var=AccumulatedMetric.ACCRUED_DAMAGE))
     pass
     

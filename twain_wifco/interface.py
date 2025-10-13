@@ -25,10 +25,10 @@ class AccumulatedMetric(Enum):
     ACCRUED_DAMAGE = "accrued_damage"
 
 DataVariable = Union[Ambient,
-                      Control,
-                      ModelOutput,
-                      Aggregated,
-                      AccumulatedMetric]
+                     Control,
+                     ModelOutput,
+                     Aggregated,
+                     AccumulatedMetric]
 
 def get_default_value(data_var: DataVariable):
     # TODO: implement in DataVariable class 

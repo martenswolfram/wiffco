@@ -20,7 +20,7 @@ from twain_wifco.control_input import (
 from twain_wifco.plant_model import PlantModel
 from twain_wifco.aggregation import Aggregation
 from twain_wifco.metrics_accumulation import MetricsAccumulation
-from twain_wifco.accumulated_constraint import AccumulatedConstraint
+from twain_wifco.constraint import Constraint
 from twain_wifco.multi_metrics_reduction import MultiMetricsReduction
 
 class ControlEvaluationSystem:
@@ -29,7 +29,7 @@ class ControlEvaluationSystem:
                  plant_model: PlantModel,
                  aggregation: Aggregation,
                  metrics_accumulation: MetricsAccumulation,
-                 accumulated_constraint: AccumulatedConstraint,
+                 accumulated_constraint: Constraint,
                  multi_metrics_reduction: MultiMetricsReduction):
         
         # Parameters
@@ -204,8 +204,8 @@ class GridSearch(ControlPolicyOptimization):
                 aggregate_statistics=discrete_aggr_stat,
                 duration=duration)
             multi_metrics_reduced.append(control_eval_system.multi_metrics_reduction.evaluate(acc_metrics=expected_acc_metrics))
-            constraint_evals = control_eval_system.accumulated_constraint.evaluate(acc_metrics=expected_acc_metrics)
-            constraints_satisfied.append(all(cstr_eval.satisfied() for cstr_eval in constraint_evals.values()))
+            constraint_eval = control_eval_system.accumulated_constraint.evaluate(constr_vars=expected_acc_metrics)
+            constraints_satisfied.append(constraint_eval.satisfied())
             
         # Find the optimal control strategy that satisfies the constraints
         if control_eval_system.multi_metrics_reduction.maximize:
@@ -317,7 +317,7 @@ class SimultaneousOptimization(ControlPolicyOptimization):
         # define constraints
         constraint = \
             opt_mgr.control_eval_system.accumulated_constraint.scipy_constraint(
-                eval_acc_metrics_from_x=expected_acc_metrics_w_cache)
+                eval_constraint_from_x=expected_acc_metrics_w_cache)
         
         x0 = opt_mgr.control_policy.get_ctrl_parameters_full()
         minimize(cost_function,

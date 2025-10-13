@@ -20,8 +20,8 @@ from twain_wifco.metrics_accumulation import (
     MetricsAccumulationType,
     discounted_integrator_params_from_dict,
     DiscountedIntegration)
-from twain_wifco.accumulated_constraint import (
-    AccumulatedConstraintType,
+from twain_wifco.constraint import (
+    ConstraintType,
     separate_linear_constraints_params_from_dict,
     SeparateLinearConstraints)
 from twain_wifco.multi_metrics_reduction import (
@@ -100,14 +100,14 @@ def metrics_accumulation_from_json(json_path: pathlib.Path):
     else:
         raise NotImplementedError("Only discounted-integration metrics accumulation implemented.")
 
-def accumulated_constraint_from_json(json_path: pathlib.Path):
+def constraint_from_json(json_path: pathlib.Path):
     param_dict = parse_json_file(path=json_path)
-    acc_constraint_name = param_dict["name"]
-    acc_constraint_type = AccumulatedConstraintType(param_dict["constraint_type"])
-    if acc_constraint_type == AccumulatedConstraintType.SEPARATE_LINEAR_CONSTRAINTS:
+    constraint_name = param_dict["name"]
+    constraint_type = ConstraintType(param_dict["constraint_type"])
+    if constraint_type == ConstraintType.SEPARATE_LINEAR_CONSTRAINTS:
         params = separate_linear_constraints_params_from_dict(param_dict=param_dict["constraint_params"])
-        return SeparateLinearConstraints(acc_constraint_name=acc_constraint_name,
-                                     acc_constraint_params=params)
+        return SeparateLinearConstraints(constraint_name=constraint_name,
+                                         constraint_params=params)
     else:
         raise NotImplementedError("Only separate-linear constraints implemented.")
 
@@ -143,7 +143,7 @@ def control_evaluation_system_from_json(json_path: pathlib.Path):
         json_path=(config_folder / param_dict["metrics_accumulation_file"]))
 
     # Accumulated constraint
-    accumulated_constraint = accumulated_constraint_from_json(
+    accumulated_constraint = constraint_from_json(
         json_path=(config_folder / param_dict["accumulated_constraint_file"]))
 
     # Multi-metrics reduction
