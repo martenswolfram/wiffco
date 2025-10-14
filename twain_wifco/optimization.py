@@ -447,11 +447,18 @@ class LagrangianRelaxation(ControlPolicyOptimization):
                     # Scipy will minimize a cost function, hence take the negative value
                     return - scalar_objective
                 
+                # control constraints
+                get_ctrl_setpoints_for_ac = lambda x : {
+                ctrl_var: x[i_ctrl] for i_ctrl, ctrl_var in enumerate(opt_mgr.control_policy.control_variables)}
+                constraints = opt_mgr.control_eval_system.control_constraint.scipy_constraint(
+                    eval_constraint_from_x=get_ctrl_setpoints_for_ac)
+
                 # Minimize Lagrangian
                 x0 = opt_mgr.control_policy.get_ctrl_parameters(ambient_condition=ambient_condition)
                 res = minimize(cost_function,
                                x0,
                                method=self.scipy_method,
+                               constraints=constraints,
                                options=self.scipy_options)
                 ctrl_setpoints_vec = res.x
                 opt_mgr.control_policy.set_ctrl_parameters_from_vector(x=ctrl_setpoints_vec,
