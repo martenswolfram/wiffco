@@ -5,11 +5,14 @@ from twain_wifco.config import (
     control_evaluation_system_from_json,
     control_optimization_from_json,
     statistics_from_json)
+from twain_wifco.control_input import DiscreteControlPolicy
+from twain_wifco.statistics import Statistics
 from twain_wifco.interface import (
     Control,
     AccumulatedMetric,
     get_abs_tol)
 from twain_wifco.optimization import (
+    ControlEvaluationSystem,
     GridSearch,
     SimultaneousOptimization)
 from twain_wifco.constraint import SeparateLinearConstraints
@@ -32,6 +35,43 @@ ambient_statistics = statistics_from_json(json_path=json_path)
 # Duration
 duration = 20
 
+def perturbed_discrete_control_policy_test(
+        control_evaluation_system: ControlEvaluationSystem,
+        ambient_condition_statistics: Statistics,
+        duration: int,
+        optimal_policy: DiscreteControlPolicy,
+        diff: float):
+    
+    # Compute optimal results
+    expected_accumulated_metrics = control_evaluation_system.expected_acc_metrics(
+                ambient_condition_statistics=ambient_condition_statistics,
+                control_policy=optimal_policy,
+                duration=duration)
+    optimal_reduced_metric = control_evaluation_system.multi_metrics_reduction.evaluate(acc_metrics=expected_accumulated_metrics)
+    # Store original control setpoints
+    original_setpoints = np.copy(optimal_policy.control_setpoints)
+
+    # Compare with perturbed control policies
+    for i, ambient_condition_setpoints in enumerate(optimal_policy.control_setpoints):
+        for j in np.arange(len(optimal_policy.control_variables)):
+            for perturbation in [diff, -diff]:
+                # Evaluate perturbed result
+                ambient_condition_setpoints[j] = original_setpoints[i, j] + perturbation
+                control_setpoints = {ctrl_var: ctrl_val for ctrl_var, ctrl_val in zip(optimal_policy.control_variables,
+                                                                                    optimal_policy.control_setpoints[i, :])}
+                if control_evaluation_system.control_constraint.evaluate(control_setpoints).satisfied():
+                    expected_accumulated_metrics = control_evaluation_system.expected_acc_metrics(
+                        ambient_condition_statistics=ambient_condition_statistics,
+                        control_policy=optimal_policy,
+                        duration=duration)
+                    reduced_metric = control_evaluation_system.multi_metrics_reduction.evaluate(acc_metrics=expected_accumulated_metrics)
+                    if control_evaluation_system.accumulated_constraint.evaluate(expected_accumulated_metrics).satisfied():
+                        is_suboptimal = (optimal_reduced_metric > reduced_metric if \
+                            control_evaluation_system.multi_metrics_reduction.maximize else \
+                            optimal_reduced_metric < reduced_metric)
+                        assert is_suboptimal == True
+    optimal_policy.control_setpoints = original_setpoints
+
 def test_grid_search():
     json_path = test_data_folder / "grid_search_optimization.json"
     grid_search: GridSearch = control_optimization_from_json(json_path=json_path)
@@ -48,43 +88,11 @@ def test_grid_search():
                                                  duration=duration)
     
     # Evaluate result
-    expected_accumulated_metrics = control_evaluation_system.expected_acc_metrics(
-        ambient_condition_statistics=ambient_statistics,
-        control_policy=optimal_policy,
-        duration=duration)
-        
-    optimal_revenue = expected_accumulated_metrics[AccumulatedMetric.REVENUE]
-    assert optimal_revenue > 0
-    linear_acc_contraints: SeparateLinearConstraints = control_evaluation_system.accumulated_constraint
-    assert expected_accumulated_metrics[AccumulatedMetric.ACCRUED_DAMAGE] <= \
-        linear_acc_contraints.scalar_bounds_for_var(AccumulatedMetric.ACCRUED_DAMAGE)[1]
-    pass
-    
-    # Compare with perturbed control policies
-    for control_setpoint in optimal_policy.control_setpoints:
-        # Evaluate perturbed result (ramp up control)
-        control_setpoint += 1
-        expected_accumulated_metrics = control_evaluation_system.expected_acc_metrics(
-            ambient_condition_statistics=ambient_statistics,
-            control_policy=optimal_policy,
-            duration=duration)
-            
-        # Constraint violated
-        assert expected_accumulated_metrics[AccumulatedMetric.ACCRUED_DAMAGE] > \
-            linear_acc_contraints.scalar_bounds_for_var(AccumulatedMetric.ACCRUED_DAMAGE)[1]
-
-        # Evaluate perturbed result (ramp down control)
-        control_setpoint -= 2
-        expected_accumulated_metrics = control_evaluation_system.expected_acc_metrics(
-            ambient_condition_statistics=ambient_statistics,
-            control_policy=optimal_policy,
-            duration=duration)
-        # Sub-optimal result
-        assert expected_accumulated_metrics[AccumulatedMetric.REVENUE] < optimal_revenue
-
-        # back to original
-        control_setpoint += 1
-
+    perturbed_discrete_control_policy_test(control_evaluation_system=control_evaluation_system,
+                                           ambient_condition_statistics=ambient_statistics,
+                                           duration=duration,
+                                           optimal_policy=optimal_policy,
+                                           diff=1)
 
 def test_simultaneous_optimization():
     json_path = test_data_folder / "simultaneous_optimization.json"
@@ -101,21 +109,12 @@ def test_simultaneous_optimization():
         duration=duration)
     
     # Evaluate result
-    expected_accumulated_metrics = control_evaluation_system.expected_acc_metrics(
-        ambient_condition_statistics=ambient_statistics,
-        control_policy=optimal_policy,
-        duration=duration,
-        max_num_amb_cond=simultaneous_optimization.max_num_amb_cond)
-        
-    optimal_revenue = expected_accumulated_metrics[AccumulatedMetric.REVENUE]
-    assert optimal_revenue > 0
-    linear_acc_contraints: SeparateLinearConstraints = control_evaluation_system.accumulated_constraint
-    assert expected_accumulated_metrics[AccumulatedMetric.ACCRUED_DAMAGE] == \
-        pytest.approx(
-        linear_acc_contraints.scalar_bounds_for_var(AccumulatedMetric.ACCRUED_DAMAGE)[1],
-        abs=get_abs_tol(data_var=AccumulatedMetric.ACCRUED_DAMAGE))
-    pass
-    
+    perturbed_discrete_control_policy_test(control_evaluation_system=control_evaluation_system,
+                                           ambient_condition_statistics=ambient_statistics,
+                                           duration=duration,
+                                           optimal_policy=optimal_policy,
+                                           diff=0.01)
+
 
 def test_lagrangian_relaxation():
     json_path = test_data_folder / "lagrangian_relaxation.json"
@@ -146,4 +145,11 @@ def test_lagrangian_relaxation():
         linear_acc_contraints.scalar_bounds_for_var(AccumulatedMetric.ACCRUED_DAMAGE)[1],
         abs=get_abs_tol(data_var=AccumulatedMetric.ACCRUED_DAMAGE))
     pass
+
+    # Evaluate result
+    perturbed_discrete_control_policy_test(control_evaluation_system=control_evaluation_system,
+                                           ambient_condition_statistics=ambient_statistics,
+                                           duration=duration,
+                                           optimal_policy=optimal_policy,
+                                           diff=0.01)
     
