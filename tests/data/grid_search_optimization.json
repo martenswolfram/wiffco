@@ -4,7 +4,7 @@
     "optimization_params": {
         "max_num_ambient_conditions": 6,
         "control_setpoints": {
-            "power_regulation": [0, 1, 2, 3, 4]
+            "power_regulation": [[0], [1], [2], [3], [4]]
         }
     }
 }

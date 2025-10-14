@@ -71,11 +71,11 @@ class ComponentParams(ABC):
         pass
         
     @abstractmethod
-    def input_variables(self) -> Set[DataVariable]:
+    def input_variables(self) -> Dict[DataVariable, int]:
         pass
     
     @abstractmethod
-    def output_variables(self) -> Set[DataVariable]:
+    def output_variables(self) -> Dict[DataVariable, int]:
         pass
 
 class Component(ABC):

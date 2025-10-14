@@ -1,0 +1,48 @@
+{
+    "name": "power_damage_rbf",
+    "model_type": "factorized_rbf_interpolation",
+    "model_params": {
+        "control": {
+            "support_points": {
+                "power_regulation": [[0],
+                                        [1],
+                                        [2],
+                                        [3],
+                                        [4]]
+            },
+            "out_values": {
+                "electrical_power": [[  0],  
+                                        [  1],  
+                                        [1.4],
+                                        [1.7],
+                                        [  2]],
+                "damage_rate": [[ 0],  
+                                [ 1],  
+                                [ 8],
+                                [27],
+                                [64]]  
+            }
+        },                
+        "ambient": {
+            "support_points": {
+                "wind_speed": [[ 0],
+                                [10],
+                                [20],
+                                [30],
+                                [40]]
+            },
+            "out_values": {
+                "electrical_power": [[ 0],  
+                                        [ 1],  
+                                        [ 4],
+                                        [ 9],
+                                        [16]],
+                "damage_rate": [[ 0],  
+                                [ 1],  
+                                [ 4],
+                                [ 9],
+                                [16]]  
+            }
+        }
+    }
+}

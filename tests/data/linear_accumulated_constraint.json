@@ -3,7 +3,7 @@
     "constraint_type": "separate_linear_constraints",
     "constraint_params":{
         "accumulated_metrics": ["accrued_damage", "revenue"],
-        "upper_bounds":        [             500,      null],
-        "lower_bounds":        [            null,      null]
+        "upper_bounds":        [           [500],    [null]],
+        "lower_bounds":        [          [null],    [null]]
     }
 }

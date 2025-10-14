@@ -11,9 +11,9 @@
             "args": [
                 "-s",
                 "-v",
-                "tests",
+                // "tests",
                 // "--ignore=tests/test_optimization.py",
-                // "tests/test_optimization.py",
+                "tests/test_plant_model.py",
             ],
             "justMyCode": true,
         },

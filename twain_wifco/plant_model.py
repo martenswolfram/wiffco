@@ -8,7 +8,10 @@ from twain_wifco.interface import (
     Ambient,
     Control,
     ModelOutput)
-from scipy.interpolate import CubicSpline
+from twain_wifco.utils import (
+    RadialBFInterpolatorParams,
+    RadialBFInterpolator,
+    rbf_interpolator_params_from_dict)
 
 class PlantModel(Component):
     def __init__(self,
@@ -33,98 +36,67 @@ class PlantModel(Component):
         pass
 
 class ModelType(Enum):
-    INDEPENDENT_CUBIC_INTERPOLATION = "independent_cubic_interpolation"
+    FACTORIZED_RBF_INTERPOLATION = "factorized_rbf_interpolation"
 
-class InterpolationMapping:
+
+class FactorizedRBFInterpParams(ComponentParams):
     def __init__(self,
-                 control_data: Dict[Control, np.ndarray],
-                 meteorological_data: Dict[Ambient, np.ndarray]):
-        self.control_data = control_data
-        self.meteorological_data = meteorological_data
-        pass
-
-class IndependentCubicInterpolationParams(ComponentParams):
-    def __init__(self,
-                 interpolation_mappings: Dict[ModelOutput, InterpolationMapping]):
-        self.interpolation_mappings = interpolation_mappings
-
+                 control_interp_params: RadialBFInterpolatorParams,
+                 ambient_interp_params: RadialBFInterpolatorParams):
+        if set(control_interp_params.out_variables) != set(control_interp_params.out_variables):
+            raise ValueError("Out variables of interpolation factors must be identical.")
+        if set(control_interp_params.out_dims) != set(control_interp_params.out_dims):
+            raise ValueError("Out variable dimensions of interpolation factors must be identical.")
+        self.control_interp_params = control_interp_params
+        self.ambient_interp_params = ambient_interp_params
+        
     def input_variables(self):
-        required_ambient = set().union(*[mapping.meteorological_data.keys() for mapping in self.interpolation_mappings.values()])
-        required_control = set().union(*[mapping.control_data.keys() for mapping in self.interpolation_mappings.values()])        
-        return set().union(required_ambient, required_control)
+        required_ambient = {in_var: in_dim for \
+                            in_var, in_dim in zip(self.ambient_interp_params.in_variables,
+                                                  self.ambient_interp_params.in_dims)}
+        required_control = {in_var: in_dim for \
+                            in_var, in_dim in zip(self.control_interp_params.in_variables,
+                                                  self.control_interp_params.in_dims)}
+        
+        return required_ambient | required_control
 
     def output_variables(self):
-        return set(self.interpolation_mappings.keys())
+        return {out_var: out_dim for \
+                out_var, out_dim in zip(self.ambient_interp_params.out_variables,
+                                        self.ambient_interp_params.out_dims)}
 
-def independent_cubic_interp_params_from_dict(param_dict: Dict[str, Any | Dict]):
-    interpolation_mappings = {}
-    for out_var, interpolation_mapping in param_dict["interpolation_mappings"].items():
-        interpolation_mapping: Dict[str, Dict]
-        ctrl_data = {}
-        for ctrl_var, data in interpolation_mapping["control_data"].items():
-            ctrl_var: str
-            data: List[List[float]]
-            ctrl_data[Control(ctrl_var)] = np.array(data)
-        met_data = {}
-        for met_var, data in interpolation_mapping["meteorological_data"].items():
-            met_var: str
-            data: List[List[float]]
-            met_data[Ambient(met_var)] = np.array(data)
-        
-        out_var: str
-        interpolation_mappings[ModelOutput(out_var)] = InterpolationMapping(
-              meteorological_data=met_data,
-              control_data=ctrl_data)
-    return IndependentCubicInterpolationParams(
-        interpolation_mappings=interpolation_mappings)
-       
-class CubicSplineWrapper:
-    def __init__(self, x: np.ndarray, y: np.ndarray):
-        self.spline = CubicSpline(x=x, y=y, extrapolate=True)
+def factorized_rbf_interp_params_from_dict(
+        param_dict: Dict[str, Dict | Any]):
+    control_interp_params = rbf_interpolator_params_from_dict(
+        param_dict=param_dict["control"],
+        in_data_type=Control,
+        out_data_type=ModelOutput)
+    ambient_interp_params = rbf_interpolator_params_from_dict(
+        param_dict=param_dict["ambient"],
+        in_data_type=Ambient,
+        out_data_type=ModelOutput)
+    return FactorizedRBFInterpParams(
+        control_interp_params=control_interp_params,
+        ambient_interp_params=ambient_interp_params
+    )
 
-    def evaluate(self, x):
-        out = self.spline(x)
-        if np.isnan(out):
-            raise ValueError("CubicSplineWrapper: Extrapolation not implemented.")
-        return out
-
-class ScalarCubicInterpolation:
-    def __init__(self,
-                 interpolation_mapping: InterpolationMapping):
-        self.control_models = \
-            {ctrl_var: CubicSplineWrapper(data[0], data[1]) for ctrl_var, data in interpolation_mapping.control_data.items()}
-        self.meteorological_models = \
-            {met_var: CubicSplineWrapper(data[0], data[1]) for met_var, data in interpolation_mapping.meteorological_data.items()}
-
-    def evaluate(self,
-                 meteorological_condition: Dict[Ambient, float],
-                 control: Dict[Control, float]):
-        out_value = 1
-        for met_var, met_model in self.meteorological_models.items():
-            out_value *= met_model.evaluate(meteorological_condition[met_var])
-        for ctrl_var, ctrl_model in self.control_models.items():
-            out_value *= ctrl_model.evaluate(control[ctrl_var])
-        return out_value
-
-class IndependentCubicInterpolation(PlantModel):
+class FactorizedRBFInterp(PlantModel):
     def __init__(self,
                  plant_name: str,
-                 plant_params: IndependentCubicInterpolationParams):
+                 plant_params: FactorizedRBFInterpParams):
         super().__init__(plant_name=plant_name,
                          plant_params=plant_params)
-
-        # Initialize models
-        self.scalar_output_models: Dict[ModelOutput, ScalarCubicInterpolation] = {}
-        for out, interpolation_mapping in plant_params.interpolation_mappings.items():
-            self.scalar_output_models[out] = \
-                ScalarCubicInterpolation(interpolation_mapping=interpolation_mapping)
-                        
-    def _evaluate(self,
-                  meteorological_condition: Dict[Ambient, float],
-                  control_input: Dict[Control, float]):
         
-        model_outputs = {}
-        for out, model in self.scalar_output_models.items():
-            model_outputs[out] = model.evaluate(meteorological_condition=meteorological_condition,
-                                                control=control_input)
-        return model_outputs
+        # Initialize interpolation factors
+        self.ambient_interp = RadialBFInterpolator(
+            interpolator_params=plant_params.ambient_interp_params)
+        self.control_interp = RadialBFInterpolator(
+            interpolator_params=plant_params.control_interp_params)
+        
+    def _evaluate(self,
+                  meteorological_condition: Dict[Ambient, np.ndarray],
+                  control_input: Dict[Control, np.ndarray]):
+        return self.ambient_interp.evaluate(query=meteorological_condition) \
+            * self.control_interp.evaluate(query=control_input)
+            
+        

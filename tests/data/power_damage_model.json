@@ -1,33 +1,35 @@
 {
     "name": "power_damage_model",
-    "model_type": "independent_cubic_interpolation",
+    "model_type": "rbf_interpolation",
     "model_params":{
         "interpolation_mappings": {
             "electrical_power": {
+                "control_variables": ["power_regulation", "yaw_steering"],
+                "support_points"   : []
                 "control_data": { 
-                    "power_regulation": [
-                        [0, 1,   2,   3, 4],
-                        [0, 1, 1.4, 1.7, 2]
-                    ]
+                    "power_regulation": {
+                        "input_vectors" : [[0, 1,   2,   3, 4]],
+                        "output_grid"   : [ 0, 1, 1.4, 1.7, 2 ]
+                    }
                 },
                 "meteorological_data": { 
-                    "wind_speed": [
-                        [0, 10, 20, 30, 40],
-                        [0,  1,  4,  9, 16]
-                    ]
+                    "wind_speed": {
+                        "input_vectors" :[[0, 10, 20, 30, 40]],
+                        "output_grid"   :[ 0,  1,  4,  9, 16 ]
+                    }
                 }
             },
             "damage_rate": {
                 "control_data": { 
-                    "power_regulation": [
-                        [0, 1, 2, 3,  4],
-                        [0, 1, 8, 27, 64]
-                    ]
+                    "power_regulation": {
+                        "input_vectors" :[[0, 1, 2,  3,  4]],
+                        "output_grid"   :[ 0, 1, 8, 27, 64 ]
+                    }
                 },
                 "meteorological_data": { 
                     "wind_speed": [
-                        [0, 10, 20, 30, 40],
-                        [0,  1,  4,  9, 16]
+                        [[0, 10, 20, 30, 40]],
+                        [ 0,  1,  4,  9, 16 ]
                     ]
                 }
             }
