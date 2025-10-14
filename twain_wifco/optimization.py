@@ -322,23 +322,37 @@ class SimultaneousOptimization(ControlPolicyOptimization):
             control_policy=initial_policy,
             max_num_amb_cond=self.max_num_amb_cond)
         
-        expected_acc_metrics_w_cache = lambda x : opt_mgr.expected_acc_metrics_w_cache(tuple(x))
-        
+        expected_acc_metrics_w_cache = lambda x : opt_mgr.expected_acc_metrics_w_cache(tuple(x))        
         # define cost function based on accumulated metrics
         cost_function = \
             opt_mgr.control_eval_system.multi_metrics_reduction.cost_function(
                 eval_acc_metrics_from_x=expected_acc_metrics_w_cache)
-            
+
+        # Constraints
+        constraints = []
+
         # define constraint based on accumulated metrics
         acc_metrics_constraint = \
             opt_mgr.control_eval_system.accumulated_constraint.scipy_constraint(
                 eval_constraint_from_x=expected_acc_metrics_w_cache)
-        
+        constraints.append(acc_metrics_constraint)
+
+        # define constraints based on control
+        if not isinstance(opt_mgr.control_policy, DiscreteControlPolicy):
+            raise NotImplementedError("Control constraints only implemented for discrete control policy")
+        num_ac, num_ctrl_vars = opt_mgr.control_policy.control_setpoints.shape
+        for i_ac in np.arange(num_ac):
+            get_ctrl_setpoints_for_ac = lambda x, i_ac=i_ac : {
+                ctrl_var: x[i_ac * num_ctrl_vars + i_ctrl] for \
+                    i_ctrl, ctrl_var in enumerate(opt_mgr.control_policy.control_variables)}
+            constraints.append(opt_mgr.control_eval_system.control_constraint.scipy_constraint(
+                eval_constraint_from_x=get_ctrl_setpoints_for_ac))
+
         x0 = opt_mgr.control_policy.get_ctrl_parameters_full()
         minimize(cost_function,
                  x0,
                  method=self.scipy_method,
-                 constraints=[acc_metrics_constraint],
+                 constraints=constraints,
                  options=self.scipy_options)
         
         return opt_mgr.control_policy
