@@ -10,15 +10,15 @@ from twain_wifco.interface import (
     DataType,
     DataVariable)
 
-def hstack_from_dict(data_dict: Dict[DataVariable, np.ndarray],
+def hstacked_from_dict(data_dict: Dict[DataVariable, np.ndarray],
                      variables: List[DataVariable]):
     return np.hstack(list(data_dict[var] for \
                           var in variables))
 
-def partition_into_dict(hstacked_array: np.ndarray,
+def partition_into_dict(stacked_array: np.ndarray,
                         variables: List[DataVariable],
                         partition_indices: np.ndarray):
-    partitioned_data = np.split(hstacked_array, partition_indices)
+    partitioned_data = np.split(stacked_array, partition_indices)
     return {var: part for \
             var, part in zip(variables, partitioned_data)}
 
@@ -62,9 +62,9 @@ class ScatteredInterpolator:
         self.out_partition_indices = np.cumsum(out_dims[:-1])
         self.in_variables = interpolator_params.in_variables
         self.out_variables = interpolator_params.out_variables
-        support_points = hstack_from_dict(data_dict=interpolator_params.support_points,
+        support_points = hstacked_from_dict(data_dict=interpolator_params.support_points,
                                           variables=interpolator_params.in_variables)
-        out_values = hstack_from_dict(data_dict=interpolator_params.out_values,
+        out_values = hstacked_from_dict(data_dict=interpolator_params.out_values,
                                       variables=interpolator_params.out_variables)
         if self.scattered_interp_type == ScatteredInterpolatorType.RBF:
             self.interpolator = RBFInterpolator(
@@ -88,9 +88,9 @@ class ScatteredInterpolator:
 
     def evaluate(self,
                  query: Dict[DataType, np.ndarray]) -> Dict[DataType, np.ndarray]:
-        x = hstack_from_dict(data_dict=query,
+        x = hstacked_from_dict(data_dict=query,
                              variables=self.in_variables)[np.newaxis, :]
         result = self.interpolator(x=x).flatten()
-        return partition_into_dict(hstacked_array=result,
+        return partition_into_dict(stacked_array=result,
                                    variables=self.out_variables,
                                    partition_indices=self.out_partition_indices)

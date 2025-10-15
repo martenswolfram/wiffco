@@ -13,7 +13,7 @@ from twain_wifco.statistics import (
     Statistics,
     DiscreteStatisticsParams,
     DiscreteStatistics)
-from twain_wifco.control_input import (
+from twain_wifco.control_policy import (
     ControlPolicy,
     DiscreteControlPolicyParams,
     DiscreteControlPolicy)

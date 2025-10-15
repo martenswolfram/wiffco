@@ -5,7 +5,7 @@ from twain_wifco.config import (
     control_evaluation_system_from_json,
     control_optimization_from_json,
     statistics_from_json)
-from twain_wifco.control_input import DiscreteControlPolicy
+from twain_wifco.control_policy import DiscreteControlPolicy
 from twain_wifco.statistics import Statistics
 from twain_wifco.interface import (
     Control,

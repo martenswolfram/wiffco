@@ -8,7 +8,7 @@ from twain_wifco.statistics import (
     StatisticsType,
     discrete_statistics_params_from_dict,
     DiscreteStatistics)
-from twain_wifco.control_input import (
+from twain_wifco.control_policy import (
     ControlPolicyType,
     discrete_policy_params_from_dict,
     DiscreteControlPolicy)
