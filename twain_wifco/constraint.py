@@ -10,15 +10,19 @@ from twain_wifco.interface import (
     Aggregated,
     AccumulatedMetric,
     ConstraintVar,
-    DataVariable,
-    retrieve_single_key_str)
+    DataVariable)
+from twain_wifco.utils import (
+    hstacked_from_dict
+)
 
-def numeric_bounds_array(lower_bounds: List[float], upper_bounds: List[float]):
-    lower_bounds_numeric = [lb if lb is not None else -np.inf for lb in lower_bounds]
-    upper_bounds_numeric = [ub if ub is not None else np.inf for ub in upper_bounds]
-    return np.array([lower_bounds_numeric, upper_bounds_numeric]).T
+class Bounds:
+    def __init__(self,
+                 upper_bound: Dict[ConstraintVar, np.ndarray],
+                 lower_bound: Dict[ConstraintVar, np.ndarray]):
+        self.upper_bound = upper_bound
+        self.lower_bound = lower_bound
 
-class UpperBound:
+class UpperBoundConstraint:
     def __init__(self,
                  upper_bound: np.ndarray,
                  constraint_fun):
@@ -46,7 +50,7 @@ class Constraint(Component):
     def evaluate(self,
                  constr_values_dict: Dict[DataVariable, np.ndarray]) -> ConstraintEval:
         
-        self._validate_inputs(inputs=constr_values_dict.keys())
+        self._validate_inputs(inputs=constr_values_dict)
 
         return self._evaluate(constr_values_dict=constr_values_dict)
     
@@ -60,7 +64,7 @@ class Constraint(Component):
         pass
 
     @abstractmethod
-    def upper_bound_constraints(self) -> List[UpperBound]:
+    def upper_bound_constraints(self) -> List[UpperBoundConstraint]:
         pass
 
 
@@ -69,42 +73,37 @@ class ConstraintType(Enum):
 
 class SeparateLinearConstraintsParams(ComponentParams):
     def __init__(self,
-                 constraint_variables: List[ConstraintVar],
-                 bounds: np.ndarray):
-        self.constraint_variables = constraint_variables
+                 bounds: Bounds):
         self.bounds = bounds
         
     def input_variables(self):
-        return set(self.constraint_variables)
+        return {var: len(ub) for var, ub in self.bounds.upper_bound.items()}
     
     def output_variables(self):
-        return set()
+        return {}
 
 def separate_linear_constraints_params_from_dict(param_dict: Dict[str, Dict | Any]):
     
-    key_str = retrieve_single_key_str(param_dict, set(["control_variables",
-                                                       "aggregated_variables",
-                                                       "accumulated_metrics"]))
-    if key_str == "control_variables":
-        constraint_variables = \
-            [Control(constr_var) for constr_var in param_dict[key_str]]
-    elif key_str == "aggregated_variables":
-        constraint_variables = \
-            [Aggregated(constr_var) for constr_var in param_dict[key_str]]
-    else:
-        constraint_variables = \
-            [AccumulatedMetric(constr_var) for constr_var in param_dict[key_str]]
-    
-    bounds = numeric_bounds_array(lower_bounds=param_dict["lower_bounds"],
-                                  upper_bounds=param_dict["upper_bounds"])
-    null_row = np.array([-np.inf, np.inf])
-    null_indices = np.where(np.all(bounds == null_row, axis=1))[0]
-    
-    # Remove null-constraints
-    constraint_variables = [constr_var for ind, constr_var in enumerate(constraint_variables) if ind not in null_indices]
-    bounds = np.delete(bounds, null_indices, axis=0)
+    if param_dict["data_type"] == "control":
+        data_type = Control
+    elif param_dict["data_type"] == "aggregate":
+        data_type = Aggregated
+    elif param_dict["data_type"] == "accumulated_metric":
+        data_type = AccumulatedMetric
+
+    upper_bound = {}
+    for constr_var, ub in param_dict["upper_bound"].items():
+        upper_bound[data_type(constr_var)] = \
+            np.array([u if u is not None else np.inf for u in ub])
+    lower_bound = {}
+    for constr_var, lb in param_dict["lower_bound"].items():
+        lower_bound[data_type(constr_var)] = \
+            np.array([l if l is not None else -np.inf for l in lb])
+    bounds = Bounds(
+        upper_bound=upper_bound,
+        lower_bound=lower_bound
+    )
     return SeparateLinearConstraintsParams(
-        constraint_variables=constraint_variables,
         bounds=bounds)
 
 class SeparateLinearConstraints(Constraint):
@@ -113,20 +112,24 @@ class SeparateLinearConstraints(Constraint):
                  constraint_params: SeparateLinearConstraintsParams):
         super().__init__(constraint_name=constraint_name,
                          constraint_params=constraint_params)
-        self.constraint_variables = constraint_params.constraint_variables
-        self.bounds = constraint_params.bounds
-
-    def scalar_bounds_for_var(self, var: ConstraintVar):
-        ind = self.constraint_variables.index(var)
-        return self.bounds[ind, :]
-
+        # self.bounds = constraint_params.bounds
+        self.constraint_variables = list(constraint_params.bounds.upper_bound.keys())
+        self.stacked_lower_bound = hstacked_from_dict(
+            data_dict=constraint_params.bounds.lower_bound,
+            variables=self.constraint_variables)
+        self.stacked_upper_bound = hstacked_from_dict(
+            data_dict=constraint_params.bounds.upper_bound,
+            variables=self.constraint_variables)
+        
+        
     def _evaluate(self,
                   constr_values_dict: Dict[DataVariable, np.ndarray]) -> ConstraintEval:
-        lower_diff = np.empty(len(self.constraint_variables))
-        upper_diff = np.empty(len(self.constraint_variables))
-        for i, var in enumerate(self.constraint_variables):
-            lower_diff[i] = constr_values_dict[var] - self.bounds[i, 0]
-            upper_diff[i] = constr_values_dict[var] - self.bounds[i, 1]
+        
+        stacked_values = hstacked_from_dict(
+            data_dict=constr_values_dict,
+            variables=self.constraint_variables)
+        lower_diff = stacked_values - self.stacked_lower_bound
+        upper_diff = stacked_values - self.stacked_upper_bound
         return ConstraintEval(lower_diff=lower_diff,
                               upper_diff=upper_diff)
 
@@ -141,21 +144,21 @@ class SeparateLinearConstraints(Constraint):
                                    lb=self.bounds[:, 0],
                                    ub=self.bounds[:, 1])
     
-    def upper_bound_constraints(self) -> List[UpperBound]:
+    def upper_bound_constraints(self) -> List[UpperBoundConstraint]:
         ub_constraints = []
         for constr_var, scalar_bounds in zip(self.constraint_variables, self.bounds):
             # lower bound
             if scalar_bounds[0] > -np.inf:
                 def constraint_fun(constr_var_values, constr_var=constr_var):
                     return -constr_var_values[constr_var]
-                ub_constraint = UpperBound(upper_bound=-scalar_bounds[0],
+                ub_constraint = UpperBoundConstraint(upper_bound=-scalar_bounds[0],
                                            constraint_fun=constraint_fun)
                 ub_constraints.append(ub_constraint)
             # upper bound
             if scalar_bounds[1] < np.inf:
                 def constraint_fun(constr_var_values, constr_var=constr_var):
                     return constr_var_values[constr_var]
-                ub_constraint = UpperBound(upper_bound=scalar_bounds[1],
+                ub_constraint = UpperBoundConstraint(upper_bound=scalar_bounds[1],
                                            constraint_fun=constraint_fun)
                 ub_constraints.append(ub_constraint)
         return ub_constraints

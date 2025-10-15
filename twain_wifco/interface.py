@@ -56,7 +56,10 @@ def get_abs_tol(data_var: DataVariable):
 StatisticalVar = TypeVar('Statistical', Ambient, Aggregated)
 
 # Allow constraint variables to be only Control, Aggregated or AccumulatedMetric
-ConstraintVar = TypeVar('ConstraintVar', Control, Aggregated, AccumulatedMetric)
+ConstraintVar = TypeVar('ConstraintVar',
+                        Control,
+                        Aggregated,
+                        AccumulatedMetric)
 
 DataType = TypeVar("DataType",
                    Ambient,

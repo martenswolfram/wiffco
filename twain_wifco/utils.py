@@ -11,7 +11,7 @@ from twain_wifco.interface import (
     DataVariable)
 
 def hstacked_from_dict(data_dict: Dict[DataVariable, np.ndarray],
-                     variables: List[DataVariable]):
+                       variables: List[DataVariable]):
     return np.hstack(list(data_dict[var] for \
                           var in variables))
 

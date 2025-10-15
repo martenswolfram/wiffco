@@ -142,7 +142,7 @@ def test_lagrangian_relaxation():
     linear_acc_contraints: SeparateLinearConstraints = control_evaluation_system.accumulated_constraint
     assert expected_accumulated_metrics[AccumulatedMetric.ACCRUED_DAMAGE] == \
         pytest.approx(
-        linear_acc_contraints.scalar_bounds_for_var(AccumulatedMetric.ACCRUED_DAMAGE)[1],
+        linear_acc_contraints.bounds[AccumulatedMetric.ACCRUED_DAMAGE][1],
         abs=get_abs_tol(data_var=AccumulatedMetric.ACCRUED_DAMAGE))
     pass
 
