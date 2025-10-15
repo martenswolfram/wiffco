@@ -96,6 +96,8 @@ class Component(ABC):
                    f"Missing variable(s): {[var.value for var in (self.input_variables.keys() - inputs.keys())]}")
             raise ValueError(msg)
         for in_var, in_dim in self.input_variables.items():
+            if in_dim is None:
+                continue
             if not (in_dim == len(inputs[in_var])):
                 msg = (f"Input variable dimensions mismatch for component '{self.component_name}'. "
                     f"Mismatch variable: {in_var}")

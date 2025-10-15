@@ -9,7 +9,6 @@ from twain_wifco.interface import (
     ModelOutput,
     Control,
     Aggregated)
-from twain_wifco.plant_model import PlantModel
 
 class Aggregation(Component):
     def __init__(self,
@@ -23,23 +22,23 @@ class Aggregation(Component):
                           ambient_condition: Dict[Ambient, float],
                           control_setpoints: Dict[Control, float]):
         
-        self._validate_inputs(inputs=(model_output.keys() |
-                                      ambient_condition.keys() |
-                                      control_setpoints.keys()))
+        self._validate_inputs(inputs=(model_output |
+                                      ambient_condition |
+                                      control_setpoints))
 
-        return self._compute_aggregate(output_variables=model_output,
+        return self._compute_aggregate(model_output=model_output,
                                        ambient_condition=ambient_condition,
                                        control_setpoints=control_setpoints)
             
     @abstractmethod
     def _compute_aggregate(self,
-                           output_variables: Dict[ModelOutput, float],
+                           model_output: Dict[ModelOutput, float],
                            ambient_condition: Dict[Ambient, float],
                            control_setpoints: Dict[Control, float]):
         pass
 
 class AggregationType(Enum):
-    SIMPLE_PRODUCTS = "simple_products"
+    SIMPLE_PRODUCT = "simple_product"
 
 class ProductAggregateMapping:
     def __init__(self,
@@ -55,16 +54,18 @@ class SimpleProductParams(ComponentParams):
                  aggregate_mappings: Dict[Aggregated, ProductAggregateMapping]):
         self.aggregate_mappings = aggregate_mappings
         
-    def input_variables(self):
-        required_model_output = set().union(*[mapping.from_model for mapping in self.aggregate_mappings.values()])
-        required_ambient = set().union(*[mapping.from_ambient for mapping in self.aggregate_mappings.values()])
-        required_control = set().union(*[mapping.from_control for mapping in self.aggregate_mappings.values()])
-        return set().union(required_model_output,
-                           required_ambient,
-                           required_control)
-    
+    def input_variables(self):        
+        required = {}
+
+        for mapping in self.aggregate_mappings.values():
+            required |= {in_var: None for in_var in mapping.from_model}
+            required |= {in_var: None for in_var in mapping.from_ambient}
+            required |= {in_var: None for in_var in mapping.from_control}
+        return required
+
     def output_variables(self):
-        return set(self.aggregate_mappings.keys())
+        return {aggr_var: 1 for \
+                aggr_var in self.aggregate_mappings.keys()}
 
 def simple_product_params_from_dict(param_dict: Dict[str, Dict | Any]):
     aggregate_mappings = {}
@@ -85,14 +86,14 @@ class SimpleProduct(Aggregation):
         self.aggregate_mappings = aggregation_params.aggregate_mappings
 
     def _compute_aggregate(self,
-                           output_variables: Dict[ModelOutput, float],
-                           ambient_condition: Dict[Ambient, float],
-                           control_setpoints: Dict[Control, float]):
+                           model_output: Dict[ModelOutput, np.ndarray],
+                           ambient_condition: Dict[Ambient, np.ndarray],
+                           control_setpoints: Dict[Control, np.ndarray]):
     
         aggregated_output = {}
         for out_var, mapping in self.aggregate_mappings.items():
-            aggregated_output[out_var] = \
-                np.prod([output_variables[out_var] for out_var in mapping.from_model]) * \
-                np.prod([ambient_condition[ambient_var] for ambient_var in mapping.from_ambient]) * \
-                np.prod([control_setpoints[ctrl_var] for ctrl_var in mapping.from_control])
+            res = np.prod([np.prod(model_output[out_var]) for out_var in mapping.from_model]) * \
+                np.prod([np.prod(ambient_condition[ambient_var]) for ambient_var in mapping.from_ambient]) * \
+                np.prod([np.prod(control_setpoints[ctrl_var]) for ctrl_var in mapping.from_control])
+            aggregated_output[out_var] = np.array([res])
         return aggregated_output
