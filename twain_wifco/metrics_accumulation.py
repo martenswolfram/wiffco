@@ -1,4 +1,5 @@
 from typing import Dict, Any
+import numpy as np
 from abc import abstractmethod
 from enum import Enum
 from twain_wifco.statistics import (
@@ -17,7 +18,7 @@ class MetricsAccumulation(Component):
                          component_params=accumulation_params)
     
     def acc_metrics(self,
-                    aggregate: Dict[Aggregated, float],
+                    aggregate: Dict[Aggregated, np.ndarray],
                     duration: int):
         
         self._validate_inputs(inputs=aggregate.keys())
@@ -27,7 +28,7 @@ class MetricsAccumulation(Component):
 
     @abstractmethod
     def _acc_metrics(self,
-                     aggregate: Dict[Aggregated, float],
+                     aggregate: Dict[Aggregated, np.ndarray],
                      duration: int):
         pass
     
@@ -56,11 +57,12 @@ class DiscountedIntegrationParams(ComponentParams):
         self.integration_mappings = integration_mappings
 
     def input_variables(self):
-        required_aggregates = set([mapping.aggregate for mapping in self.integration_mappings.values()])
+        required_aggregates = {aggr: None for aggr in self.integration_mappings.values()}
         return required_aggregates
     
     def output_variables(self):
-        return set(self.integration_mappings.keys())
+        return {acc_metric: None for \
+                acc_metric in self.integration_mappings.keys()}
 
 def discounted_integrator_params_from_dict(param_dict: Dict[str, Dict | Any]):
     integration_mappings = {}
@@ -80,7 +82,7 @@ class DiscountedIntegration(MetricsAccumulation):
         self.integration_mappings = accumulation_params.integration_mappings
 
     def _acc_metrics(self,
-                    aggregate: Dict[Aggregated, float],
+                    aggregate: Dict[Aggregated, np.ndarray],
                     duration: int):
         accumulated_metrics = {}
         for acc_metric, integration_mapping in self.integration_mappings.items():

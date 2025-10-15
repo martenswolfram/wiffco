@@ -20,7 +20,7 @@ class ControlPolicy(Component):
                          component_params=policy_params)
         
     def get_control_setpoints(self,
-                              ambient_condition: Dict[Ambient, float]) -> Dict[Control, float]:
+                              ambient_condition: Dict[Ambient, np.ndarray]) -> Dict[Control, np.ndarray]:
         
         self._validate_inputs(inputs=ambient_condition)
         
@@ -28,18 +28,18 @@ class ControlPolicy(Component):
 
     @abstractmethod
     def _get_control_setpoints(self,
-                               ambient_condition: Dict[Ambient, float]) -> Dict[Control, float]:
+                               ambient_condition: Dict[Ambient, np.ndarray]) -> Dict[Control, np.ndarray]:
         pass
 
     @abstractmethod
     def get_ctrl_parameters(self,
-                        ambient_condition: Dict[Ambient, float]) -> np.ndarray:
+                        ambient_condition: Dict[Ambient, np.ndarray]) -> np.ndarray:
         pass
 
     @abstractmethod
     def set_ctrl_parameters_from_vector(self,
                              x: np.ndarray,
-                             ambient_condition: Dict[Ambient, float]):
+                             ambient_condition: Dict[Ambient, np.ndarray]):
         pass
 
     @abstractmethod
@@ -102,7 +102,7 @@ class DiscreteControlPolicy(ControlPolicy):
 
         
     def find_ambient_index(self,
-                           ambient_condition: Dict[Ambient, float]) -> int:
+                           ambient_condition: Dict[Ambient, np.ndarray]) -> int:
         ambient_values = hstacked_from_dict(ambient_condition,
                                             self.ambient_variables)
         # Find correct support point
@@ -117,12 +117,12 @@ class DiscreteControlPolicy(ControlPolicy):
         return row_index[0]
 
     def get_ctrl_parameters(self,
-                            ambient_condition: Dict[Ambient, float]) -> np.ndarray:
+                            ambient_condition: Dict[Ambient, np.ndarray]) -> np.ndarray:
         amb_index = self.find_ambient_index(ambient_condition=ambient_condition)
         return self.control_setpoint_data[amb_index]
         
     def _get_control_setpoints(self,
-                               ambient_condition: Dict[Ambient, float]) -> Dict[Control, float]:
+                               ambient_condition: Dict[Ambient, np.ndarray]) -> Dict[Control, np.ndarray]:
         setpoint_parameters = self.get_ctrl_parameters(ambient_condition=ambient_condition)
         return partition_into_dict(stacked_array=setpoint_parameters,
                                    variables=self.control_variables,
@@ -130,7 +130,7 @@ class DiscreteControlPolicy(ControlPolicy):
 
     def set_ctrl_parameters_from_vector(self,
                                         x: np.ndarray,
-                                        ambient_condition: Dict[Ambient, float]):
+                                        ambient_condition: Dict[Ambient, np.ndarray]):
         amb_index = self.find_ambient_index(ambient_condition=ambient_condition)
         self.control_setpoint_data[amb_index] = x
 

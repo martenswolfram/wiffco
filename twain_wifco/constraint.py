@@ -44,7 +44,7 @@ class Constraint(Component):
                          component_params=constraint_params)
 
     def evaluate(self,
-                 constr_values_dict: Dict[DataVariable, float]) -> ConstraintEval:
+                 constr_values_dict: Dict[DataVariable, np.ndarray]) -> ConstraintEval:
         
         self._validate_inputs(inputs=constr_values_dict.keys())
 
@@ -52,7 +52,7 @@ class Constraint(Component):
     
     @abstractmethod
     def _evaluate(self,
-                  constr_values_dict: Dict[DataVariable, float]) -> ConstraintEval:
+                  constr_values_dict: Dict[DataVariable, np.ndarray]) -> ConstraintEval:
         pass
 
     @abstractmethod
@@ -121,7 +121,7 @@ class SeparateLinearConstraints(Constraint):
         return self.bounds[ind, :]
 
     def _evaluate(self,
-                  constr_values_dict: Dict[DataVariable, float]) -> ConstraintEval:
+                  constr_values_dict: Dict[DataVariable, np.ndarray]) -> ConstraintEval:
         lower_diff = np.empty(len(self.constraint_variables))
         upper_diff = np.empty(len(self.constraint_variables))
         for i, var in enumerate(self.constraint_variables):

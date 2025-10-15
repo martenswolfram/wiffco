@@ -43,8 +43,8 @@ class ControlEvaluationSystem:
         self.multi_metrics_reduction = multi_metrics_reduction
 
     def aggregate_from_ambient_cond(self,
-                                    ambient_condition: Dict[Ambient, float],
-                                    control_setpoints: Dict[Control, float]):
+                                    ambient_condition: Dict[Ambient, np.ndarray],
+                                    control_setpoints: Dict[Control, np.ndarray]):
         
         model_output = self.plant_model.evaluate(
              meteorological_condition=ambient_condition,
@@ -58,8 +58,8 @@ class ControlEvaluationSystem:
         return aggregate, constraint_eval.satisfied()
 
     def acc_metrics_from_ambient_cond(self,
-                                      ambient_condition: Dict[Ambient, float],
-                                      control_setpoints: Dict[Control, float],
+                                      ambient_condition: Dict[Ambient, np.ndarray],
+                                      control_setpoints: Dict[Control, np.ndarray],
                                       duration: int):
         
         model_output = self.plant_model.evaluate(

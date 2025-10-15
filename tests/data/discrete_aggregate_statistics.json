@@ -2,13 +2,21 @@
     "name": "discrete_ambient_statistics",
     "statistics_type": "discrete_statistics",
     "statistics_params":{
-        "aggregated_variables": ["damage_rate", "revenue_rate"],
-        "support_points":      [[        [100],          [ 40]],
-                                [        [200],          [ 11]],
-                                [        [ 50],          [ 12]],
-                                [        [ 30],          [ 28]],
-                                [        [ 10],          [240]],
-                                [        [ 15],          [300]]],
+        "data_type": "aggregate",
+        "support_points": {
+            "damage_rate": [[100],
+                            [200],
+                            [ 50],
+                            [ 30],
+                            [ 10],
+                            [ 15]],
+            "revenue_rate": [[ 40],
+                             [ 11],
+                             [ 12],
+                             [ 28],
+                             [240],
+                             [300]]
+        },
         "prevalence": [0.01, 0.1, 0.19,  0.4, 0.25, 0.05]
     }
 }

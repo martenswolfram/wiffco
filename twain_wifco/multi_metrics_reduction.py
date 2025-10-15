@@ -1,4 +1,5 @@
 from typing import Dict, Any
+import numpy as np
 from abc import abstractmethod
 from enum import Enum
 from twain_wifco.interface import (
@@ -16,7 +17,7 @@ class MultiMetricsReduction(Component):
         self.maximize = maximize
 
     def evaluate(self,
-                 acc_metrics: Dict[AccumulatedMetric, float]):
+                 acc_metrics: Dict[AccumulatedMetric, np.ndarray]):
         
         self._validate_inputs(inputs=acc_metrics.keys())
 
@@ -35,7 +36,7 @@ class MultiMetricsReduction(Component):
             
     @abstractmethod
     def _evaluate(self,
-                  acc_metrics: Dict[AccumulatedMetric, float]):
+                  acc_metrics: Dict[AccumulatedMetric, np.ndarray]):
         pass
 
 class MultiMetricsReductionType(Enum):
@@ -43,7 +44,7 @@ class MultiMetricsReductionType(Enum):
 
 class ScalarWeightingParams(ComponentParams):
     def __init__(self,
-                 metric_weights: Dict[AccumulatedMetric, float]):
+                 metric_weights: Dict[AccumulatedMetric, np.ndarray]):
         self.metric_weights = metric_weights
         
     def input_variables(self):
@@ -69,6 +70,6 @@ class ScalarWeighting(MultiMetricsReduction):
         self.metric_weights = multi_metrics_reduction_params.metric_weights
         
     def _evaluate(self,
-                  acc_metrics: Dict[AccumulatedMetric, float]):
+                  acc_metrics: Dict[AccumulatedMetric, np.ndarray]):
         return sum(weight * acc_metrics[metric] for metric, weight in self.metric_weights.items())
     

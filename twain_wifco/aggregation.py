@@ -18,9 +18,9 @@ class Aggregation(Component):
                          component_params=aggregation_params)
 
     def compute_aggregate(self,
-                          model_output: Dict[ModelOutput, float],
-                          ambient_condition: Dict[Ambient, float],
-                          control_setpoints: Dict[Control, float]):
+                          model_output: Dict[ModelOutput, np.ndarray],
+                          ambient_condition: Dict[Ambient, np.ndarray],
+                          control_setpoints: Dict[Control, np.ndarray]):
         
         self._validate_inputs(inputs=(model_output |
                                       ambient_condition |
@@ -32,9 +32,9 @@ class Aggregation(Component):
             
     @abstractmethod
     def _compute_aggregate(self,
-                           model_output: Dict[ModelOutput, float],
-                           ambient_condition: Dict[Ambient, float],
-                           control_setpoints: Dict[Control, float]):
+                           model_output: Dict[ModelOutput, np.ndarray],
+                           ambient_condition: Dict[Ambient, np.ndarray],
+                           control_setpoints: Dict[Control, np.ndarray]):
         pass
 
 class AggregationType(Enum):
