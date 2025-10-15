@@ -45,25 +45,20 @@ class FactorizedScatteredInterpParams(ComponentParams):
                  ambient_interp_params: ScatteredInterpolatorParams):
         if set(control_interp_params.out_variables) != set(control_interp_params.out_variables):
             raise ValueError("Out variables of interpolation factors must be identical.")
-        if set(control_interp_params.out_dims) != set(control_interp_params.out_dims):
-            raise ValueError("Out variable dimensions of interpolation factors must be identical.")
         self.control_interp_params = control_interp_params
         self.ambient_interp_params = ambient_interp_params
         
     def input_variables(self):
-        required_ambient = {in_var: in_dim for \
-                            in_var, in_dim in zip(self.ambient_interp_params.in_variables,
-                                                  self.ambient_interp_params.in_dims)}
-        required_control = {in_var: in_dim for \
-                            in_var, in_dim in zip(self.control_interp_params.in_variables,
-                                                  self.control_interp_params.in_dims)}
+        required_ambient = {in_var: self.ambient_interp_params.support_points[in_var].shape[1] for \
+                            in_var in self.ambient_interp_params.in_variables}
+        required_control = {in_var: self.control_interp_params.support_points[in_var].shape[1] for \
+                            in_var in self.control_interp_params.in_variables}
         
         return required_ambient | required_control
 
     def output_variables(self):
-        return {out_var: out_dim for \
-                out_var, out_dim in zip(self.ambient_interp_params.out_variables,
-                                        self.ambient_interp_params.out_dims)}
+        return {out_var: self.ambient_interp_params.out_values[out_var].shape[1] for \
+                out_var in self.ambient_interp_params.out_variables}
 
 def factorized_scattered_interp_params_from_dict(
         param_dict: Dict[str, Dict | Any]):
