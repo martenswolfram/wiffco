@@ -94,6 +94,6 @@ class FactorizedScatteredInterp(PlantModel):
         ambient_eval = self.ambient_interp.evaluate(query=meteorological_condition)
         control_eval = self.control_interp.evaluate(query=control_input)
         return {out_var: ambient_eval[out_var] * control_eval[out_var] for \
-                  out_var in self.ambient_interp.params.out_variables}
+                  out_var in self.ambient_interp.out_variables}
             
         

@@ -1,4 +1,4 @@
-from typing import Dict, Any
+from typing import Dict, Any, List
 from abc import ABC, abstractmethod
 from enum import Enum
 import numpy as np
@@ -9,6 +9,19 @@ from scipy.interpolate import (
 from twain_wifco.interface import (
     DataType,
     DataVariable)
+
+def hstack_from_dict(data_dict: Dict[DataVariable, np.ndarray],
+                     variables: List[DataVariable]):
+    return np.hstack(list(data_dict[var] for \
+                          var in variables))
+
+def partition_into_dict(hstacked_array: np.ndarray,
+                        variables: List[DataVariable],
+                        partition_indices: np.ndarray):
+    partitioned_data = np.split(hstacked_array, partition_indices)
+    return {var: part for \
+            var, part in zip(variables, partitioned_data)}
+
 
 class ScatteredInterpolatorType(Enum):
     RBF = "rbf"
@@ -44,13 +57,15 @@ class ScatteredInterpolator:
     def __init__(self,                 
                  interpolator_params: ScatteredInterpolatorParams):
         self.scattered_interp_type = interpolator_params.scattered_interp_type
-        self.out_dims = np.array(list(interpolator_params.out_values[out_var].shape[1] for \
-                                      out_var in interpolator_params.out_variables))
-        self.params = interpolator_params
-        support_points = np.hstack(list(interpolator_params.support_points[in_var] for \
-                                        in_var in self.params.in_variables))
-        out_values = np.hstack(list(interpolator_params.out_values[out_var] for \
-                                    out_var in self.params.out_variables))
+        out_dims = np.array(list(interpolator_params.out_values[out_var].shape[1] for \
+                                 out_var in interpolator_params.out_variables))
+        self.out_partition_indices = np.cumsum(out_dims[:-1])
+        self.in_variables = interpolator_params.in_variables
+        self.out_variables = interpolator_params.out_variables
+        support_points = hstack_from_dict(data_dict=interpolator_params.support_points,
+                                          variables=interpolator_params.in_variables)
+        out_values = hstack_from_dict(data_dict=interpolator_params.out_values,
+                                      variables=interpolator_params.out_variables)
         if self.scattered_interp_type == ScatteredInterpolatorType.RBF:
             self.interpolator = RBFInterpolator(
                 y=support_points,
@@ -71,12 +86,11 @@ class ScatteredInterpolator:
             raise NotImplementedError("ScatteredDataInterpolator: Only RBF type implemented.")
         pass
 
-    def _partition_result(self, result_vector):
-        return np.split(result_vector, np.cumsum(self.out_dims[:-1]))
-
     def evaluate(self,
                  query: Dict[DataType, np.ndarray]) -> Dict[DataType, np.ndarray]:
-        x = np.hstack(list(query[in_var] for in_var in self.params.in_variables))[np.newaxis, :]
+        x = hstack_from_dict(data_dict=query,
+                             variables=self.in_variables)[np.newaxis, :]
         result = self.interpolator(x=x).flatten()
-        return {out_var: res_part for \
-                out_var, res_part in zip(self.params.out_variables, self._partition_result(result))}
+        return partition_into_dict(hstacked_array=result,
+                                   variables=self.out_variables,
+                                   partition_indices=self.out_partition_indices)
