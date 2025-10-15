@@ -9,9 +9,9 @@ from twain_wifco.interface import (
     Control,
     ModelOutput)
 from twain_wifco.utils import (
-    RadialBFInterpolatorParams,
-    RadialBFInterpolator,
-    rbf_interpolator_params_from_dict)
+    ScatteredInterpolatorParams,
+    ScatteredInterpolator,
+    scattered_interpolator_params_from_dict)
 
 class PlantModel(Component):
     def __init__(self,
@@ -21,28 +21,28 @@ class PlantModel(Component):
                          component_params=plant_params)
                 
     def evaluate(self,
-                 meteorological_condition: Dict[Ambient, float],
-                 control_input: Dict[Control, float]):
+                 meteorological_condition: Dict[Ambient, np.ndarray],
+                 control_input: Dict[Control, np.ndarray]):
 
-        self._validate_inputs(inputs=(meteorological_condition.keys() | control_input.keys()))
+        self._validate_inputs(inputs=(meteorological_condition | control_input))
 
         return self._evaluate(meteorological_condition=meteorological_condition,
                               control_input=control_input)
 
     @abstractmethod
     def _evaluate(self,
-                  meteorological_condition: Dict[Ambient, float],
-                  control_input: Dict[Control, float]):
+                  meteorological_condition: Dict[Ambient, np.ndarray],
+                  control_input: Dict[Control, np.ndarray]):
         pass
 
 class ModelType(Enum):
-    FACTORIZED_RBF_INTERPOLATION = "factorized_rbf_interpolation"
+    FACTORIZED_SCATTERED_INTERPOLATOR = "factorized_scattered_interpolator"
 
 
-class FactorizedRBFInterpParams(ComponentParams):
+class FactorizedScatteredInterpParams(ComponentParams):
     def __init__(self,
-                 control_interp_params: RadialBFInterpolatorParams,
-                 ambient_interp_params: RadialBFInterpolatorParams):
+                 control_interp_params: ScatteredInterpolatorParams,
+                 ambient_interp_params: ScatteredInterpolatorParams):
         if set(control_interp_params.out_variables) != set(control_interp_params.out_variables):
             raise ValueError("Out variables of interpolation factors must be identical.")
         if set(control_interp_params.out_dims) != set(control_interp_params.out_dims):
@@ -65,38 +65,40 @@ class FactorizedRBFInterpParams(ComponentParams):
                 out_var, out_dim in zip(self.ambient_interp_params.out_variables,
                                         self.ambient_interp_params.out_dims)}
 
-def factorized_rbf_interp_params_from_dict(
+def factorized_scattered_interp_params_from_dict(
         param_dict: Dict[str, Dict | Any]):
-    control_interp_params = rbf_interpolator_params_from_dict(
+    control_interp_params = scattered_interpolator_params_from_dict(
         param_dict=param_dict["control"],
         in_data_type=Control,
         out_data_type=ModelOutput)
-    ambient_interp_params = rbf_interpolator_params_from_dict(
+    ambient_interp_params = scattered_interpolator_params_from_dict(
         param_dict=param_dict["ambient"],
         in_data_type=Ambient,
         out_data_type=ModelOutput)
-    return FactorizedRBFInterpParams(
+    return FactorizedScatteredInterpParams(
         control_interp_params=control_interp_params,
         ambient_interp_params=ambient_interp_params
     )
 
-class FactorizedRBFInterp(PlantModel):
+class FactorizedScatteredInterp(PlantModel):
     def __init__(self,
                  plant_name: str,
-                 plant_params: FactorizedRBFInterpParams):
+                 plant_params: FactorizedScatteredInterpParams):
         super().__init__(plant_name=plant_name,
                          plant_params=plant_params)
         
         # Initialize interpolation factors
-        self.ambient_interp = RadialBFInterpolator(
+        self.ambient_interp = ScatteredInterpolator(
             interpolator_params=plant_params.ambient_interp_params)
-        self.control_interp = RadialBFInterpolator(
+        self.control_interp = ScatteredInterpolator(
             interpolator_params=plant_params.control_interp_params)
         
     def _evaluate(self,
                   meteorological_condition: Dict[Ambient, np.ndarray],
                   control_input: Dict[Control, np.ndarray]):
-        return self.ambient_interp.evaluate(query=meteorological_condition) \
-            * self.control_interp.evaluate(query=control_input)
+        ambient_eval = self.ambient_interp.evaluate(query=meteorological_condition)
+        control_eval = self.control_interp.evaluate(query=control_input)
+        return {out_var: ambient_eval[out_var] * control_eval[out_var] for \
+                  out_var in self.ambient_interp.params.out_variables}
             
         

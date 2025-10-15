@@ -2,8 +2,8 @@ import json
 import pathlib
 from twain_wifco.plant_model import (
     ModelType,
-    factorized_rbf_interp_params_from_dict,
-    FactorizedRBFInterp)
+    factorized_scattered_interp_params_from_dict,
+    FactorizedScatteredInterp)
 from twain_wifco.statistics import (
     StatisticsType,
     discrete_statistics_params_from_dict,
@@ -60,10 +60,10 @@ def plant_model_from_json(json_path: pathlib.Path):
     
     plant_name = param_dict["name"]
     model_type = ModelType(param_dict["model_type"])
-    if model_type == ModelType.FACTORIZED_RBF_INTERPOLATION:
-        params = factorized_rbf_interp_params_from_dict(
+    if model_type == ModelType.FACTORIZED_SCATTERED_INTERPOLATOR:
+        params = factorized_scattered_interp_params_from_dict(
             param_dict=param_dict["model_params"])
-        return FactorizedRBFInterp(plant_name=plant_name,
+        return FactorizedScatteredInterp(plant_name=plant_name,
                                          plant_params=params)
     else:
         raise NotImplementedError("Only factorized_rbf_interpolation model implemented.")

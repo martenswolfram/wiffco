@@ -90,11 +90,16 @@ class Component(ABC):
     def input_of_type(self, t: DataType):
         return set([var for var in self.input_variables if isinstance(var, t)])
 
-    def _validate_inputs(self, inputs: Set[DataVariable]):
-        if not (self.input_variables <= inputs):
+    def _validate_inputs(self, inputs: Dict[DataVariable, np.ndarray]):
+        if not (self.input_variables.keys() <= inputs.keys()):
             msg = (f"Insufficient input variables for component '{self.component_name}'. "
-                   f"Missing variable(s): {[var.value for var in (self.input_variables - inputs)]}")
+                   f"Missing variable(s): {[var.value for var in (self.input_variables.keys() - inputs.keys())]}")
             raise ValueError(msg)
+        for in_var, in_dim in self.input_variables.items():
+            if not (in_dim == len(inputs[in_var])):
+                msg = (f"Input variable dimensions mismatch for component '{self.component_name}'. "
+                    f"Mismatch variable: {in_var}")
+                raise ValueError(msg)
 
 def validate_data_flow(components: List[Component]):
     current_out = set()

@@ -1,8 +1,9 @@
 {
-    "name": "power_damage_rbf",
-    "model_type": "factorized_rbf_interpolation",
+    "name": "power_damage_scattered",
+    "model_type": "factorized_scattered_interpolator",
     "model_params": {
         "control": {
+            "scattered_interp_type": "linear",
             "support_points": {
                 "power_regulation": [[0],
                                         [1],
@@ -24,6 +25,7 @@
             }
         },                
         "ambient": {
+            "scattered_interp_type": "linear",
             "support_points": {
                 "wind_speed": [[ 0],
                                 [10],
