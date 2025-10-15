@@ -44,11 +44,11 @@ class MultiMetricsReductionType(Enum):
 
 class ScalarWeightingParams(ComponentParams):
     def __init__(self,
-                 metric_weights: Dict[AccumulatedMetric, np.ndarray]):
+                 metric_weights: Dict[AccumulatedMetric, float]):
         self.metric_weights = metric_weights
         
     def input_variables(self):
-        return self.metric_weights.keys()
+        return {acc_metric: None for acc_metric in self.metric_weights.keys()}
     
     def output_variables(self):
         return set()
@@ -71,5 +71,5 @@ class ScalarWeighting(MultiMetricsReduction):
         
     def _evaluate(self,
                   acc_metrics: Dict[AccumulatedMetric, np.ndarray]):
-        return sum(weight * acc_metrics[metric] for metric, weight in self.metric_weights.items())
+        return sum(weight * np.sum(acc_metrics[metric]) for metric, weight in self.metric_weights.items())
     
