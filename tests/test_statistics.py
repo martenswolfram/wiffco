@@ -1,8 +1,18 @@
 import pathlib
 import pytest
+from typing import Dict
 import numpy as np
 from twain_wifco.config import statistics_from_json
 from twain_wifco.interface import Ambient
+
+def support_points_equal(support_points_1: Dict[Ambient, np.ndarray],
+                         support_points_2: Dict[Ambient, np.ndarray]):
+    for var in support_points_1.keys():
+        if not support_points_2[var] == \
+            pytest.approx(support_points_1[var]):
+            return False
+    return True
+    
 
 def test_statistics():
     test_data_folder = pathlib.Path(__file__).parent / "data"
@@ -10,25 +20,38 @@ def test_statistics():
     discrete_ambient_statistics = statistics_from_json(json_path=json_path)
     
     ordered_prevalence = np.array([0.4, 0.25, 0.19, 0.1, 0.05, 0.01])
-    ordered_support_points = np.array([[ 20, 180, 5],
-                                       [ 10, 240, 5],
-                                       [ 30, 120, 2],
-                                       [ 20,  60, 5],
-                                       [  5, 300, 7],
-                                       [ 10,   0, 7]])
+    ordered_support_points = {
+            Ambient.WIND_SPEED: np.array([[ 20], 
+                                          [ 10], 
+                                          [ 30], 
+                                          [ 20], 
+                                          [  5], 
+                                          [ 10]]),
+            Ambient.WIND_DIRECTION: np.array([[180], 
+                                              [240], 
+                                              [120], 
+                                              [ 60], 
+                                              [300], 
+                                              [  0]]),
+            Ambient.ELECTRICITY_PRICE: np.array([[ 5],
+                                                 [ 5],
+                                                 [ 2],
+                                                 [ 5],
+                                                 [ 7],
+                                                 [ 7]])
+    }
     
     # Initialization
     assert discrete_ambient_statistics.component_name == "discrete_ambient_statistics"
-    assert discrete_ambient_statistics.support_variables == \
-        [Ambient.WIND_SPEED, Ambient.WIND_DIRECTION, Ambient.ELECTRICITY_PRICE]
     assert discrete_ambient_statistics.ordered_prevalence == pytest.approx(ordered_prevalence)
-    assert discrete_ambient_statistics.ordered_support_points == pytest.approx(ordered_support_points)
+    assert support_points_equal(ordered_support_points,
+                                discrete_ambient_statistics.ordered_support_points)
     
     # Sample without N specifed
     sys_sample_default = discrete_ambient_statistics.systematic_sample()
-    assert sys_sample_default.support_variables == discrete_ambient_statistics.support_variables
     assert sys_sample_default.normalized_weights == pytest.approx(ordered_prevalence)
-    assert sys_sample_default.support_values == pytest.approx(ordered_support_points)
+    assert support_points_equal(ordered_support_points,
+                                sys_sample_default.support_points)
     assert sys_sample_default.probability_covered == pytest.approx(1)
 
     # Invalid N
@@ -39,23 +62,22 @@ def test_statistics():
     # Sample with larger N specifed
     N = 100
     sys_sample_larger = discrete_ambient_statistics.systematic_sample(N_max=N)
-    assert sys_sample_larger.support_variables == discrete_ambient_statistics.support_variables
     assert sys_sample_larger.normalized_weights == pytest.approx(ordered_prevalence)
-    assert sys_sample_larger.support_values == pytest.approx(ordered_support_points)
+    assert support_points_equal(ordered_support_points,
+                                sys_sample_larger.support_points)
     assert sys_sample_larger.probability_covered == pytest.approx(1)
 
     # Sample with smaller N specifed
     N = 4
     sys_sample_smaller = discrete_ambient_statistics.systematic_sample(N_max=N)
     probability_covered = np.sum(ordered_prevalence[:N])
-    assert sys_sample_smaller.support_variables == discrete_ambient_statistics.support_variables
     assert sys_sample_smaller.normalized_weights == pytest.approx(ordered_prevalence[:N] / probability_covered)
-    assert sys_sample_smaller.support_values == pytest.approx(ordered_support_points[:N, :])
+    assert support_points_equal({var: supp[:N, :] for var, supp in ordered_support_points.items()},
+                                sys_sample_smaller.support_points)
     assert sys_sample_smaller.probability_covered == pytest.approx(probability_covered)
     
     # Expected value
-    expected_vector = ordered_prevalence @ ordered_support_points
-    expected_value = {Ambient.WIND_SPEED:        expected_vector[0],
-                      Ambient.WIND_DIRECTION:    expected_vector[1],
-                      Ambient.ELECTRICITY_PRICE: expected_vector[2]}
-    assert discrete_ambient_statistics.expected_value() == pytest.approx(expected_value)
+    computed = discrete_ambient_statistics.expected_value()
+    for var, supp in ordered_support_points.items():
+        expected_value = ordered_prevalence @ supp
+        assert expected_value == pytest.approx(computed[var])
