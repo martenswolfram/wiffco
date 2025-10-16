@@ -11,7 +11,7 @@ from twain_wifco.plant_model import factorized_scattered_interp_params_from_dict
     
 def test_plant_model():
     test_data_folder = pathlib.Path(__file__).parent / "data"
-    json_path = test_data_folder / "power_damage_scattered.json"
+    json_path = test_data_folder / "power_damage_scattered_model.json"
     power_damage_rbf_model = plant_model_from_json(json_path=json_path)
     
         

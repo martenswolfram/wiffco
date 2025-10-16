@@ -22,7 +22,7 @@ class ControlPolicy(Component):
     def get_control_setpoints(self,
                               ambient_condition: Dict[Ambient, np.ndarray]) -> Dict[Control, np.ndarray]:
         
-        self._validate_inputs(inputs=ambient_condition)
+        self.validate_inputs(inputs=ambient_condition)
         
         return self._get_control_setpoints(ambient_condition=ambient_condition)
 

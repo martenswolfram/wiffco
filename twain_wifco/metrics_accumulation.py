@@ -21,7 +21,7 @@ class MetricsAccumulation(Component):
                     aggregate: Dict[Aggregated, np.ndarray],
                     duration: int):
         
-        self._validate_inputs(inputs=aggregate.keys())
+        self.validate_inputs(inputs=aggregate.keys())
 
         return self._acc_metrics(aggregate=aggregate,
                                  duration=duration)
@@ -57,7 +57,7 @@ class DiscountedIntegrationParams(ComponentParams):
         self.integration_mappings = integration_mappings
 
     def input_variables(self):
-        required_aggregates = {aggr: None for aggr in self.integration_mappings.values()}
+        required_aggregates = {aggr_mapping.aggregate: None for aggr_mapping in self.integration_mappings.values()}
         return required_aggregates
     
     def output_variables(self):

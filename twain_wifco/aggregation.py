@@ -22,7 +22,7 @@ class Aggregation(Component):
                           ambient_condition: Dict[Ambient, np.ndarray],
                           control_setpoints: Dict[Control, np.ndarray]):
         
-        self._validate_inputs(inputs=(model_output |
+        self.validate_inputs(inputs=(model_output |
                                       ambient_condition |
                                       control_setpoints))
 

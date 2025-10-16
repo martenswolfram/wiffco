@@ -19,7 +19,7 @@ class MultiMetricsReduction(Component):
     def evaluate(self,
                  acc_metrics: Dict[AccumulatedMetric, np.ndarray]):
         
-        self._validate_inputs(inputs=acc_metrics.keys())
+        self.validate_inputs(inputs=acc_metrics.keys())
 
         return self._evaluate(acc_metrics=acc_metrics)
     

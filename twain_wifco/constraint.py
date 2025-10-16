@@ -50,7 +50,7 @@ class Constraint(Component):
     def evaluate(self,
                  constr_values_dict: Dict[DataVariable, np.ndarray]) -> ConstraintEval:
         
-        self._validate_inputs(inputs=constr_values_dict)
+        self.validate_inputs(inputs=constr_values_dict)
 
         return self._evaluate(constr_values_dict=constr_values_dict)
     

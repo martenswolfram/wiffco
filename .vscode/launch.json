@@ -11,9 +11,9 @@
             "args": [
                 "-s",
                 "-v",
-                // "tests",
-                // "--ignore=tests/test_optimization.py",
-                "tests/test_multi_metrics_reduction.py",
+                "tests",
+                "--ignore=tests/test_optimization.py",
+                // "tests/test_data_flow.py",
             ],
             "justMyCode": true,
         },

@@ -7,19 +7,17 @@ from twain_wifco.aggregation import Aggregation
 from twain_wifco.metrics_accumulation import MetricsAccumulation
 
 
-def validate_inputs(sources: List[Component],
+def validate_connection(sources: List[Component],
                     target: Component):
     available_inputs_list = [out_var for source in sources for out_var in source.output_variables]
-    available_inputs = set(available_inputs_list)
-    if not len(available_inputs_list) == len(available_inputs):
+    available_inputs = {out_var: dim for source in sources for \
+                        out_var, dim in source.output_variables.items()}
+    if not len(available_inputs) == len(available_inputs_list):
         msg = (f"Ambiguous outputs detected in source components"
                f" {[source.component_name for source in sources]}.")
         raise ValueError(msg)
     
-    if not (target.input_variables <= available_inputs):
-        msg = (f"Insufficient inputs for target component {target.component_name} from source "
-                f"components '{[source.component_name for source in sources]}'.")
-        raise ValueError(msg)
+    target.validate_inputs_format(available_inputs)
 
 def validate_data_graph(statistics: Statistics,
                         control_policy: ControlPolicy,
@@ -27,15 +25,15 @@ def validate_data_graph(statistics: Statistics,
                         aggregation: Aggregation,
                         metrics_accumulation: MetricsAccumulation):
     # Input for control policy
-    validate_inputs(sources=[statistics],
-                    target=control_policy)
+    validate_connection(sources=[statistics],
+                        target=control_policy)
     # Input for plant model
-    validate_inputs(sources=[statistics, control_policy],
-                    target=plant_model)
+    validate_connection(sources=[statistics, control_policy],
+                        target=plant_model)
     # Input for aggregation
-    validate_inputs(sources=[statistics, control_policy, plant_model],
-                    target=aggregation)
+    validate_connection(sources=[statistics, control_policy, plant_model],
+                        target=aggregation)
     # Input for metrics accumulation
-    validate_inputs(sources=[aggregation],
-                    target=metrics_accumulation)
+    validate_connection(sources=[aggregation],
+                        target=metrics_accumulation)
     

@@ -19,7 +19,7 @@ def test_data_graph():
         json_path=(test_data_folder / "discrete_control_policy.json"))
     # Plant model
     power_damage_model = plant_model_from_json(
-        json_path=(test_data_folder / "power_damage_model.json"))
+        json_path=(test_data_folder / "power_damage_scattered_model.json"))
     # Aggregation
     revenue_damage_aggregation = aggregation_from_json(
         json_path=(test_data_folder / "revenue_damage_aggregation.json"))
