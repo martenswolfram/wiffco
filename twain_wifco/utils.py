@@ -1,4 +1,4 @@
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Generic, TypeVar
 from abc import ABC, abstractmethod
 from enum import Enum
 import numpy as np
@@ -7,7 +7,8 @@ from scipy.interpolate import (
     LinearNDInterpolator,
     interp1d)
 from twain_wifco.interface import (
-    DataType,
+    Ambient
+    DataTable,
     DataVariable)
 
 def hstacked_from_dict(data_dict: Dict[DataVariable, np.ndarray],
@@ -27,11 +28,14 @@ class ScatteredInterpolatorType(Enum):
     RBF = "rbf"
     LINEAR = "linear"
 
-class ScatteredInterpolatorParams:
+InDataType = TypeVar("InDataType",
+                     Ambient, Control)
+
+class ScatteredInterpolatorParams(Generic[DataType]):
     def __init__(self,
                  scattered_interp_type: ScatteredInterpolatorType,
-                 support_points: Dict[DataType, np.ndarray],
-                 out_values: Dict[DataType, np.ndarray]):
+                 support_points: DataTable[DataType],
+                 out_values: DataTable):
         self.scattered_interp_type = scattered_interp_type
         self.support_points = support_points
         self.in_variables = list(self.support_points.keys())

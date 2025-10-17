@@ -54,7 +54,7 @@ class SimpleProductParams(ComponentParams):
                  aggregate_mappings: Dict[Aggregated, ProductAggregateMapping]):
         self.aggregate_mappings = aggregate_mappings
         
-    def input_variables(self):        
+    def input_format(self):        
         required = {}
 
         for mapping in self.aggregate_mappings.values():
@@ -63,7 +63,7 @@ class SimpleProductParams(ComponentParams):
             required |= {in_var: None for in_var in mapping.from_control}
         return required
 
-    def output_variables(self):
+    def output_format(self):
         return {aggr_var: 1 for \
                 aggr_var in self.aggregate_mappings.keys()}
 

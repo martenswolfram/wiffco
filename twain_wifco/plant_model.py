@@ -3,6 +3,7 @@ from abc import abstractmethod
 from enum import Enum
 import numpy as np
 from twain_wifco.interface import (
+    DataPoint,
     Component,
     ComponentParams,
     Ambient,
@@ -21,10 +22,11 @@ class PlantModel(Component):
                          component_params=plant_params)
                 
     def evaluate(self,
-                 meteorological_condition: Dict[Ambient, np.ndarray],
-                 control_input: Dict[Control, np.ndarray]):
+                 meteorological_condition: DataPoint[Ambient],
+                 control_input: DataPoint[Control]):
 
-        self.validate_inputs(inputs=(meteorological_condition | control_input))
+        self.validate_inputs(inputs=[meteorological_condition,
+                                     control_input])
 
         return self._evaluate(meteorological_condition=meteorological_condition,
                               control_input=control_input)
@@ -48,7 +50,7 @@ class FactorizedScatteredInterpParams(ComponentParams):
         self.control_interp_params = control_interp_params
         self.ambient_interp_params = ambient_interp_params
         
-    def input_variables(self):
+    def input_shapes(self):
         required_ambient = {in_var: self.ambient_interp_params.support_points[in_var].shape[1] for \
                             in_var in self.ambient_interp_params.in_variables}
         required_control = {in_var: self.control_interp_params.support_points[in_var].shape[1] for \
@@ -56,7 +58,7 @@ class FactorizedScatteredInterpParams(ComponentParams):
         
         return required_ambient | required_control
 
-    def output_variables(self):
+    def output_format(self):
         return {out_var: self.ambient_interp_params.out_values[out_var].shape[1] for \
                 out_var in self.ambient_interp_params.out_variables}
 

@@ -9,9 +9,9 @@ from twain_wifco.metrics_accumulation import MetricsAccumulation
 
 def validate_connection(sources: List[Component],
                     target: Component):
-    available_inputs_list = [out_var for source in sources for out_var in source.output_variables]
+    available_inputs_list = [out_var for source in sources for out_var in source.output_shape]
     available_inputs = {out_var: dim for source in sources for \
-                        out_var, dim in source.output_variables.items()}
+                        out_var, dim in source.output_shape.items()}
     if not len(available_inputs) == len(available_inputs_list):
         msg = (f"Ambiguous outputs detected in source components"
                f" {[source.component_name for source in sources]}.")

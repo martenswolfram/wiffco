@@ -47,10 +47,10 @@ class ScalarWeightingParams(ComponentParams):
                  metric_weights: Dict[AccumulatedMetric, float]):
         self.metric_weights = metric_weights
         
-    def input_variables(self):
+    def input_format(self):
         return {acc_metric: None for acc_metric in self.metric_weights.keys()}
     
-    def output_variables(self):
+    def output_format(self):
         return set()
 
 def scalar_weighting_params_from_dict(param_dict: Dict[str, Dict | Any]):

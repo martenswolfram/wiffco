@@ -1,5 +1,16 @@
-from typing import List, Union, Set, TypeVar, Dict, Any
+from typing import (
+    List,
+    Union,
+    Set,
+    Tuple,
+    Type,
+    TypeVar,
+    Dict,
+    Any,
+    Generic,
+    TypeAlias)
 import numpy as np
+from dataclasses import dataclass
 from abc import ABC, abstractmethod
 from enum import Enum
 
@@ -24,18 +35,21 @@ class AccumulatedMetric(Enum):
     REVENUE = "revenue"
     ACCRUED_DAMAGE = "accrued_damage"
 
-DataVariable = Union[Ambient,
-                     Control,
-                     ModelOutput,
-                     Aggregated,
-                     AccumulatedMetric]
+DataTypes = (Ambient,
+             Control,
+             ModelOutput,
+             Aggregated,
+             AccumulatedMetric)
 
-def get_default_value(data_var: DataVariable):
+DataVariable = Ambient | Control | ModelOutput | Aggregated | AccumulatedMetric
+
+def get_default_value(data_var: DataVariable,
+                      dim: int):
     # TODO: implement in DataVariable class 
     if data_var == Control.POWER_REGULATION:
-        return 1.0
+        return np.ones(shape=(dim))
     elif data_var == Control.YAW_STEERING:
-        return 0.0
+        return np.zeros(shape=(dim))
     else:
         raise ValueError(f"No default value for data variable '{data_var}'.") 
 
@@ -53,20 +67,76 @@ def get_abs_tol(data_var: DataVariable):
         raise ValueError(f"No abs tol value for data variable '{data_var}'.") 
 
 # Allow statistical distributions only over Ambient condition and Aggregated variables
-StatisticalVar = TypeVar('Statistical', Ambient, Aggregated)
+StatisticalType = TypeVar("Statistical",
+                          Ambient,
+                          Aggregated)
 
 # Allow constraint variables to be only Control, Aggregated or AccumulatedMetric
-ConstraintVar = TypeVar('ConstraintVar',
-                        Control,
-                        Aggregated,
-                        AccumulatedMetric)
+ConstraintType = TypeVar("ConstraintVar",
+                         Control,
+                         Aggregated,
+                         AccumulatedMetric)
 
-DataType = TypeVar("DataType",
-                   Ambient,
-                   Control,
-                   ModelOutput,
-                   Aggregated,
-                   AccumulatedMetric)
+DataType = TypeVar("T",
+            Ambient,
+            Control,
+            ModelOutput,
+            Aggregated,
+            AccumulatedMetric)
+
+@dataclass
+class DataCollection(Generic[DataType]):
+    data: dict[DataType, np.ndarray]
+    order: list[DataType] | None = None
+    
+    def __post_init__(self):
+        if self.order is None:
+            self.order = list(self.data.keys())
+
+    def __getitem__(self, key: DataType) -> np.ndarray:
+        return self.data[key]
+    
+    def to_vector(self) -> np.ndarray:
+        return np.concatenate([self.data[k].ravel() for k in self.order])
+
+    def from_vector(self, vector: np.ndarray):
+        i = 0
+        for k in self.order:
+            n = self.data[k].size
+            self.data[k] = vector[i:i+n].reshape(self.data[k].shape)
+            i += n
+
+@dataclass
+class DataPoint(DataCollection[DataType]):
+    def shapes(self):
+        return {k: v.shape for k, v in self.data.items()}
+
+@dataclass
+class DataTable(DataCollection[DataType]):
+    def __len__(self):
+        first_key = self.order[0]
+        return self.data[first_key].shape[0]
+
+    def shapes(self):
+        return {k: v.shape[1] for k, v in self.data.items()}
+
+    def get_point(self, idx: int) -> DataPoint[DataType]:
+        return DataPoint({
+            k: self.data[k][idx] for k in self.order
+        }, self.order)
+
+class Interface:
+    def __init__(self,
+                 ambient_shapes: Dict[Ambient, Tuple[int, ...]],
+                 control_shapes: Dict[Control, Tuple[int, ...]],
+                 model_output_shapes: Dict[Ambient, Tuple[int, ...]],
+                 aggregated_shapes: Dict[Ambient, Tuple[int, ...]],
+                 accumulated_metric_shapes: Dict[Ambient, Tuple[int, ...]]):
+        self.ambient_shapes = ambient_shapes
+        self.control_shapes = control_shapes
+        self.model_output_shapes = model_output_shapes
+        self.aggregated_shapes = aggregated_shapes
+        self.accumulated_metric_shapes = accumulated_metric_shapes
 
 class ComponentParams(ABC):
 
@@ -74,11 +144,11 @@ class ComponentParams(ABC):
         pass
         
     @abstractmethod
-    def input_variables(self) -> Dict[DataVariable, int]:
+    def input_shapes(self) -> Interface:
         pass
     
     @abstractmethod
-    def output_variables(self) -> Dict[DataVariable, int]:
+    def output_shapes(self) -> Interface:
         pass
 
 class Component(ABC):
@@ -87,41 +157,48 @@ class Component(ABC):
                  component_name: str,
                  component_params: ComponentParams):
         self.component_name = component_name
-        self.input_variables = component_params.input_variables()
-        self.output_variables = component_params.output_variables()
+        self.required_inputs = component_params.required_inputs()
+        self.outputs = component_params.outputs()
 
-    def input_of_type(self, t: DataType):
-        return set([var for var in self.input_variables if isinstance(var, t)])
-
-    def validate_inputs_format(self, inputs: Dict[DataVariable, int]):
+    def validate_inputs(self,
+                        ambient: DataCollection[Ambient] = DataCollection({}),
+                        control: DataCollection[Control] = DataCollection({}),
+                        model_output: DataCollection[ModelOutput] = DataCollection({}),
+                        aggregated: DataCollection[Aggregated] = DataCollection({}),
+                        accumulated_metric: DataCollection[AccumulatedMetric] = DataCollection({})):
         
-        if not (self.input_variables.keys() <= inputs.keys()):
-            msg = (f"Insufficient input variables for component '{self.component_name}'. "
-                   f"Missing variable(s): {[var.value for var in (self.input_variables.keys() - inputs.keys())]}")
-            raise ValueError(msg)
-        for in_var, in_dim in self.input_variables.items():
+
+        for input in inputs:
+            if not (self.input_shapes(data_type=data_type).keys() \
+                    <= inputs.keys()):
+                missing_vars = [
+                    var.value for var in (self.input_shapes(data_type=DataType).keys() - inputs.keys())]
+                msg = (f"Insufficient input variables for component '{self.component_name}'. "
+                    f"Missing variable(s): {missing_vars}")
+                raise ValueError(msg)
+        
+
+    def validate_inputs(self,
+                        inputs: DataPoint[Generic[DataType]]):
+        for in_var, in_dim in self.input_shapes(data_type=DataType):
             if in_dim is None:
                 continue
-            if not (in_dim == inputs[in_var]):
+            if not (in_dim == inputs[in_var].shape):
                 msg = (f"Input variable dimensions mismatch for component '{self.component_name}'. "
                     f"Mismatch variable: {in_var}")
                 raise ValueError(msg)
             
-    def validate_inputs(self, inputs: Dict[DataVariable, np.ndarray]):
-        self.validate_inputs_format(inputs={var: len(data) for var, data in inputs.items()})
-
-
 def validate_data_flow(components: List[Component]):
-    current_out = set()
+    current_out = {}
     while len(components):
         current_component = components.pop(0)
-        current_in = current_component.input_variables
+        current_in = current_component.input_shape
         if not (current_in <= current_out):
             msg = (f"Insufficient input variables for component "
                    f"'{current_component.component_name}'. "
                    f"Missing variable(s): {current_in - current_out}")
             raise ValueError(msg)
-        current_out = current_component.output_variables
+        current_out = current_component.output_shape
 
 def retrieve_single_key_str(input_dict: Dict[str, Any], key_strs: Set[str]):
     single_key = key_strs.intersection(input_dict.keys())

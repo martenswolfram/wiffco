@@ -9,7 +9,7 @@ from twain_wifco.interface import (
     Control,
     Aggregated,
     AccumulatedMetric,
-    ConstraintVar,
+    ConstraintType,
     DataVariable)
 from twain_wifco.utils import (
     hstacked_from_dict
@@ -17,8 +17,8 @@ from twain_wifco.utils import (
 
 class Bounds:
     def __init__(self,
-                 upper_bound: Dict[ConstraintVar, np.ndarray],
-                 lower_bound: Dict[ConstraintVar, np.ndarray]):
+                 upper_bound: Dict[ConstraintType, np.ndarray],
+                 lower_bound: Dict[ConstraintType, np.ndarray]):
         self.upper_bound = upper_bound
         self.lower_bound = lower_bound
 
@@ -76,10 +76,10 @@ class SeparateLinearConstraintsParams(ComponentParams):
                  bounds: Bounds):
         self.bounds = bounds
         
-    def input_variables(self):
+    def input_format(self):
         return {var: len(ub) for var, ub in self.bounds.upper_bound.items()}
     
-    def output_variables(self):
+    def output_format(self):
         return {}
 
 def separate_linear_constraints_params_from_dict(param_dict: Dict[str, Dict | Any]):

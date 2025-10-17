@@ -56,11 +56,11 @@ class DiscountedIntegrationParams(ComponentParams):
                  integration_mappings: Dict[AccumulatedMetric, IntegrationMapping]):
         self.integration_mappings = integration_mappings
 
-    def input_variables(self):
+    def input_format(self):
         required_aggregates = {aggr_mapping.aggregate: None for aggr_mapping in self.integration_mappings.values()}
         return required_aggregates
     
-    def output_variables(self):
+    def output_format(self):
         return {acc_metric: None for \
                 acc_metric in self.integration_mappings.keys()}
 

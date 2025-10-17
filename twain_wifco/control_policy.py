@@ -62,11 +62,11 @@ class DiscreteControlPolicyParams(ComponentParams):
         self.control_setpoints = control_setpoints
         self.control_variables = list(self.control_setpoints.keys())
         
-    def input_variables(self):
+    def input_format(self):
         return {amb_var: self.ambient_support_points[amb_var].shape[1] for \
                             amb_var in self.ambient_support_points.keys()}
 
-    def output_variables(self):
+    def output_format(self):
         return {ctrl_var: self.control_setpoints[ctrl_var].shape[1] for \
                 ctrl_var in self.control_setpoints.keys()}
 

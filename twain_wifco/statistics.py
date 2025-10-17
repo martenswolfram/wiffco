@@ -5,14 +5,14 @@ import numpy as np
 from twain_wifco.interface import (
     Component,
     ComponentParams,    
-    StatisticalVar,
+    StatisticalType,
     Ambient,
     Aggregated,
     retrieve_single_key_str)
 
 class SystematicSample:
     def __init__(self,
-                 support_points: Dict[StatisticalVar, np.ndarray],
+                 support_points: Dict[StatisticalType, np.ndarray],
                  normalized_weights: np.ndarray,
                  probability_covered: float = 1):
         self.support_points = support_points
@@ -57,15 +57,15 @@ class StatisticsType(Enum):
 
 class DiscreteStatisticsParams(ComponentParams):
     def __init__(self,
-                 support_points: Dict[StatisticalVar, np.ndarray],
+                 support_points: Dict[StatisticalType, np.ndarray],
                  prevalence: np.ndarray):
         self.support_points = support_points
         self.prevalence = prevalence
 
-    def input_variables(self):
+    def input_format(self):
         return set()
 
-    def output_variables(self):
+    def output_format(self):
         return {out_var: supp.shape[1] for \
                 out_var, supp in self.support_points.items()}
                 
