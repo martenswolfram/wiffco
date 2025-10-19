@@ -1,4 +1,4 @@
-from typing import Dict, Any, List
+from typing import Dict, Any
 from abc import abstractmethod
 from enum import Enum
 import numpy as np
@@ -106,16 +106,16 @@ class ScatteredInterpPolicy(ControlPolicy):
         return row_index[0]
         
     def get_ctrl_parameters(self,
-                            ambient_condition: Dict[Ambient, np.ndarray]) -> np.ndarray:
+                            ambient_condition: DataPoint[Ambient]) -> np.ndarray:
         return self.ambient_interp.evaluate_to_vector(query=ambient_condition)
         
     def _get_control_setpoints(self,
-                               ambient_condition: Dict[Ambient, np.ndarray]) -> Dict[Control, np.ndarray]:
+                               ambient_condition: DataPoint[Ambient]) -> DataPoint[Control]:
         return self.ambient_interp.evaluate(query=ambient_condition)
     
     def set_ctrl_parameters_from_vector(self,
                                         x: np.ndarray,
-                                        ambient_condition: Dict[Ambient, np.ndarray]):
+                                        ambient_condition: DataPoint[Ambient]):
         amb_index = self.find_ambient_index(ambient_condition=ambient_condition)
         self.ambient_interp.out_data[amb_index] = x
 

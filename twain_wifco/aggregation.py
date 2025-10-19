@@ -8,7 +8,9 @@ from twain_wifco.interface import (
     Ambient,
     ModelOutput,
     Control,
-    Aggregated)
+    Aggregated,
+    DataPoint,
+    Interface)
 
 class Aggregation(Component):
     def __init__(self,
@@ -18,13 +20,13 @@ class Aggregation(Component):
                          component_params=aggregation_params)
 
     def compute_aggregate(self,
-                          model_output: Dict[ModelOutput, np.ndarray],
-                          ambient_condition: Dict[Ambient, np.ndarray],
-                          control_setpoints: Dict[Control, np.ndarray]):
+                          model_output:      DataPoint[ModelOutput],
+                          ambient_condition: DataPoint[Ambient],
+                          control_setpoints: DataPoint[Control]) -> DataPoint[Aggregated]:
         
-        self.validate_inputs(inputs=(model_output |
-                                      ambient_condition |
-                                      control_setpoints))
+        self.validate_inputs(model_output=model_output,
+                             ambient=ambient_condition,
+                             control=control_setpoints)
 
         return self._compute_aggregate(model_output=model_output,
                                        ambient_condition=ambient_condition,
@@ -32,9 +34,9 @@ class Aggregation(Component):
             
     @abstractmethod
     def _compute_aggregate(self,
-                           model_output: Dict[ModelOutput, np.ndarray],
-                           ambient_condition: Dict[Ambient, np.ndarray],
-                           control_setpoints: Dict[Control, np.ndarray]):
+                           model_output:      DataPoint[ModelOutput],
+                           ambient_condition: DataPoint[Ambient],
+                           control_setpoints: DataPoint[Control]):
         pass
 
 class AggregationType(Enum):
@@ -54,26 +56,34 @@ class SimpleProductParams(ComponentParams):
                  aggregate_mappings: Dict[Aggregated, ProductAggregateMapping]):
         self.aggregate_mappings = aggregate_mappings
         
-    def input_format(self):        
-        required = {}
-
+    def input_interface(self) -> Interface:
+        required_model_output_shapes = {}
+        required_ambient_shapes = {}
+        required_control_shapes = {}
         for mapping in self.aggregate_mappings.values():
-            required |= {in_var: None for in_var in mapping.from_model}
-            required |= {in_var: None for in_var in mapping.from_ambient}
-            required |= {in_var: None for in_var in mapping.from_control}
-        return required
+            required_model_output_shapes |= {in_var: None for in_var in mapping.from_model}
+            required_ambient_shapes |= {in_var: None for in_var in mapping.from_ambient}
+            required_control_shapes |= {in_var: None for in_var in mapping.from_control}
+        
+        return Interface(
+            model_output_shapes=required_model_output_shapes,
+            ambient_shapes=required_ambient_shapes,
+            control_shapes=required_control_shapes)
 
-    def output_format(self):
-        return {aggr_var: 1 for \
-                aggr_var in self.aggregate_mappings.keys()}
+    def output_interface(self) -> Interface:
+        return Interface(aggregated_shapes={aggr_var: (1,) for \
+                                            aggr_var in self.aggregate_mappings.keys()})
 
 def simple_product_params_from_dict(param_dict: Dict[str, Dict | Any]):
     aggregate_mappings = {}
     for out_var, product_mapping in param_dict["aggregate_mappings"].items():
          aggregate_mappings[Aggregated(out_var)] = ProductAggregateMapping(
-              from_model=set([ModelOutput(out_var) for out_var in product_mapping["from_model"]]),
-              from_ambient=set([Ambient(ambient_var) for ambient_var in product_mapping["from_ambient"]]),
-              from_control=set([Control(ctrl_var) for ctrl_var in product_mapping["from_control"]])
+              from_model=  set([ModelOutput(out_var) for \
+                out_var     in product_mapping["from_model"]]),
+              from_ambient=set([Ambient(ambient_var) for \
+                ambient_var in product_mapping["from_ambient"]]),
+              from_control=set([Control(ctrl_var)    for \
+                ctrl_var    in product_mapping["from_control"]])
          )
     return SimpleProductParams(aggregate_mappings=aggregate_mappings)
 
@@ -86,9 +96,9 @@ class SimpleProduct(Aggregation):
         self.aggregate_mappings = aggregation_params.aggregate_mappings
 
     def _compute_aggregate(self,
-                           model_output: Dict[ModelOutput, np.ndarray],
-                           ambient_condition: Dict[Ambient, np.ndarray],
-                           control_setpoints: Dict[Control, np.ndarray]):
+                           model_output:      DataPoint[ModelOutput],
+                           ambient_condition: DataPoint[Ambient],
+                           control_setpoints: DataPoint[Control]):
     
         aggregated_output = {}
         for out_var, mapping in self.aggregate_mappings.items():
@@ -96,4 +106,4 @@ class SimpleProduct(Aggregation):
                 np.prod([np.prod(ambient_condition[ambient_var]) for ambient_var in mapping.from_ambient]) * \
                 np.prod([np.prod(control_setpoints[ctrl_var]) for ctrl_var in mapping.from_control])
             aggregated_output[out_var] = np.array([res])
-        return aggregated_output
+        return DataPoint(data=aggregated_output)

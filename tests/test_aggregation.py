@@ -2,7 +2,11 @@ import pathlib
 import pytest
 import numpy as np
 from twain_wifco.config import aggregation_from_json
-from twain_wifco.interface import Ambient, ModelOutput, Aggregated
+from twain_wifco.interface import (
+    Ambient,
+    ModelOutput,
+    Aggregated,
+    DataPoint)
 
     
 def test_simple_product_aggregation():
@@ -29,9 +33,10 @@ def test_simple_product_aggregation():
     
     # Output aggregation
     aggregated_output = simple_product_aggregation.compute_aggregate(
-        model_output={ModelOutput.ELECTRICAL_POWER: np.array([5]),
-                      ModelOutput.DAMAGE_RATE: np.array([4])},
-        ambient_condition={Ambient.ELECTRICITY_PRICE: np.array([3])},
-        control_setpoints={})
-    assert aggregated_output == pytest.approx({Aggregated.REVENUE_RATE: np.array([15]),
+        model_output=DataPoint({ModelOutput.ELECTRICAL_POWER: np.array([5]),
+                                ModelOutput.DAMAGE_RATE: np.array([4])}),
+        ambient_condition=DataPoint({Ambient.ELECTRICITY_PRICE: np.array([3])}),
+        control_setpoints=DataPoint({}))
+    expected_output = DataPoint({Aggregated.REVENUE_RATE: np.array([15]),
                                                Aggregated.DAMAGE_RATE: np.array([4])})
+    assert aggregated_output == expected_output
