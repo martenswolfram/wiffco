@@ -5,9 +5,8 @@ from twain_wifco.config import plant_model_from_json
 from twain_wifco.interface import (
     Ambient,
     Control,
-    ModelOutput)
-from twain_wifco.plant_model import factorized_scattered_interp_params_from_dict
-
+    ModelOutput,
+    DataPoint)
     
 def test_plant_model():
     test_data_folder = pathlib.Path(__file__).parent / "data"
@@ -16,18 +15,18 @@ def test_plant_model():
     
         
     # Invalid input
-    valid_met_condition = {Ambient.WIND_SPEED: np.array([20])}
-    invalid_ctrl_input = {Control.YAW_STEERING: np.array([2])}
+    valid_met_condition = DataPoint({Ambient.WIND_SPEED: np.array([20])})
+    invalid_ctrl_input =  DataPoint({Control.YAW_STEERING: np.array([2])})
     with pytest.raises(ValueError) as excinfo: 
         power_damage_rbf_model.evaluate(meteorological_condition=valid_met_condition,
                                         control_input=invalid_ctrl_input)
     assert "Insufficient input variables" in str(excinfo.value)
 
     # Valid input
-    valid_ctrl_input = {Control.POWER_REGULATION: np.array([2])}
-    expected_output = {ModelOutput.ELECTRICAL_POWER: np.array([4 * 1.4]),
-                       ModelOutput.DAMAGE_RATE: np.array([4 * 8])}
+    valid_ctrl_input = DataPoint({Control.POWER_REGULATION: np.array([2])})
+    expected_output =  DataPoint({ModelOutput.ELECTRICAL_POWER: np.array([4 * 1.4]),
+                                  ModelOutput.DAMAGE_RATE: np.array([4 * 8])})
 
     output = power_damage_rbf_model.evaluate(meteorological_condition=valid_met_condition,
                                              control_input=valid_ctrl_input)
-    assert output == pytest.approx(expected=expected_output)
+    assert output == expected_output

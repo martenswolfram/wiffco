@@ -4,14 +4,14 @@
     "model_params": {
         "control": {
             "scattered_interp_type": "linear",
-            "support_points": {
+            "support_data": {
                 "power_regulation": [[0],
                                         [1],
                                         [2],
                                         [3],
                                         [4]]
             },
-            "out_values": {
+            "out_data": {
                 "electrical_power": [[  0],  
                                         [  1],  
                                         [1.4],
@@ -26,14 +26,14 @@
         },                
         "ambient": {
             "scattered_interp_type": "linear",
-            "support_points": {
+            "support_data": {
                 "wind_speed": [[ 0],
                                 [10],
                                 [20],
                                 [30],
                                 [40]]
             },
-            "out_values": {
+            "out_data": {
                 "electrical_power": [[ 0],  
                                         [ 1],  
                                         [ 4],

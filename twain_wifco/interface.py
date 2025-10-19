@@ -1,14 +1,11 @@
 from typing import (
     List,
-    Union,
     Set,
     Tuple,
-    Type,
     TypeVar,
     Dict,
     Any,
-    Generic,
-    TypeAlias)
+    Generic)
 import numpy as np
 from dataclasses import dataclass
 from abc import ABC, abstractmethod
@@ -35,25 +32,39 @@ class AccumulatedMetric(Enum):
     REVENUE = "revenue"
     ACCRUED_DAMAGE = "accrued_damage"
 
-DataTypes = (Ambient,
-             Control,
-             ModelOutput,
-             Aggregated,
-             AccumulatedMetric)
-
+# Union of data types
 DataVariable = Ambient | Control | ModelOutput | Aggregated | AccumulatedMetric
 
+# Data-type TypeVar
+DataType = TypeVar("DataType",
+                   Ambient,
+                   Control,
+                   ModelOutput,
+                   Aggregated,
+                   AccumulatedMetric)
+
+# Allow statistical distributions only over Ambient condition and Aggregated variables
+StatisticalType = TypeVar("StatisticalType",
+                          Ambient,
+                          Aggregated)
+
+# Allow constraint variables to be only Control, Aggregated or AccumulatedMetric
+ConstraintType = TypeVar("ConstraintType",
+                         Control,
+                         Aggregated,
+                         AccumulatedMetric)
+
 def get_default_value(data_var: DataVariable,
-                      dim: int):
+                      shape: Tuple[int]) -> np.ndarray:
     # TODO: implement in DataVariable class 
     if data_var == Control.POWER_REGULATION:
-        return np.ones(shape=(dim))
+        return np.ones(shape=shape)
     elif data_var == Control.YAW_STEERING:
-        return np.zeros(shape=(dim))
+        return np.zeros(shape=shape)
     else:
         raise ValueError(f"No default value for data variable '{data_var}'.") 
 
-def get_abs_tol(data_var: DataVariable):
+def get_abs_tol(data_var: DataVariable) -> float:
     # TODO: implement in DataVariable class 
     if data_var == Ambient.WIND_DIRECTION:
         return 0.001
@@ -66,28 +77,14 @@ def get_abs_tol(data_var: DataVariable):
     else:
         raise ValueError(f"No abs tol value for data variable '{data_var}'.") 
 
-# Allow statistical distributions only over Ambient condition and Aggregated variables
-StatisticalType = TypeVar("Statistical",
-                          Ambient,
-                          Aggregated)
-
-# Allow constraint variables to be only Control, Aggregated or AccumulatedMetric
-ConstraintType = TypeVar("ConstraintVar",
-                         Control,
-                         Aggregated,
-                         AccumulatedMetric)
-
-DataType = TypeVar("T",
-            Ambient,
-            Control,
-            ModelOutput,
-            Aggregated,
-            AccumulatedMetric)
 
 @dataclass
 class DataCollection(Generic[DataType]):
     data: dict[DataType, np.ndarray]
     order: list[DataType] | None = None
+    
+    def keys(self):
+        return self.data.keys()
     
     def __post_init__(self):
         if self.order is None:
@@ -106,6 +103,19 @@ class DataCollection(Generic[DataType]):
             self.data[k] = vector[i:i+n].reshape(self.data[k].shape)
             i += n
 
+    def shapes(self):
+        return {}
+    
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, DataCollection):
+            return False
+        if set(self.data.keys()) != set(other.data.keys()):
+            return False
+        for k in self.data.keys():
+            if not np.array_equal(self.data[k], other.data[k]):
+                return False
+        return True
+
 @dataclass
 class DataPoint(DataCollection[DataType]):
     def shapes(self):
@@ -118,8 +128,13 @@ class DataTable(DataCollection[DataType]):
         return self.data[first_key].shape[0]
 
     def shapes(self):
-        return {k: v.shape[1] for k, v in self.data.items()}
-
+        return {k: v.shape[1:] for k, v in self.data.items()}
+    
+    def to_matrix(self) -> np.ndarray:
+        n_points = len(self)
+        flattened = [self.data[k].reshape(n_points, -1) for k in self.order]
+        return np.concatenate(flattened, axis=1)
+    
     def get_point(self, idx: int) -> DataPoint[DataType]:
         return DataPoint({
             k: self.data[k][idx] for k in self.order
@@ -127,11 +142,11 @@ class DataTable(DataCollection[DataType]):
 
 class Interface:
     def __init__(self,
-                 ambient_shapes: Dict[Ambient, Tuple[int, ...]],
-                 control_shapes: Dict[Control, Tuple[int, ...]],
-                 model_output_shapes: Dict[Ambient, Tuple[int, ...]],
-                 aggregated_shapes: Dict[Ambient, Tuple[int, ...]],
-                 accumulated_metric_shapes: Dict[Ambient, Tuple[int, ...]]):
+                 ambient_shapes: Dict[Ambient, Tuple[int, ...]] = {},
+                 control_shapes: Dict[Control, Tuple[int, ...]] = {},
+                 model_output_shapes: Dict[Ambient, Tuple[int, ...]] = {},
+                 aggregated_shapes: Dict[Ambient, Tuple[int, ...]] = {},
+                 accumulated_metric_shapes: Dict[Ambient, Tuple[int, ...]] = {}):
         self.ambient_shapes = ambient_shapes
         self.control_shapes = control_shapes
         self.model_output_shapes = model_output_shapes
@@ -144,11 +159,11 @@ class ComponentParams(ABC):
         pass
         
     @abstractmethod
-    def input_shapes(self) -> Interface:
+    def input_interface(self) -> Interface:
         pass
     
     @abstractmethod
-    def output_shapes(self) -> Interface:
+    def output_interface(self) -> Interface:
         pass
 
 class Component(ABC):
@@ -157,9 +172,27 @@ class Component(ABC):
                  component_name: str,
                  component_params: ComponentParams):
         self.component_name = component_name
-        self.required_inputs = component_params.required_inputs()
-        self.outputs = component_params.outputs()
+        self.input_interface = component_params.input_interface()
+        self.output_interface = component_params.output_interface()
 
+    def validate_single_input(
+            self,
+            input: Dict[DataType, Tuple[int, ...]],
+            interface_shapes: Dict[DataType, Tuple[int, ...]]):
+        missing_vars = interface_shapes.keys() - input.keys()
+            
+        if len(missing_vars):
+            msg = (f"Insufficient input variables for component '{self.component_name}'. "
+                f"Missing variable(s): {missing_vars}")
+            raise ValueError(msg)
+        for in_var, in_shape in interface_shapes.items():
+            if in_shape is None:
+                continue
+            if not (in_shape == input[in_var]):
+                msg = (f"Input variable dimensions mismatch for component '{self.component_name}'. "
+                    f"Mismatch variable: {in_var}")
+                raise ValueError(msg)
+        
     def validate_inputs(self,
                         ambient: DataCollection[Ambient] = DataCollection({}),
                         control: DataCollection[Control] = DataCollection({}),
@@ -167,26 +200,11 @@ class Component(ABC):
                         aggregated: DataCollection[Aggregated] = DataCollection({}),
                         accumulated_metric: DataCollection[AccumulatedMetric] = DataCollection({})):
         
-
-        for input in inputs:
-            if not (self.input_shapes(data_type=data_type).keys() \
-                    <= inputs.keys()):
-                missing_vars = [
-                    var.value for var in (self.input_shapes(data_type=DataType).keys() - inputs.keys())]
-                msg = (f"Insufficient input variables for component '{self.component_name}'. "
-                    f"Missing variable(s): {missing_vars}")
-                raise ValueError(msg)
-        
-
-    def validate_inputs(self,
-                        inputs: DataPoint[Generic[DataType]]):
-        for in_var, in_dim in self.input_shapes(data_type=DataType):
-            if in_dim is None:
-                continue
-            if not (in_dim == inputs[in_var].shape):
-                msg = (f"Input variable dimensions mismatch for component '{self.component_name}'. "
-                    f"Mismatch variable: {in_var}")
-                raise ValueError(msg)
+        self.validate_single_input(ambient.shapes(), self.input_interface.ambient_shapes)
+        self.validate_single_input(control.shapes(), self.input_interface.control_shapes)
+        self.validate_single_input(model_output.shapes(), self.input_interface.model_output_shapes)
+        self.validate_single_input(aggregated.shapes(), self.input_interface.aggregated_shapes)
+        self.validate_single_input(accumulated_metric.shapes(), self.input_interface.accumulated_metric_shapes)
             
 def validate_data_flow(components: List[Component]):
     current_out = {}

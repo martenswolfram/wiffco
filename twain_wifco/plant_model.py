@@ -8,7 +8,8 @@ from twain_wifco.interface import (
     ComponentParams,
     Ambient,
     Control,
-    ModelOutput)
+    ModelOutput,
+    Interface)
 from twain_wifco.utils import (
     ScatteredInterpolatorParams,
     ScatteredInterpolator,
@@ -25,8 +26,8 @@ class PlantModel(Component):
                  meteorological_condition: DataPoint[Ambient],
                  control_input: DataPoint[Control]):
 
-        self.validate_inputs(inputs=[meteorological_condition,
-                                     control_input])
+        self.validate_inputs(ambient=meteorological_condition,
+                             control=control_input)
 
         return self._evaluate(meteorological_condition=meteorological_condition,
                               control_input=control_input)
@@ -45,32 +46,28 @@ class FactorizedScatteredInterpParams(ComponentParams):
     def __init__(self,
                  control_interp_params: ScatteredInterpolatorParams,
                  ambient_interp_params: ScatteredInterpolatorParams):
-        if set(control_interp_params.out_variables) != set(control_interp_params.out_variables):
-            raise ValueError("Out variables of interpolation factors must be identical.")
+        if control_interp_params.out_data.shapes() != control_interp_params.out_data.shapes():
+            raise ValueError("Out variables shapes of interpolation factors must be identical.")
         self.control_interp_params = control_interp_params
         self.ambient_interp_params = ambient_interp_params
         
-    def input_shapes(self):
-        required_ambient = {in_var: self.ambient_interp_params.support_points[in_var].shape[1] for \
-                            in_var in self.ambient_interp_params.in_variables}
-        required_control = {in_var: self.control_interp_params.support_points[in_var].shape[1] for \
-                            in_var in self.control_interp_params.in_variables}
-        
-        return required_ambient | required_control
+    def input_interface(self) -> Interface:
 
-    def output_format(self):
-        return {out_var: self.ambient_interp_params.out_values[out_var].shape[1] for \
-                out_var in self.ambient_interp_params.out_variables}
+        return Interface(ambient_shapes=self.ambient_interp_params.support_data.shapes(),
+                         control_shapes=self.control_interp_params.support_data.shapes())
 
+    def output_interface(self) -> Interface:
+        return Interface(model_output_shapes=self.ambient_interp_params.out_data.shapes())
+    
 def factorized_scattered_interp_params_from_dict(
         param_dict: Dict[str, Dict | Any]):
     control_interp_params = scattered_interpolator_params_from_dict(
         param_dict=param_dict["control"],
-        in_data_type=Control,
+        support_data_type=Control,
         out_data_type=ModelOutput)
     ambient_interp_params = scattered_interpolator_params_from_dict(
         param_dict=param_dict["ambient"],
-        in_data_type=Ambient,
+        support_data_type=Ambient,
         out_data_type=ModelOutput)
     return FactorizedScatteredInterpParams(
         control_interp_params=control_interp_params,
@@ -95,7 +92,7 @@ class FactorizedScatteredInterp(PlantModel):
                   control_input: Dict[Control, np.ndarray]):
         ambient_eval = self.ambient_interp.evaluate(query=meteorological_condition)
         control_eval = self.control_interp.evaluate(query=control_input)
-        return {out_var: ambient_eval[out_var] * control_eval[out_var] for \
-                  out_var in self.ambient_interp.out_variables}
+        return DataPoint({out_var: ambient_eval[out_var] * control_eval[out_var] for \
+                          out_var in self.ambient_interp.out_data_point.keys()})
             
         
