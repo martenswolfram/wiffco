@@ -11,9 +11,6 @@ from twain_wifco.interface import (
     AccumulatedMetric,
     ConstraintType,
     DataVariable)
-from twain_wifco.utils import (
-    hstacked_from_dict
-)
 
 class Bounds:
     def __init__(self,

@@ -15,8 +15,7 @@ from twain_wifco.statistics import (
     DiscreteStatistics)
 from twain_wifco.control_policy import (
     ControlPolicy,
-    DiscreteControlPolicyParams,
-    DiscreteControlPolicy)
+    ScatteredInterpPolicyParams)
 from twain_wifco.plant_model import PlantModel
 from twain_wifco.aggregation import Aggregation
 from twain_wifco.metrics_accumulation import MetricsAccumulation
@@ -245,7 +244,7 @@ class GridSearch(ControlPolicyOptimization):
         amb_cond_ctrl_indices = np.unravel_index(best_index, [num_ctrl_settings] * num_ambient_conditions)
         # controls setpoints for each linear index
         amb_cond_ctrl_setpoints = np.array([np.unravel_index(ctrl_index, [len(setpt_vec) for setpt_vec in ctrl_setpoint_vectors]) for ctrl_index in amb_cond_ctrl_indices])
-        discrete_control_policy_params = DiscreteControlPolicyParams(ambient_variables=ambient_condition_sample.support_variables,
+        discrete_control_policy_params = ScatteredInterpPolicyParams(ambient_variables=ambient_condition_sample.support_variables,
                                                                      ambient_conditions_support=ambient_condition_sample.support_values,
                                                                      control_inputs=ctrl_vars,
                                                                      control_setpoints=amb_cond_ctrl_setpoints)
@@ -302,7 +301,7 @@ class ContinuousOptimizationManager:
         ctrl_vars = self.control_eval_system.plant_model.inputs_of_type(t=Control)
         control_setpoints = {ctrl_var: get_default_value(data_var=ctrl_var, dim=dim) for \
                              ctrl_var, dim in ctrl_vars.items()}
-        discrete_control_policy_params = DiscreteControlPolicyParams(
+        discrete_control_policy_params = ScatteredInterpPolicyParams(
             ambient_support_points=amb_cond_sample.support_points,
             control_setpoints=control_setpoints)
         self.control_policy = DiscreteControlPolicy(

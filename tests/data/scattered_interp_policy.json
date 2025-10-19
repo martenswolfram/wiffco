@@ -1,0 +1,41 @@
+{
+    "name": "interp_control_policy",
+    "policy_type": "scattered_interp",
+    "policy_params": {
+        "scattered_interp_type": "linear",
+        "support_data": {
+            "wind_speed": [[10],
+                           [20],
+                           [30],
+                           [20],
+                           [10],
+                           [ 5]],
+            "wind_direction": [[  0],
+                               [ 60],
+                               [120],
+                               [180],
+                               [240],
+                               [300]],
+            "electricity_price": [[7],
+                                  [5],
+                                  [2],
+                                  [5],
+                                  [5],
+                                  [7]]
+        },
+        "out_data": {
+            "power_regulation": [[1],
+                                 [2],
+                                 [3],
+                                 [4],
+                                 [3],
+                                 [2]],
+            "yaw_steering": [[5],
+                             [6],
+                             [7],
+                             [8],
+                             [9],
+                             [0]]
+        }
+    }
+}

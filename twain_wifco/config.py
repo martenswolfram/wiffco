@@ -10,8 +10,8 @@ from twain_wifco.statistics import (
     DiscreteStatistics)
 from twain_wifco.control_policy import (
     ControlPolicyType,
-    discrete_policy_params_from_dict,
-    DiscreteControlPolicy)
+    scattered_interp_policy_params_from_dict,
+    ScatteredInterpPolicy)
 from twain_wifco.aggregation import (
     AggregationType,
     simple_product_params_from_dict,
@@ -72,12 +72,12 @@ def control_policy_from_json(json_path: pathlib.Path):
     param_dict = parse_json_file(path=json_path)
     policy_name = param_dict["name"]
     policy_type = ControlPolicyType(param_dict["policy_type"])
-    if policy_type == ControlPolicyType.DISCRETE_POLICY:
-        params = discrete_policy_params_from_dict(param_dict=param_dict["policy_params"])
-        return DiscreteControlPolicy(policy_name=policy_name,
+    if policy_type == ControlPolicyType.SCATTERED_INTERP_POLICY:
+        params = scattered_interp_policy_params_from_dict(param_dict=param_dict["policy_params"])
+        return ScatteredInterpPolicy(policy_name=policy_name,
                                      policy_params=params)
     else:
-        raise NotImplementedError("Only discrete_policy implemented.")
+        raise NotImplementedError("Only scattered-interp policy implemented.")
 
 def aggregation_from_json(json_path: pathlib.Path):
     param_dict = parse_json_file(path=json_path)

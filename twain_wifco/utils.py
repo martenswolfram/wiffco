@@ -48,34 +48,38 @@ class ScatteredInterpolator:
                  interpolator_params: ScatteredInterpolatorParams):
         self.scattered_interp_type = interpolator_params.scattered_interp_type
         
-        support_data_matrix = interpolator_params.support_data.to_matrix()
-        out_data_matrix = interpolator_params.out_data.to_matrix()
+        self.support_data = interpolator_params.support_data
+        self.out_data = interpolator_params.out_data
         # Set out data point to arbitrary value of the right form
         self.out_data_point = interpolator_params.out_data.get_point(0)
         
         if self.scattered_interp_type == ScatteredInterpolatorType.RBF:
             self.interpolator = RBFInterpolator(
-                y=support_data_matrix,
-                d=out_data_matrix
+                y=self.support_data.to_matrix(),
+                d=self.out_data.to_matrix()
             )
         elif self.scattered_interp_type == ScatteredInterpolatorType.LINEAR:
-            if support_data_matrix.shape[1] == 1:                
-                sort_index = np.argsort(support_data_matrix.T[0])
-                self.interpolator = interp1d(x=support_data_matrix[sort_index, :].flatten(),
-                                             y=out_data_matrix[sort_index, :].T,
+            if self.support_data.to_matrix().shape[1] == 1:                
+                sort_index = np.argsort(self.support_data.to_matrix().T[0])
+                self.interpolator = interp1d(x=self.support_data.to_matrix()[sort_index, :].flatten(),
+                                             y=self.out_data.to_matrix()[sort_index, :].T,
                                              fill_value="extrapolate")
             else:
                 self.interpolator = LinearNDInterpolator(
-                    points=support_data_matrix,
-                    values=out_data_matrix
+                    points=self.support_data.to_matrix(),
+                    values=self.out_data.to_matrix()
                 )
         else:
             raise NotImplementedError("ScatteredDataInterpolator: Only RBF type implemented.")
         pass
 
+    def evaluate_to_vector(self,
+                        query: DataPoint[InDataType]) -> DataPoint[OutDataType]:
+        x = query.to_vector()
+        return self.interpolator(x).flatten()
+        
     def evaluate(self,
                  query: DataPoint[InDataType]) -> DataPoint[OutDataType]:
-        x = query.to_vector()
-        result = self.interpolator(x=x).flatten()
+        result = self.evaluate_to_vector(query=query)
         self.out_data_point.from_vector(result)
         return self.out_data_point
