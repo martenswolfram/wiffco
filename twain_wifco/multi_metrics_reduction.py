@@ -21,7 +21,7 @@ class MultiMetricsReduction(Component):
     def evaluate(self,
                  acc_metrics: DataPoint[AccumulatedMetric]):
         
-        self.validate_inputs(accumulated_metric=acc_metrics)
+        self.validate_inputs(input_data={AccumulatedMetric: acc_metrics})
 
         return self._evaluate(acc_metrics=acc_metrics)
     
@@ -50,10 +50,13 @@ class ScalarWeightingParams(ComponentParams):
         self.metric_weights = metric_weights
         
     def input_interface(self) -> Interface:
-        return {acc_metric: None for acc_metric in self.metric_weights.keys()}
+        accumulated_matric_shapes = {acc_metric: None for \
+                                     acc_metric in self.metric_weights.keys()}
+        return Interface(all_data_type_shapes={
+            AccumulatedMetric: accumulated_matric_shapes})
     
     def output_interface(self) -> Interface:
-        return Interface()
+        return Interface(all_data_type_shapes={})
 
 def scalar_weighting_params_from_dict(param_dict: Dict[str, Dict | Any]):
     metric_weights = {}

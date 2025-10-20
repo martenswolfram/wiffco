@@ -26,8 +26,8 @@ class PlantModel(Component):
                  meteorological_condition: DataPoint[Ambient],
                  control_input: DataPoint[Control]):
 
-        self.validate_inputs(ambient=meteorological_condition,
-                             control=control_input)
+        self.validate_inputs(input_data={Ambient: meteorological_condition,
+                                         Control: control_input})
 
         return self._evaluate(meteorological_condition=meteorological_condition,
                               control_input=control_input)
@@ -52,12 +52,11 @@ class FactorizedScatteredInterpParams(ComponentParams):
         self.ambient_interp_params = ambient_interp_params
         
     def input_interface(self) -> Interface:
-
-        return Interface(ambient_shapes=self.ambient_interp_params.support_data.shapes(),
-                         control_shapes=self.control_interp_params.support_data.shapes())
+        return Interface(all_data_type_shapes={Ambient: self.ambient_interp_params.support_data.shapes(),
+                                               Control: self.control_interp_params.support_data.shapes()})
 
     def output_interface(self) -> Interface:
-        return Interface(model_output_shapes=self.ambient_interp_params.out_data.shapes())
+        return Interface(all_data_type_shapes={ModelOutput: self.ambient_interp_params.out_data.shapes()})
     
 def factorized_scattered_interp_params_from_dict(
         param_dict: Dict[str, Dict | Any]):

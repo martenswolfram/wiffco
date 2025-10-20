@@ -66,13 +66,13 @@ class DiscreteStatisticsParams(ComponentParams):
         self.prevalence = prevalence
 
     def input_interface(self) -> Interface:
-        return Interface()
+        return Interface(all_data_type_shapes={})
 
     def output_interface(self):
         if self.statistical_type == Ambient:
-            return Interface(ambient_shapes=self.support_data.shapes())
+            return Interface(all_data_type_shapes={Ambient: self.support_data.shapes()})
         else:
-            return Interface(aggregated_shapes=self.support_data.shapes())
+            return Interface(all_data_type_shapes={Aggregated: self.support_data.shapes()})
         
 def discrete_statistics_params_from_dict(param_dict: Dict[str, Any]):
     

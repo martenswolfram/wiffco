@@ -78,6 +78,26 @@ def get_abs_tol(data_var: DataVariable) -> float:
     else:
         raise ValueError(f"No abs tol value for data variable '{data_var}'.") 
 
+class DataTypeShapes(Generic[DataType]):
+    def __init__(self,
+                 data_type: Type[DataType],
+                 shapes: Dict[DataType, Tuple[int, ...]]):
+        self.data_type = data_type
+        self.shapes = shapes
+
+    def __eq__(self, other):
+        if not isinstance(other, DataTypeShapes):
+            return False
+        return self.shapes == other.shapes
+
+    def __getitem__(self, key: DataType) -> np.ndarray:
+        return self.shapes[key]
+
+    def keys(self):
+        return self.shapes.keys()
+    
+    def items(self):
+        return self.shapes.items()
 
 @dataclass
 class DataCollection(Generic[DataType]):
@@ -108,7 +128,8 @@ class DataCollection(Generic[DataType]):
             i += n
 
     def shapes(self):
-        return {}
+        return DataTypeShapes(data_type=self.data_type,
+                              shapes={k: v.shape for k, v in self.data.items()})
     
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, DataCollection):
@@ -120,10 +141,11 @@ class DataCollection(Generic[DataType]):
                 return False
         return True
 
-@dataclass
+@dataclass(eq=False)
 class DataPoint(DataCollection[DataType]):
     def shapes(self):
-        return {k: v.shape for k, v in self.data.items()}
+        return DataTypeShapes(data_type=self.data_type,
+                              shapes={k: v.shape for k, v in self.data.items()})
     
     def __sub__(self, other: "DataPoint[DataType]") -> "DataPoint[DataType]":
         if set(self.data.keys()) != set(other.data.keys()):
@@ -145,7 +167,8 @@ class DataTable(DataCollection[DataType]):
         return self.data[first_key].shape[0]
 
     def shapes(self):
-        return {k: v.shape[1:] for k, v in self.data.items()}
+        return DataTypeShapes(data_type=self.data_type,
+                              shapes={k: v.shape[1:] for k, v in self.data.items()})
     
     def to_matrix(self) -> np.ndarray:
         n_points = len(self)
@@ -159,16 +182,25 @@ class DataTable(DataCollection[DataType]):
 
 class Interface:
     def __init__(self,
-                 ambient_shapes: Dict[Ambient, Tuple[int, ...]] = {},
-                 control_shapes: Dict[Control, Tuple[int, ...]] = {},
-                 model_output_shapes: Dict[Ambient, Tuple[int, ...]] = {},
-                 aggregated_shapes: Dict[Ambient, Tuple[int, ...]] = {},
-                 accumulated_metric_shapes: Dict[Ambient, Tuple[int, ...]] = {}):
-        self.ambient_shapes = ambient_shapes
-        self.control_shapes = control_shapes
-        self.model_output_shapes = model_output_shapes
-        self.aggregated_shapes = aggregated_shapes
-        self.accumulated_metric_shapes = accumulated_metric_shapes
+                 all_data_type_shapes: Dict[Type[DataVariable], Dict[DataVariable, Tuple[int, ...]]]):
+        self.all_data_type_shapes = all_data_type_shapes
+        
+    def validate_shapes(self,
+                        external_shapes: Dict[Type[DataVariable], DataTypeShapes],
+                        component_name: str):
+        for data_type, data_type_shapes in self.all_data_type_shapes.items():
+            missing_vars = data_type_shapes.keys() - external_shapes[data_type].keys()
+            if len(missing_vars):
+                msg = (f"Insufficient input variables for component '{component_name}'. "
+                    f"Missing variable(s): {missing_vars}")
+                raise ValueError(msg)
+            for var, shape in data_type_shapes.items():
+                if shape is None:
+                    continue
+                if not (shape == external_shapes[data_type][var]):
+                    msg = (f"Input variable dimensions mismatch for component '{component_name}'. "
+                        f"Mismatch variable: {var}")
+                    raise ValueError(msg)
 
 class ComponentParams(ABC):
 
@@ -191,37 +223,13 @@ class Component(ABC):
         self.component_name = component_name
         self.input_interface = component_params.input_interface()
         self.output_interface = component_params.output_interface()
-
-    def validate_single_input(
-            self,
-            input: Dict[DataType, Tuple[int, ...]],
-            interface_shapes: Dict[DataType, Tuple[int, ...]]):
-        missing_vars = interface_shapes.keys() - input.keys()
-            
-        if len(missing_vars):
-            msg = (f"Insufficient input variables for component '{self.component_name}'. "
-                f"Missing variable(s): {missing_vars}")
-            raise ValueError(msg)
-        for in_var, in_shape in interface_shapes.items():
-            if in_shape is None:
-                continue
-            if not (in_shape == input[in_var]):
-                msg = (f"Input variable dimensions mismatch for component '{self.component_name}'. "
-                    f"Mismatch variable: {in_var}")
-                raise ValueError(msg)
         
     def validate_inputs(self,
-                        ambient: DataCollection[Ambient] = DataCollection({}),
-                        control: DataCollection[Control] = DataCollection({}),
-                        model_output: DataCollection[ModelOutput] = DataCollection({}),
-                        aggregated: DataCollection[Aggregated] = DataCollection({}),
-                        accumulated_metric: DataCollection[AccumulatedMetric] = DataCollection({})):
-        
-        self.validate_single_input(ambient.shapes(), self.input_interface.ambient_shapes)
-        self.validate_single_input(control.shapes(), self.input_interface.control_shapes)
-        self.validate_single_input(model_output.shapes(), self.input_interface.model_output_shapes)
-        self.validate_single_input(aggregated.shapes(), self.input_interface.aggregated_shapes)
-        self.validate_single_input(accumulated_metric.shapes(), self.input_interface.accumulated_metric_shapes)
+                        input_data: Dict[Type[DataVariable], DataCollection[DataVariable]]):
+        self.input_interface.validate_shapes(
+            external_shapes={data_type: data_collection.shapes() for \
+                             data_type, data_collection in input_data.items()},
+                             component_name=self.component_name)
             
 def validate_data_flow(components: List[Component]):
     current_out = {}

@@ -16,7 +16,7 @@ def test_data_graph():
         json_path=(test_data_folder / "discrete_ambient_statistics.json"))
     # Control policy
     discrete_control_policy = control_policy_from_json(
-        json_path=(test_data_folder / "discrete_control_policy.json"))
+        json_path=(test_data_folder / "scattered_interp_policy.json"))
     # Plant model
     power_damage_model = plant_model_from_json(
         json_path=(test_data_folder / "power_damage_scattered_model.json"))
@@ -28,7 +28,7 @@ def test_data_graph():
         json_path=(test_data_folder / "revenue_damage_accumulation.json"))
 
     # Validate inputs and outputs
-    validate_data_graph(statistics=discrete_ambient_statistics,
+    validate_data_graph(ambient_statistics=discrete_ambient_statistics,
                         control_policy=discrete_control_policy,
                         plant_model=power_damage_model,
                         aggregation=revenue_damage_aggregation,

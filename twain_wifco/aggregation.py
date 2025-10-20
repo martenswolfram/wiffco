@@ -24,9 +24,11 @@ class Aggregation(Component):
                           ambient_condition: DataPoint[Ambient],
                           control_setpoints: DataPoint[Control]) -> DataPoint[Aggregated]:
         
-        self.validate_inputs(model_output=model_output,
-                             ambient=ambient_condition,
-                             control=control_setpoints)
+        self.validate_inputs(input_data={
+            ModelOutput: model_output,
+            Ambient: ambient_condition,
+            Control: control_setpoints}
+            )
 
         return self._compute_aggregate(model_output=model_output,
                                        ambient_condition=ambient_condition,
@@ -65,14 +67,17 @@ class SimpleProductParams(ComponentParams):
             required_ambient_shapes |= {in_var: None for in_var in mapping.from_ambient}
             required_control_shapes |= {in_var: None for in_var in mapping.from_control}
         
-        return Interface(
-            model_output_shapes=required_model_output_shapes,
-            ambient_shapes=required_ambient_shapes,
-            control_shapes=required_control_shapes)
+        return Interface(all_data_type_shapes={
+            ModelOutput: required_model_output_shapes,
+            Ambient: required_ambient_shapes,
+            Control: required_control_shapes}
+            )
 
     def output_interface(self) -> Interface:
-        return Interface(aggregated_shapes={aggr_var: (1,) for \
-                                            aggr_var in self.aggregate_mappings.keys()})
+        return Interface(all_data_type_shapes={
+            Aggregated: {
+                aggr_var: (1,) for aggr_var in self.aggregate_mappings.keys()
+                }})
 
 def simple_product_params_from_dict(param_dict: Dict[str, Dict | Any]):
     aggregate_mappings = {}

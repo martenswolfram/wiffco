@@ -23,7 +23,7 @@ class MetricsAccumulation(Component):
                     aggregate: DataPoint[Aggregated],
                     duration: int):
         
-        self.validate_inputs(aggregated=aggregate)
+        self.validate_inputs(input_data={Aggregated: aggregate})
 
         return self._acc_metrics(aggregate=aggregate,
                                  duration=duration)
@@ -58,16 +58,19 @@ class DiscountedIntegrationParams(ComponentParams):
                  integration_mappings: Dict[AccumulatedMetric, IntegrationMapping]):
         self.integration_mappings = integration_mappings
 
-    def input_interface(self) -> Interface:        
+    def input_interface(self) -> Interface:
+        aggregated_shapes = {aggr_mapping.aggregate: None for \
+                               aggr_mapping in self.integration_mappings.values()}
         return Interface(
-            aggregated_shapes={aggr_mapping.aggregate: None for \
-                               aggr_mapping in self.integration_mappings.values()})
+            all_data_type_shapes={
+                Aggregated: aggregated_shapes
+            })
 
     def output_interface(self) -> Interface:
         accumulated_metric_shapes = {acc_metric: None for \
                                      acc_metric in self.integration_mappings.keys()}
         return Interface(
-            accumulated_metric_shapes=accumulated_metric_shapes)
+            all_data_type_shapes={AccumulatedMetric: accumulated_metric_shapes})
 
 def discounted_integrator_params_from_dict(param_dict: Dict[str, Dict | Any]):
     integration_mappings = {}

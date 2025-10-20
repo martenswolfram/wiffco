@@ -44,12 +44,7 @@ class TwoSidedConstraint(Component, Generic[DataType]):
     def evaluate(self,
                  constr_input_data: DataPoint[DataType]) -> TwoSidedConstraintEval:
 
-        if constr_input_data.data_type == Control:
-            self.validate_inputs(control=constr_input_data)
-        elif constr_input_data.data_type == Aggregated:
-            self.validate_inputs(aggregated=constr_input_data)
-        else: 
-            self.validate_inputs(accumulated_metric=constr_input_data)
+        self.validate_inputs(input_data={constr_input_data.data_type: constr_input_data})
 
         return self._evaluate(constr_input_data=constr_input_data)
     
@@ -84,15 +79,12 @@ class SeparateLinearConstraintsParams(ComponentParams):
         self.bounds = bounds
         
     def input_interface(self) -> Interface:
-        if self.bounds.data_type == Control:
-            return Interface(control_shapes=self.bounds.upper_bound.shapes())
-        elif self.bounds.data_type == Aggregated:
-            return Interface(aggregated_shapes=self.bounds.upper_bound.shapes())
-        else:
-            return Interface(accumulated_metric_shapes=self.bounds.upper_bound.shapes())
+        return Interface(all_data_type_shapes={
+            self.bounds.data_type: self.bounds.upper_bound.shapes()
+            })
         
     def output_interface(self):
-        return Interface()
+        return Interface(all_data_type_shapes={})
 
 def separate_linear_constraints_params_from_dict(param_dict: Dict[str, Dict | Any]):
     

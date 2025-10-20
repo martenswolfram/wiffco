@@ -25,7 +25,7 @@ class ControlPolicy(Component):
     def get_control_setpoints(self,
                               ambient_condition: DataPoint[Ambient]) -> DataPoint[Control]:
         
-        self.validate_inputs(ambient=ambient_condition)
+        self.validate_inputs(input_data={Ambient: ambient_condition})
         
         return self._get_control_setpoints(ambient_condition=ambient_condition)
 
@@ -62,10 +62,12 @@ class ScatteredInterpPolicyParams(ComponentParams):
         self.ambient_interp_params = ambient_interp_params
         
     def input_interface(self) -> Interface:
-        return Interface(ambient_shapes=self.ambient_interp_params.support_data.shapes())
+        return Interface(all_data_type_shapes={
+            Ambient: self.ambient_interp_params.support_data.shapes()})
 
     def output_interface(self) -> Interface:
-        return Interface(control_shapes=self.ambient_interp_params.out_data.shapes())
+        return Interface(all_data_type_shapes={
+            Control: self.ambient_interp_params.out_data.shapes()})
     
 def scattered_interp_policy_params_from_dict(
         param_dict: Dict[str, Dict | Any]):

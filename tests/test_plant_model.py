@@ -30,5 +30,5 @@ def test_plant_model():
                                   ModelOutput.ELECTRICAL_POWER: np.array([4 * 1.4])})
 
     output = power_damage_scattered_model.evaluate(meteorological_condition=valid_met_condition,
-                                             control_input=valid_ctrl_input)
+                                                   control_input=valid_ctrl_input)
     assert output == expected_output
