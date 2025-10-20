@@ -1,6 +1,7 @@
 from typing import (
     List,
     Set,
+    Type,
     Tuple,
     TypeVar,
     Dict,
@@ -81,15 +82,18 @@ def get_abs_tol(data_var: DataVariable) -> float:
 @dataclass
 class DataCollection(Generic[DataType]):
     data: dict[DataType, np.ndarray]
+    data_type: Type[DataType] | None = None # TODO: Fix data type handling
     order: list[DataType] | None = None
-    
-    def keys(self):
-        return self.data.keys()
     
     def __post_init__(self):
         if self.order is None:
             self.order = list(self.data.keys())
-
+        if len(self.order) > 0:
+            self.data_type = type(self.order[0])
+    
+    def keys(self):
+        return self.data.keys()
+    
     def __getitem__(self, key: DataType) -> np.ndarray:
         return self.data[key]
     
@@ -120,6 +124,19 @@ class DataCollection(Generic[DataType]):
 class DataPoint(DataCollection[DataType]):
     def shapes(self):
         return {k: v.shape for k, v in self.data.items()}
+    
+    def __sub__(self, other: "DataPoint[DataType]") -> "DataPoint[DataType]":
+        if set(self.data.keys()) != set(other.data.keys()):
+            raise KeyError("DataPoint instances must have identical keys for subtraction.")
+
+        new_data = {}
+        for k in self.data.keys():
+            if self.data[k].shape != other.data[k].shape:
+                raise ValueError(f"Shape mismatch for key {k}: "
+                                 f"{self.data[k].shape} vs {other.data[k].shape}")
+            new_data[k] = np.subtract(self.data[k], other.data[k])
+
+        return DataPoint(new_data, self.order)
 
 @dataclass(eq=False)
 class DataTable(DataCollection[DataType]):

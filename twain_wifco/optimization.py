@@ -19,7 +19,7 @@ from twain_wifco.control_policy import (
 from twain_wifco.plant_model import PlantModel
 from twain_wifco.aggregation import Aggregation
 from twain_wifco.metrics_accumulation import MetricsAccumulation
-from twain_wifco.constraint import Constraint
+from twain_wifco.constraint import TwoSidedConstraint
 from twain_wifco.multi_metrics_reduction import MultiMetricsReduction
 
 class ControlEvaluationSystem:
@@ -27,9 +27,9 @@ class ControlEvaluationSystem:
                  name: str, 
                  plant_model: PlantModel,
                  aggregation: Aggregation,
-                 control_constraint: Constraint,
+                 control_constraint: TwoSidedConstraint,
                  metrics_accumulation: MetricsAccumulation,
-                 accumulated_constraint: Constraint,
+                 accumulated_constraint: TwoSidedConstraint,
                  multi_metrics_reduction: MultiMetricsReduction):
         
         # Parameters
@@ -52,7 +52,7 @@ class ControlEvaluationSystem:
                                                        ambient_condition=ambient_condition,
                                                        control_setpoints=control_setpoints)
         constraint_eval = self.control_constraint.evaluate(
-            constr_values=control_setpoints)
+            constr_input_data=control_setpoints)
         
         return aggregate, constraint_eval.satisfied()
 
@@ -230,7 +230,7 @@ class GridSearch(ControlPolicyOptimization):
                     aggregate_statistics=discrete_aggr_stat,
                     duration=duration)
                 multi_metrics_reduced.append(control_eval_system.multi_metrics_reduction.evaluate(acc_metrics=expected_acc_metrics))
-                acc_metrics_constraint_eval = control_eval_system.accumulated_constraint.evaluate(constr_values=expected_acc_metrics)
+                acc_metrics_constraint_eval = control_eval_system.accumulated_constraint.evaluate(constr_input_data=expected_acc_metrics)
                 constraints_satisfied.append(acc_metrics_constraint_eval.satisfied())
             
         # Find the optimal control strategy that satisfies the constraints
