@@ -98,9 +98,9 @@ class DiscreteStatistics(Statistics):
         # Ordered by prevalence
         prevalence_index = np.argsort(statistics_params.prevalence)[::-1]
         self.ordered_support_data = statistics_params.support_data
-        for var in self.ordered_support_data.keys():
+        for var, data in self.ordered_support_data.data.items():
             self.ordered_support_data.data[var] = \
-                self.ordered_support_data.data[var][prevalence_index, :]
+                data[prevalence_index, :]
         self.ordered_prevalence = statistics_params.prevalence[prevalence_index]
 
     def systematic_sample(self, N_max: int = None):

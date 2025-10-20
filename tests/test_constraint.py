@@ -23,7 +23,7 @@ def test_linear_control_constraint():
         
     # Constraint evaluation
     violated_constraint_eval = linear_control_constraint.evaluate(
-        constr_values_dict={Control.YAW_STEERING: np.array([0]),
+        constr_values={Control.YAW_STEERING: np.array([0]),
                             Control.POWER_REGULATION: np.array([0])})
     assert np.array_equal(violated_constraint_eval.lower_diff,
                           np.array([-1, np.inf]))
@@ -32,7 +32,7 @@ def test_linear_control_constraint():
     assert violated_constraint_eval.satisfied() is not True
     
     satisfied_constraint_eval = linear_control_constraint.evaluate(
-        constr_values_dict={Control.YAW_STEERING: np.array([0]),
+        constr_values={Control.YAW_STEERING: np.array([0]),
                      Control.POWER_REGULATION: np.array([2])})
     assert np.array_equal(satisfied_constraint_eval.lower_diff,
                           np.array([1, np.inf]))
@@ -58,7 +58,7 @@ def test_acc_metrics_constraint():
     
     # Constraint evaluation
     violated_constraint_eval = linear_accumulated_constraint.evaluate(
-        constr_values_dict={AccumulatedMetric.ACCRUED_DAMAGE: np.array([700]),
+        constr_values={AccumulatedMetric.ACCRUED_DAMAGE: np.array([700]),
                             AccumulatedMetric.REVENUE: np.array([0])})
     assert np.array_equal(violated_constraint_eval.lower_diff,
                           np.array([np.inf, np.inf]))
@@ -67,7 +67,7 @@ def test_acc_metrics_constraint():
     assert violated_constraint_eval.satisfied() is not True
     
     satisfied_constraint_eval = linear_accumulated_constraint.evaluate(
-        constr_values_dict={AccumulatedMetric.ACCRUED_DAMAGE: np.array([300]),
+        constr_values={AccumulatedMetric.ACCRUED_DAMAGE: np.array([300]),
                             AccumulatedMetric.REVENUE: np.array([0])})
     assert np.array_equal(satisfied_constraint_eval.lower_diff,
                           np.array([np.inf, np.inf]))
