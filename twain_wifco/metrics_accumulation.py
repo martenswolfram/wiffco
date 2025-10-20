@@ -60,7 +60,8 @@ class DiscountedIntegrationParams(ComponentParams):
 
     def input_interface(self) -> Interface:        
         return Interface(
-            aggregated_shapes={aggr_mapping.aggregate: None for aggr_mapping in self.integration_mappings.values()})
+            aggregated_shapes={aggr_mapping.aggregate: None for \
+                               aggr_mapping in self.integration_mappings.values()})
 
     def output_interface(self) -> Interface:
         accumulated_metric_shapes = {acc_metric: None for \

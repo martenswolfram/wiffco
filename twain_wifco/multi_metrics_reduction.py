@@ -5,7 +5,9 @@ from enum import Enum
 from twain_wifco.interface import (
     Component,
     ComponentParams,
-    AccumulatedMetric)
+    AccumulatedMetric,
+    DataPoint,
+    Interface)
 
 class MultiMetricsReduction(Component):
     def __init__(self,
@@ -17,9 +19,9 @@ class MultiMetricsReduction(Component):
         self.maximize = maximize
 
     def evaluate(self,
-                 acc_metrics: Dict[AccumulatedMetric, np.ndarray]):
+                 acc_metrics: DataPoint[AccumulatedMetric]):
         
-        self.validate_inputs(inputs=acc_metrics.keys())
+        self.validate_inputs(accumulated_metric=acc_metrics)
 
         return self._evaluate(acc_metrics=acc_metrics)
     
@@ -36,7 +38,7 @@ class MultiMetricsReduction(Component):
             
     @abstractmethod
     def _evaluate(self,
-                  acc_metrics: Dict[AccumulatedMetric, np.ndarray]):
+                  acc_metrics: DataPoint[AccumulatedMetric]):
         pass
 
 class MultiMetricsReductionType(Enum):
@@ -44,14 +46,14 @@ class MultiMetricsReductionType(Enum):
 
 class ScalarWeightingParams(ComponentParams):
     def __init__(self,
-                 metric_weights: Dict[AccumulatedMetric, float]):
+                 metric_weights: DataPoint[AccumulatedMetric]):
         self.metric_weights = metric_weights
         
-    def input_format(self):
+    def input_interface(self) -> Interface:
         return {acc_metric: None for acc_metric in self.metric_weights.keys()}
     
-    def output_format(self):
-        return set()
+    def output_interface(self) -> Interface:
+        return Interface()
 
 def scalar_weighting_params_from_dict(param_dict: Dict[str, Dict | Any]):
     metric_weights = {}
