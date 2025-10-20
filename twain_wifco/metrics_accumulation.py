@@ -8,7 +8,9 @@ from twain_wifco.interface import (
     Component,
     ComponentParams,
     Aggregated,
-    AccumulatedMetric)
+    AccumulatedMetric,
+    DataPoint,
+    Interface)
 
 class MetricsAccumulation(Component):
     def __init__(self,
@@ -18,17 +20,17 @@ class MetricsAccumulation(Component):
                          component_params=accumulation_params)
     
     def acc_metrics(self,
-                    aggregate: Dict[Aggregated, np.ndarray],
+                    aggregate: DataPoint[Aggregated],
                     duration: int):
         
-        self.validate_inputs(inputs=aggregate.keys())
+        self.validate_inputs(aggregated=aggregate)
 
         return self._acc_metrics(aggregate=aggregate,
                                  duration=duration)
 
     @abstractmethod
     def _acc_metrics(self,
-                     aggregate: Dict[Aggregated, np.ndarray],
+                     aggregate: DataPoint[Aggregated],
                      duration: int):
         pass
     
@@ -56,13 +58,15 @@ class DiscountedIntegrationParams(ComponentParams):
                  integration_mappings: Dict[AccumulatedMetric, IntegrationMapping]):
         self.integration_mappings = integration_mappings
 
-    def input_format(self):
-        required_aggregates = {aggr_mapping.aggregate: None for aggr_mapping in self.integration_mappings.values()}
-        return required_aggregates
-    
-    def output_format(self):
-        return {acc_metric: None for \
-                acc_metric in self.integration_mappings.keys()}
+    def input_interface(self) -> Interface:        
+        return Interface(
+            aggregated_shapes={aggr_mapping.aggregate: None for aggr_mapping in self.integration_mappings.values()})
+
+    def output_interface(self) -> Interface:
+        accumulated_metric_shapes = {acc_metric: None for \
+                                     acc_metric in self.integration_mappings.keys()}
+        return Interface(
+            accumulated_metric_shapes=accumulated_metric_shapes)
 
 def discounted_integrator_params_from_dict(param_dict: Dict[str, Dict | Any]):
     integration_mappings = {}
@@ -82,7 +86,7 @@ class DiscountedIntegration(MetricsAccumulation):
         self.integration_mappings = accumulation_params.integration_mappings
 
     def _acc_metrics(self,
-                    aggregate: Dict[Aggregated, np.ndarray],
+                    aggregate: DataPoint[Aggregated],
                     duration: int):
         accumulated_metrics = {}
         for acc_metric, integration_mapping in self.integration_mappings.items():
@@ -94,5 +98,5 @@ class DiscountedIntegration(MetricsAccumulation):
                 duration_discount_factor = (1 - discount_factor**duration) / (1 - discount_factor)
                 accumulated_metrics[acc_metric] = aggregate[integration_mapping.aggregate] * duration_discount_factor
 
-        return accumulated_metrics
+        return DataPoint(accumulated_metrics)
      

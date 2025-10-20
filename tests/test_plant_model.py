@@ -26,8 +26,8 @@ def test_plant_model():
 
     # Valid input
     valid_ctrl_input = DataPoint({Control.POWER_REGULATION: np.array([2])})
-    expected_output =  DataPoint({ModelOutput.ELECTRICAL_POWER: np.array([4 * 1.4]),
-                                  ModelOutput.DAMAGE_RATE: np.array([4 * 8])})
+    expected_output =  DataPoint({ModelOutput.DAMAGE_RATE: np.array([4 * 8]),
+                                  ModelOutput.ELECTRICAL_POWER: np.array([4 * 1.4])})
 
     output = power_damage_scattered_model.evaluate(meteorological_condition=valid_met_condition,
                                              control_input=valid_ctrl_input)

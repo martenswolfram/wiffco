@@ -92,7 +92,7 @@ class ControlEvaluationSystem:
         discrete_statistics_params = DiscreteStatisticsParams(
             support_variables=aggregated_variables,
             prevalence = ambient_condition_sample.normalized_weights,
-            support_points=aggregated_support_values)
+            support_data=aggregated_support_values)
         
         new_name = ""
         discrete_aggregate_statistics = DiscreteStatistics(statistics_name=new_name,
@@ -181,7 +181,7 @@ class GridSearch(ControlPolicyOptimization):
         
         for n_amb in np.arange(ambient_condition_sample.N):
             ambient_condition={amb_var: val for amb_var, val in \
-                               ambient_condition_sample.support_points.items()}
+                               ambient_condition_sample.support_data.items()}
             for n_ctrl, ctrl_setpoint_vector in enumerate(ctrl_setpoint_combinations):
                 ctrl_setpoints = {}
                 ind = 0
@@ -221,7 +221,7 @@ class GridSearch(ControlPolicyOptimization):
                 discrete_stat_params = DiscreteStatisticsParams(
                     support_variables=aggr_vars,
                     prevalence=ambient_condition_sample.normalized_weights,
-                    support_points=aggr_support_points)
+                    support_data=aggr_support_points)
                 discrete_aggr_stat = DiscreteStatistics(
                     statistics_name="",
                     statistics_params=discrete_stat_params)
@@ -302,7 +302,7 @@ class ContinuousOptimizationManager:
         control_setpoints = {ctrl_var: get_default_value(data_var=ctrl_var, dim=dim) for \
                              ctrl_var, dim in ctrl_vars.items()}
         discrete_control_policy_params = ScatteredInterpPolicyParams(
-            ambient_support_points=amb_cond_sample.support_points,
+            ambient_support_points=amb_cond_sample.support_data,
             control_setpoints=control_setpoints)
         self.control_policy = DiscreteControlPolicy(
             policy_name="discrete_policy_opt",

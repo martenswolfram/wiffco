@@ -121,7 +121,7 @@ class DataPoint(DataCollection[DataType]):
     def shapes(self):
         return {k: v.shape for k, v in self.data.items()}
 
-@dataclass
+@dataclass(eq=False)
 class DataTable(DataCollection[DataType]):
     def __len__(self):
         first_key = self.order[0]

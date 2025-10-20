@@ -3,7 +3,7 @@
     "statistics_type": "discrete_statistics",
     "statistics_params":{
         "data_type": "ambient",
-        "support_points": {
+        "support_data": {
             "wind_speed": [[10],
                            [20],
                            [30],
