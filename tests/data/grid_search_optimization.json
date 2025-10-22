@@ -1,10 +1,14 @@
 {
     "name": "grid_search",
-    "optimization_method": "grid_search", 
+    "optimization_method": "grid_search",
     "optimization_params": {
         "max_num_ambient_conditions": 6,
+        "scattered_interpolation_type": "linear",
         "control_setpoint_vectors": {
-            "power_regulation": [[0, 1, 2, 3, 4]]
+            "power_regulation": {
+                "shape": [1],
+                "data": [[0, 1, 2, 3, 4]]
+            }            
         }
     }
 }

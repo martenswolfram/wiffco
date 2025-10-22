@@ -8,6 +8,9 @@ from enum import Enum
 from twain_wifco.interface import (
     Ambient,
     Control,
+    Aggregated,
+    DataTable,
+    DataPoint,
     get_default_value)
 from twain_wifco.statistics import (
     Statistics,
@@ -15,7 +18,9 @@ from twain_wifco.statistics import (
     DiscreteStatistics)
 from twain_wifco.control_policy import (
     ControlPolicy,
+    ScatteredInterpPolicy,
     ScatteredInterpPolicyParams)
+from twain_wifco.utils import ScatteredInterpolatorParams, ScatteredInterpolatorType
 from twain_wifco.plant_model import PlantModel
 from twain_wifco.aggregation import Aggregation
 from twain_wifco.metrics_accumulation import MetricsAccumulation
@@ -77,22 +82,20 @@ class ControlEvaluationSystem:
                              max_num_amb_cond: int | None = None):
         
         ambient_condition_sample = ambient_condition_statistics.systematic_sample(N_max=max_num_amb_cond)
-
-        aggregated_variables = self.aggregation.output_shape
-        aggregated_support_values = np.empty(shape=(ambient_condition_sample.N, len(aggregated_variables)))
-        for i, ambient_condition in enumerate(ambient_condition_sample.variables_iter()):
+        aggregate_list = []
+        for ambient_condition in ambient_condition_sample.support_data:
             control_setpoints = control_policy.get_control_setpoints(ambient_condition=ambient_condition)
             model_output = self.plant_model.evaluate(meteorological_condition=ambient_condition,
                                                      control_input=control_setpoints)
             aggregated = self.aggregation.compute_aggregate(model_output=model_output,
                                                             ambient_condition=ambient_condition,
                                                             control_setpoints=control_setpoints)
-            aggregated_support_values[i, :] = [aggregated[aggr_var] for aggr_var in aggregated_variables]
+            aggregate_list.append(aggregated)
 
-        discrete_statistics_params = DiscreteStatisticsParams(
-            support_variables=aggregated_variables,
-            prevalence = ambient_condition_sample.normalized_weights,
-            support_data=aggregated_support_values)
+        aggregate_support = DataTable.from_data_points(aggregate_list)
+        discrete_statistics_params = DiscreteStatisticsParams(statistical_type=Aggregated,
+                                                              support_data=aggregate_support,
+                                                              prevalence=ambient_condition_sample.normalized_weights)
         
         new_name = ""
         discrete_aggregate_statistics = DiscreteStatistics(statistics_name=new_name,
@@ -122,27 +125,33 @@ class ControlPolicyOptimization(ABC):
                         initial_policy: ControlPolicy | None = None):
         pass
 
+class ControlSetpointVectors:
+    def __init__(self,
+                 shape: Tuple[int, ...],
+                 vectors: List[np.ndarray]):
+        if np.prod(shape) != len(vectors):
+            raise ValueError("ControlSetpointVectors: Input shape and vectors don't match.")
+        self.shape = shape
+        self.vectors = vectors
+
 class GridSearchParams:
     def __init__(self,
                  max_num_amb_cond: int,
-                 control_variables: List[Control],
-                 control_setpoint_vectors: Dict[Control, np.ndarray]):
+                 scattered_interpolation_type: ScatteredInterpolatorType,
+                 control_setpoint_vectors: Dict[Control, ControlSetpointVectors]):
         self.max_num_amb_cond = max_num_amb_cond
-        self.control_variables = control_variables
+        self.scattered_interpolation_type = scattered_interpolation_type
         self.control_setpoint_vectors = control_setpoint_vectors
         
 def grid_search_params_from_dict(param_dict: Dict[str, Dict | Any]):
     max_num_amb_cond = param_dict["max_num_ambient_conditions"]
+    scattered_interpolation_type = ScatteredInterpolatorType(param_dict["scattered_interpolation_type"])
     control_setpoint_vectors = {}
-    control_variables = [(ctrl_var, len(setpoint_vectors)) for\
-                          ctrl_var, setpoint_vectors in param_dict["control_setpoint_vectors"].items()]
-    control_setpoint_vectors = []
-    for ctrl_var, _ in control_variables:
-        control_setpoint_vectors.extend([
-            np.array(setpoints_vector) for \
-                setpoints_vector in param_dict["control_setpoint_vectors"][ctrl_var]])
+    for ctrl_var, setpoint_vectors in param_dict["control_setpoint_vectors"].items():
+        control_setpoint_vectors[Control(ctrl_var)] = ControlSetpointVectors(shape=tuple(setpoint_vectors["shape"]),
+                                                                             vectors=setpoint_vectors["data"])
     return GridSearchParams(max_num_amb_cond=max_num_amb_cond,
-                            control_variables=control_variables,
+                            scattered_interpolation_type=scattered_interpolation_type,
                             control_setpoint_vectors=control_setpoint_vectors)
 
 
@@ -152,7 +161,7 @@ class GridSearch(ControlPolicyOptimization):
                  optimization_params: GridSearchParams):
         super().__init__(optimization_name=optimization_name)
         self.max_num_amb_cond = optimization_params.max_num_amb_cond
-        self.control_variables = optimization_params.control_variables
+        self.scattered_interpolation_type = optimization_params.scattered_interpolation_type
         self.control_setpoint_vectors = optimization_params.control_setpoint_vectors
 
     def optimize_policy(self,
@@ -164,64 +173,62 @@ class GridSearch(ControlPolicyOptimization):
         print(f"GridSearch: Find optimal control policy")
         ambient_condition_sample = ambient_condition_statistics.systematic_sample(N_max=self.max_num_amb_cond)
         num_ambient_conditions = ambient_condition_sample.N
-        ctrl_setpoint_combinations = list(
-            itertools.product(*self.control_setpoint_vectors))
-        num_ctrl_settings = len(ctrl_setpoint_combinations)
-        
+        ctrl_variables_order = list(self.control_setpoint_vectors.keys())
+        control_setpoints_list = [setpoints for ctrl_var in ctrl_variables_order for \
+                                  setpoints in self.control_setpoint_vectors[ctrl_var].vectors]
+        ctrl_setpoint_combinations = np.array(list(itertools.product(*control_setpoints_list)))
+        ctrl_setpoints_table = DataTable.from_matrix(
+            data_matrix=ctrl_setpoint_combinations,
+            order=ctrl_variables_order,
+            shapes_dict={var: data.shape for var, data in self.control_setpoint_vectors.items()})
+        num_ctrl_settings = len(ctrl_setpoints_table)
+
         aggregate_evaluations = {
-            aggr_var: np.empty(shape=(num_ambient_conditions, num_ctrl_settings, aggr_dim)) \
-            for aggr_var, aggr_dim in control_eval_system.aggregation.output_shape.items()
+            aggr_var: np.empty(shape=(num_ambient_conditions, num_ctrl_settings, *aggr_shape)) \
+            for aggr_var, aggr_shape in control_eval_system.aggregation.output_interface.shapes(Aggregated).items()
             }
-        instant_constraints_satisfied_matrix = np.empty(
-            shape=(num_ambient_conditions, num_ctrl_settings))
         print(f"Number of ambient conditions: {num_ambient_conditions}.")
         print(f"Number of ctrl settings: {num_ctrl_settings}.")
         num_eval = num_ctrl_settings * num_ambient_conditions
         print(f"Performing {num_eval} system evaluations.")
         
-        for n_amb in np.arange(ambient_condition_sample.N):
-            ambient_condition={amb_var: val for amb_var, val in \
-                               ambient_condition_sample.support_data.items()}
-            for n_ctrl, ctrl_setpoint_vector in enumerate(ctrl_setpoint_combinations):
-                ctrl_setpoints = {}
-                ind = 0
-                
-                for ctrl_var, dim in self.control_variables:
-                    ctrl_setpoints[ctrl_var] = ctrl_setpoint_vector[ind:(ind + dim)]
-                    ind += dim
-                aggregate, instant_constraint_satisfied = \
+        instantaneous_constr_satisfied_matrix = np.empty(
+            shape=(num_ambient_conditions, num_ctrl_settings), dtype=bool)
+        
+        for n_amb, ambient_condition in enumerate(ambient_condition_sample.support_data):
+            for n_ctrl, ctrl_setpoints in enumerate(ctrl_setpoints_table):
+                aggregate, instantaneous_constr_satisfied = \
                     control_eval_system.aggregate_from_ambient_cond(
                         ambient_condition=ambient_condition,
                         control_setpoints=ctrl_setpoints)
-                instant_constraints_satisfied_matrix[n_amb, n_ctrl] = instant_constraint_satisfied
-                for agg_var in control_eval_system.aggregation.output_shape:
+                instantaneous_constr_satisfied_matrix[n_amb, n_ctrl] = instantaneous_constr_satisfied
+                for agg_var in control_eval_system.aggregation.output_interface.shapes(Aggregated).keys():
                     aggregate_evaluations[agg_var][n_amb, n_ctrl] = aggregate[agg_var]
         pass
 
 
         num_ctrl_policies = num_ambient_conditions**len(ctrl_setpoint_combinations)
         print(f"Evaluating {num_ctrl_policies} control policies.")
-        
-        aggr_vars = list(control_eval_system.aggregation.output_shape)
-        
+                
         multi_metrics_reduced = []
         constraints_satisfied = []
         ctrl_settings_indices_product = itertools.product(range(num_ctrl_settings), repeat=num_ambient_conditions)
         for ctrl_indices in ctrl_settings_indices_product:
             inst_constraints_satisfied = np.all(
-                instant_constraints_satisfied_matrix[np.arange(num_ambient_conditions),
+                instantaneous_constr_satisfied_matrix[np.arange(num_ambient_conditions),
                                                      ctrl_indices])
             if not inst_constraints_satisfied:
                 multi_metrics_reduced.append(None)
                 constraints_satisfied.append(False)
             else:
                 # Each ctrl_indices corresponds to a discrete control strategy
-                aggr_support_points = np.array([aggregate_evaluations[aggr_var][np.arange(num_ambient_conditions), ctrl_indices] for \
-                                                aggr_var in aggr_vars]).T
+                aggr_support_data = DataTable(
+                    {aggr_var: aggr_eval[np.arange(num_ambient_conditions), ctrl_indices] for \
+                     aggr_var, aggr_eval in aggregate_evaluations.items()})
                 discrete_stat_params = DiscreteStatisticsParams(
-                    support_variables=aggr_vars,
-                    prevalence=ambient_condition_sample.normalized_weights,
-                    support_data=aggr_support_points)
+                    statistical_type=Aggregated,
+                    support_data=aggr_support_data,
+                    prevalence=ambient_condition_sample.normalized_weights)
                 discrete_aggr_stat = DiscreteStatistics(
                     statistics_name="",
                     statistics_params=discrete_stat_params)
@@ -229,11 +236,15 @@ class GridSearch(ControlPolicyOptimization):
                     control_eval_system.metrics_accumulation.expected_acc_metrics(
                     aggregate_statistics=discrete_aggr_stat,
                     duration=duration)
-                multi_metrics_reduced.append(control_eval_system.multi_metrics_reduction.evaluate(acc_metrics=expected_acc_metrics))
-                acc_metrics_constraint_eval = control_eval_system.accumulated_constraint.evaluate(constr_input_data=expected_acc_metrics)
+                multi_metrics_reduced.append(control_eval_system.multi_metrics_reduction.evaluate(
+                    acc_metrics=expected_acc_metrics))
+                acc_metrics_constraint_eval = control_eval_system.accumulated_constraint.evaluate(
+                    constr_input_data=expected_acc_metrics)
                 constraints_satisfied.append(acc_metrics_constraint_eval.satisfied())
             
         # Find the optimal control strategy that satisfies the constraints
+        if not any(constraints_satisfied):
+            raise ValueError("GridSearch.optimize_policy: Failed to find feasible policy due to constraints-violation.")
         if control_eval_system.multi_metrics_reduction.maximize:
             best_index = np.argmax(np.where(constraints_satisfied, np.array(multi_metrics_reduced), -np.inf))
         else:
@@ -242,14 +253,17 @@ class GridSearch(ControlPolicyOptimization):
         # Specify discrete control strategy
         # control settings (linear index) for each ambient condition
         amb_cond_ctrl_indices = np.unravel_index(best_index, [num_ctrl_settings] * num_ambient_conditions)
-        # controls setpoints for each linear index
-        amb_cond_ctrl_setpoints = np.array([np.unravel_index(ctrl_index, [len(setpt_vec) for setpt_vec in ctrl_setpoint_vectors]) for ctrl_index in amb_cond_ctrl_indices])
-        discrete_control_policy_params = ScatteredInterpPolicyParams(ambient_variables=ambient_condition_sample.support_variables,
-                                                                     ambient_conditions_support=ambient_condition_sample.support_values,
-                                                                     control_inputs=ctrl_vars,
-                                                                     control_setpoints=amb_cond_ctrl_setpoints)
-        return DiscreteControlPolicy(policy_name="optimized_discrete_control_policy",
-                                     policy_params=discrete_control_policy_params)
+        # Corresponding control setpoints as DataTable
+        control_setpoints_data = ctrl_setpoints_table.get_points(list(amb_cond_ctrl_indices))
+        # Scattered Interpolation out data
+        interpolation_params = ScatteredInterpolatorParams(
+            scattered_interp_type=self.scattered_interpolation_type,
+            support_data=ambient_condition_sample.support_data,
+            out_data=control_setpoints_data)
+        
+        scattered_control_policy_params = ScatteredInterpPolicyParams(ambient_interp_params=interpolation_params)
+        return ScatteredInterpPolicy(policy_name="optimized_discrete_control_policy",
+                                     policy_params=scattered_control_policy_params)
 
 class SimultaneousOptimizationParams:
     def __init__(self,
@@ -304,7 +318,7 @@ class ContinuousOptimizationManager:
         discrete_control_policy_params = ScatteredInterpPolicyParams(
             ambient_support_points=amb_cond_sample.support_data,
             control_setpoints=control_setpoints)
-        self.control_policy = DiscreteControlPolicy(
+        self.control_policy = ScatteredInterpPolicy(
             policy_name="discrete_policy_opt",
             policy_params=discrete_control_policy_params)
             
@@ -347,8 +361,8 @@ class SimultaneousOptimization(ControlPolicyOptimization):
         constraints.append(acc_metrics_constraint)
 
         # define constraints based on control
-        if not isinstance(opt_mgr.control_policy, DiscreteControlPolicy):
-            raise NotImplementedError("Control constraints only implemented for discrete control policy")
+        if not isinstance(opt_mgr.control_policy, ScatteredInterpPolicy):
+            raise NotImplementedError("Control constraints only implemented for scattered-interpolation control policy.")
         num_ac, num_ctrl_vars = opt_mgr.control_policy.control_setpoints.shape
         for i_ac in np.arange(num_ac):
             get_ctrl_setpoints_for_ac = lambda x, i_ac=i_ac : {

@@ -67,14 +67,14 @@ class SimpleProductParams(ComponentParams):
             required_ambient_shapes |= {in_var: None for in_var in mapping.from_ambient}
             required_control_shapes |= {in_var: None for in_var in mapping.from_control}
         
-        return Interface(all_data_type_shapes={
+        return Interface(all_shapes={
             ModelOutput: required_model_output_shapes,
             Ambient: required_ambient_shapes,
             Control: required_control_shapes}
             )
 
     def output_interface(self) -> Interface:
-        return Interface(all_data_type_shapes={
+        return Interface(all_shapes={
             Aggregated: {
                 aggr_var: (1,) for aggr_var in self.aggregate_mappings.keys()
                 }})

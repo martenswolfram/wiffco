@@ -52,11 +52,11 @@ class ScalarWeightingParams(ComponentParams):
     def input_interface(self) -> Interface:
         accumulated_matric_shapes = {acc_metric: None for \
                                      acc_metric in self.metric_weights.keys()}
-        return Interface(all_data_type_shapes={
+        return Interface(all_shapes={
             AccumulatedMetric: accumulated_matric_shapes})
     
     def output_interface(self) -> Interface:
-        return Interface(all_data_type_shapes={})
+        return Interface(all_shapes={})
 
 def scalar_weighting_params_from_dict(param_dict: Dict[str, Dict | Any]):
     metric_weights = {}

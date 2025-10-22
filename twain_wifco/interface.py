@@ -166,6 +166,10 @@ class DataTable(DataCollection[DataType]):
         first_key = self.order[0]
         return self.data[first_key].shape[0]
 
+    def __iter__(self):
+        for i in range(len(self)):
+            yield self.get_point(i)
+
     def shapes(self):
         return DataTypeShapes(data_type=self.data_type,
                               shapes={k: v.shape[1:] for k, v in self.data.items()})
@@ -179,16 +183,56 @@ class DataTable(DataCollection[DataType]):
         return DataPoint({
             k: self.data[k][idx] for k in self.order
         }, self.order)
+        
+    def get_points(self, ids: np.ndarray) -> DataPoint[DataType]:
+        return DataTable({
+            k: self.data[k][ids] for k in self.order
+        }, self.order)
+    
+    @classmethod
+    def from_matrix(cls,
+                    data_matrix: np.ndarray,
+                    order: List[DataVariable],
+                    shapes_dict: Dict[DataType, Tuple[int, ...]]) -> "DataTable[DataType]":
+        data_dict = {}
+        col_index = 0
+        num_points = data_matrix.shape[0]
+        for var in order:
+            numel = np.prod(shapes_dict[var])
+            data_dict[var] = np.reshape(data_matrix[:, col_index:(col_index + numel)], shape=(num_points, *(shapes_dict[var])))
+            
+        return cls(data_dict, order)
+
+    @classmethod
+    def from_data_points(cls,
+                         data_points: List[DataPoint]):
+        if len(data_points) == 0:
+            return cls({})
+        # data_point = data_points[0]
+        data_dict = {var: np.concatenate(list(data_point[var][np.newaxis, :] for \
+                                         data_point in data_points)) for \
+                                            var in data_points[0].order}
+        # for data_point in data_points[1:]:
+        #     for var in data_point.order:
+        #         data_dict[var]
+
+        #     numel = np.prod(shapes_dict[var])
+        #     data_dict[var] = np.reshape(data_matrix[:, col_index:(col_index + numel)], shape=(num_points, *(shapes_dict[var])))
+            
+        return cls(data_dict)
 
 class Interface:
     def __init__(self,
-                 all_data_type_shapes: Dict[Type[DataVariable], Dict[DataVariable, Tuple[int, ...]]]):
-        self.all_data_type_shapes = all_data_type_shapes
+                 all_shapes: Dict[Type[DataVariable], Dict[DataVariable, Tuple[int, ...]]]):
+        self.all_shapes = all_shapes
+
+    def shapes(self, data_type: Type[DataVariable]):
+        return self.all_shapes[data_type]
         
     def validate_shapes(self,
                         external_shapes: Dict[Type[DataVariable], DataTypeShapes],
                         component_name: str):
-        for data_type, data_type_shapes in self.all_data_type_shapes.items():
+        for data_type, data_type_shapes in self.all_shapes.items():
             missing_vars = data_type_shapes.keys() - external_shapes[data_type].keys()
             if len(missing_vars):
                 msg = (f"Insufficient input variables for component '{component_name}'. "

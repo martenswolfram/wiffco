@@ -62,11 +62,11 @@ class ScatteredInterpPolicyParams(ComponentParams):
         self.ambient_interp_params = ambient_interp_params
         
     def input_interface(self) -> Interface:
-        return Interface(all_data_type_shapes={
+        return Interface(all_shapes={
             Ambient: self.ambient_interp_params.support_data.shapes()})
 
     def output_interface(self) -> Interface:
-        return Interface(all_data_type_shapes={
+        return Interface(all_shapes={
             Control: self.ambient_interp_params.out_data.shapes()})
     
 def scattered_interp_policy_params_from_dict(
@@ -104,7 +104,7 @@ class ScatteredInterpPolicy(ControlPolicy):
             axis=1)
         row_index = np.where(mask)[0]
         if not len(row_index):
-            raise ValueError("DiscreteControlPolicy: Ambient condition not found in support points.")
+            raise ValueError("ScatteredInterpPolicy: Ambient condition not found in support points.")
         return row_index[0]
         
     def get_ctrl_parameters(self,

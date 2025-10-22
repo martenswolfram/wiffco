@@ -52,11 +52,11 @@ class FactorizedScatteredInterpParams(ComponentParams):
         self.ambient_interp_params = ambient_interp_params
         
     def input_interface(self) -> Interface:
-        return Interface(all_data_type_shapes={Ambient: self.ambient_interp_params.support_data.shapes(),
+        return Interface(all_shapes={Ambient: self.ambient_interp_params.support_data.shapes(),
                                                Control: self.control_interp_params.support_data.shapes()})
 
     def output_interface(self) -> Interface:
-        return Interface(all_data_type_shapes={ModelOutput: self.ambient_interp_params.out_data.shapes()})
+        return Interface(all_shapes={ModelOutput: self.ambient_interp_params.out_data.shapes()})
     
 def factorized_scattered_interp_params_from_dict(
         param_dict: Dict[str, Dict | Any]):

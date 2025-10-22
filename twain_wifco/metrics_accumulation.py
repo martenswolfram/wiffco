@@ -62,7 +62,7 @@ class DiscountedIntegrationParams(ComponentParams):
         aggregated_shapes = {aggr_mapping.aggregate: None for \
                                aggr_mapping in self.integration_mappings.values()}
         return Interface(
-            all_data_type_shapes={
+            all_shapes={
                 Aggregated: aggregated_shapes
             })
 
@@ -70,7 +70,7 @@ class DiscountedIntegrationParams(ComponentParams):
         accumulated_metric_shapes = {acc_metric: None for \
                                      acc_metric in self.integration_mappings.keys()}
         return Interface(
-            all_data_type_shapes={AccumulatedMetric: accumulated_metric_shapes})
+            all_shapes={AccumulatedMetric: accumulated_metric_shapes})
 
 def discounted_integrator_params_from_dict(param_dict: Dict[str, Dict | Any]):
     integration_mappings = {}

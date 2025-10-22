@@ -70,6 +70,7 @@ class TwoSidedSeparateBounds:
                  upper_bound: DataPoint[ConstraintType],
                  lower_bound: DataPoint[ConstraintType]):
         self.data_type = upper_bound.data_type
+        self.variables = upper_bound.keys()
         self.upper_bound = upper_bound
         self.lower_bound = lower_bound
 
@@ -79,12 +80,12 @@ class SeparateLinearConstraintsParams(ComponentParams):
         self.bounds = bounds
         
     def input_interface(self) -> Interface:
-        return Interface(all_data_type_shapes={
+        return Interface(all_shapes={
             self.bounds.data_type: self.bounds.upper_bound.shapes()
             })
         
     def output_interface(self):
-        return Interface(all_data_type_shapes={})
+        return Interface(all_shapes={})
 
 def separate_linear_constraints_params_from_dict(param_dict: Dict[str, Dict | Any]):
     
@@ -95,17 +96,24 @@ def separate_linear_constraints_params_from_dict(param_dict: Dict[str, Dict | An
     elif param_dict["data_type"] == "accumulated_metric":
         data_type = AccumulatedMetric
 
-    upper_bound = {}
-    for constr_var, ub in param_dict["upper_bound"].items():
-        upper_bound[data_type(constr_var)] = \
-            np.array([u if u is not None else np.inf for u in ub])
-    lower_bound = {}
-    for constr_var, lb in param_dict["lower_bound"].items():
-        lower_bound[data_type(constr_var)] = \
-            np.array([l if l is not None else -np.inf for l in lb])
+    upper_bound_data = {}
+    lower_bound_data = {}
+    upper_bound_params = param_dict["upper_bound"]
+    lower_bound_params = param_dict["lower_bound"]
+    for constr_var in upper_bound_params.keys():
+        upper_bound = \
+            np.array([u if u is not None else np.inf for u in upper_bound_params[constr_var]])
+        lower_bound = \
+            np.array([l if l is not None else -np.inf for l in lower_bound_params[constr_var]])
+        # ignore null constraints
+        if all(np.isposinf(upper_bound)) and all(np.isneginf(lower_bound)):
+            continue
+        upper_bound_data[data_type(constr_var)] = upper_bound
+        lower_bound_data[data_type(constr_var)] = lower_bound
+            
     bounds = TwoSidedSeparateBounds(
-        upper_bound=DataPoint(data=upper_bound),
-        lower_bound=DataPoint(data=lower_bound)
+        upper_bound=DataPoint(data=upper_bound_data),
+        lower_bound=DataPoint(data=lower_bound_data)
     )
     return SeparateLinearConstraintsParams(
         bounds=bounds)
@@ -120,9 +128,13 @@ class SeparateLinearConstraints(TwoSidedConstraint):
         
     def _evaluate(self,
                   constr_input_data: DataPoint[DataVariable]) -> TwoSidedConstraintEval:
-        
-        lower_diff = (constr_input_data - self.bounds.lower_bound).to_vector()
-        upper_diff = (constr_input_data - self.bounds.upper_bound).to_vector()
+        relevant_constr_input_data = DataPoint(
+            {constr_var: constr_data for \
+             constr_var, constr_data in constr_input_data.data.items() \
+                if constr_var in self.bounds.variables})
+
+        lower_diff = (relevant_constr_input_data - self.bounds.lower_bound).to_vector()
+        upper_diff = (relevant_constr_input_data - self.bounds.upper_bound).to_vector()
         return TwoSidedConstraintEval(lower_diff=lower_diff,
                                       upper_diff=upper_diff)
 
