@@ -3,7 +3,9 @@ import pathlib
 from twain_wifco.plant_model import (
     ModelType,
     factorized_scattered_interp_params_from_dict,
-    FactorizedScatteredInterp)
+    FactorizedScatteredInterp,
+    symbolic_model_params_from_dict,
+    SymbolicModel)
 from twain_wifco.statistics import (
     StatisticsType,
     discrete_statistics_params_from_dict,
@@ -65,6 +67,11 @@ def plant_model_from_json(json_path: pathlib.Path):
             param_dict=param_dict["model_params"])
         return FactorizedScatteredInterp(plant_name=plant_name,
                                          plant_params=params)
+    elif model_type == ModelType.SYMBOLIC:
+        params = symbolic_model_params_from_dict(
+            param_dict=param_dict["model_params"])
+        return SymbolicModel(plant_name=plant_name,
+                             plant_params=params)
     else:
         raise NotImplementedError("Only factorized_rbf_interpolation model implemented.")
 

@@ -1,0 +1,18 @@
+{
+    "name": "power_damage_symbolic",
+    "model_type": "symbolic",
+    "model_params": {
+        "symbol_mappings": {
+            "control": {
+                "power_regulation": "pr"
+            },
+            "ambient": {
+                "wind_speed":     "ws"
+            }
+        },
+        "output_functions": {
+            "electrical_power": "(ws / 10)**2 * pr**0.5",
+            "damage_rate": "(ws / 10)**2 * pr**2"
+        }
+    }
+}

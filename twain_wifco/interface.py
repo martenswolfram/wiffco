@@ -199,7 +199,8 @@ class DataTable(DataCollection[DataType]):
 
 class Interface:
     def __init__(self,
-                 all_shapes: Dict[Type[DataVariable], Dict[DataVariable, Tuple[int, ...]]]):
+                 all_shapes: Dict[Type[DataVariable],
+                                  Dict[DataVariable, Tuple[int, ...]]]):
         self.all_shapes = all_shapes
 
     def shapes(self, data_type: Type[DataVariable]):
