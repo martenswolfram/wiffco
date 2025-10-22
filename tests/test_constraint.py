@@ -50,11 +50,10 @@ def test_acc_metrics_constraint():
     # Initialization
     assert linear_accumulated_constraint.component_name == "linear_accumulated_constraint"
     assert linear_accumulated_constraint.bounds.lower_bound.order == \
-        [AccumulatedMetric.ACCRUED_DAMAGE, AccumulatedMetric.REVENUE]
+        [AccumulatedMetric.ACCRUED_DAMAGE]
     
-    assert np.array_equal(linear_accumulated_constraint.bounds.lower_bound.data[AccumulatedMetric.REVENUE],
-                          np.array([-np.inf]))
-    assert np.array_equal(linear_accumulated_constraint.bounds.lower_bound.data[AccumulatedMetric.ACCRUED_DAMAGE],
+    assert np.array_equal(linear_accumulated_constraint.bounds.
+                          lower_bound.data[AccumulatedMetric.ACCRUED_DAMAGE],
                           np.array([-np.inf]))
     
     # Constraint evaluation
@@ -62,17 +61,17 @@ def test_acc_metrics_constraint():
         constr_input_data=DataPoint({AccumulatedMetric.ACCRUED_DAMAGE: np.array([700]),
                                  AccumulatedMetric.REVENUE: np.array([0])}))
     assert np.array_equal(violated_constraint_eval.lower_diff,
-                          np.array([np.inf, np.inf]))
+                          np.array([np.inf]))
     assert np.array_equal(violated_constraint_eval.upper_diff,
-                          np.array([200, -np.inf]))
+                          np.array([200]))
     assert violated_constraint_eval.satisfied() is not True
     
     satisfied_constraint_eval = linear_accumulated_constraint.evaluate(
         constr_input_data=DataPoint({AccumulatedMetric.ACCRUED_DAMAGE: np.array([300]),
                                      AccumulatedMetric.REVENUE: np.array([0])}))
     assert np.array_equal(satisfied_constraint_eval.lower_diff,
-                          np.array([np.inf, np.inf]))
+                          np.array([np.inf]))
     assert np.array_equal(satisfied_constraint_eval.upper_diff,
-                          np.array([-200, -np.inf]))
+                          np.array([-200]))
     assert satisfied_constraint_eval.satisfied() is True
     

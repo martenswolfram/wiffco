@@ -78,27 +78,6 @@ def get_abs_tol(data_var: DataVariable) -> float:
     else:
         raise ValueError(f"No abs tol value for data variable '{data_var}'.") 
 
-class DataTypeShapes(Generic[DataType]):
-    def __init__(self,
-                 data_type: Type[DataType],
-                 shapes: Dict[DataType, Tuple[int, ...]]):
-        self.data_type = data_type
-        self.shapes = shapes
-
-    def __eq__(self, other):
-        if not isinstance(other, DataTypeShapes):
-            return False
-        return self.shapes == other.shapes
-
-    def __getitem__(self, key: DataType) -> np.ndarray:
-        return self.shapes[key]
-
-    def keys(self):
-        return self.shapes.keys()
-    
-    def items(self):
-        return self.shapes.items()
-
 @dataclass
 class DataCollection(Generic[DataType]):
     data: dict[DataType, np.ndarray]
@@ -128,9 +107,8 @@ class DataCollection(Generic[DataType]):
             i += n
 
     def shapes(self):
-        return DataTypeShapes(data_type=self.data_type,
-                              shapes={k: v.shape for k, v in self.data.items()})
-    
+        return {k: v.shape for k, v in self.data.items()}
+     
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, DataCollection):
             return False
@@ -144,8 +122,7 @@ class DataCollection(Generic[DataType]):
 @dataclass(eq=False)
 class DataPoint(DataCollection[DataType]):
     def shapes(self):
-        return DataTypeShapes(data_type=self.data_type,
-                              shapes={k: v.shape for k, v in self.data.items()})
+        return {k: v.shape for k, v in self.data.items()}
     
     def __sub__(self, other: "DataPoint[DataType]") -> "DataPoint[DataType]":
         if set(self.data.keys()) != set(other.data.keys()):
@@ -171,8 +148,7 @@ class DataTable(DataCollection[DataType]):
             yield self.get_point(i)
 
     def shapes(self):
-        return DataTypeShapes(data_type=self.data_type,
-                              shapes={k: v.shape[1:] for k, v in self.data.items()})
+        return {k: v.shape[1:] for k, v in self.data.items()}
     
     def to_matrix(self) -> np.ndarray:
         n_points = len(self)
@@ -230,7 +206,8 @@ class Interface:
         return self.all_shapes[data_type]
         
     def validate_shapes(self,
-                        external_shapes: Dict[Type[DataVariable], DataTypeShapes],
+                        external_shapes: Dict[Type[DataVariable],
+                                              Dict[DataVariable, Tuple[int, ...]]],
                         component_name: str):
         for data_type, data_type_shapes in self.all_shapes.items():
             missing_vars = data_type_shapes.keys() - external_shapes[data_type].keys()
