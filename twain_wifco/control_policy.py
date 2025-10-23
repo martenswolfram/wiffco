@@ -71,6 +71,6 @@ class DiscreteControlPolicy(Component):
                 low=-magnitude, high=magnitude, size=data.shape)
         perturbed_params = DiscreteControlPolicyParams(
             ambient_support_data=self.ambient_support_data,
-            control_out_data=perturbed_ctrl_out_data)
+            control_out_data=DataTable(perturbed_ctrl_out_data))
         return DiscreteControlPolicy(policy_name="perturbed_policy",
                                      policy_params=perturbed_params)

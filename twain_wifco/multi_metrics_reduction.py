@@ -19,7 +19,7 @@ class MultiMetricsReduction(Component):
         self.maximize = maximize
 
     def evaluate(self,
-                 acc_metrics: DataPoint[AccumulatedMetric]):
+                 acc_metrics: DataPoint[AccumulatedMetric]) -> float:
         
         self.validate_inputs(input_data={AccumulatedMetric: acc_metrics})
 
@@ -76,5 +76,6 @@ class ScalarWeighting(MultiMetricsReduction):
         
     def _evaluate(self,
                   acc_metrics: Dict[AccumulatedMetric, np.ndarray]):
-        return sum(weight * np.sum(acc_metrics[metric]) for metric, weight in self.metric_weights.items())
-    
+        result = sum(weight * np.sum(acc_metrics[metric]) for \
+                     metric, weight in self.metric_weights.items())
+        return result

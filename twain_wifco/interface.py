@@ -78,19 +78,23 @@ def get_abs_tol(data_var: DataVariable) -> float:
     elif data_var == AccumulatedMetric.ACCRUED_DAMAGE:
         return 0.1
     else:
-        raise ValueError(f"No abs tol value for data variable '{data_var}'.") 
+        return 0.0
 
 @dataclass
 class DataCollection(Generic[DataType]):
     data: dict[DataType, np.ndarray]
     data_type: Type[DataType] | None = None # TODO: Fix data type handling
     order: list[DataType] | None = None
-    
+    abs_tols: np.ndarray | None = None
+
     def __post_init__(self):
         if self.order is None:
             self.order = list(self.data.keys())
         if len(self.order) > 0:
             self.data_type = type(self.order[0])
+            if self.abs_tols is None:
+                self.abs_tols = np.concatenate([get_abs_tol(data_var) * np.ones(np.prod(shape)) for \
+                                                data_var, shape in self.shapes().items()])
     
     def keys(self):
         return self.data.keys()
@@ -186,22 +190,26 @@ class DataTable(DataCollection[DataType]):
                     
     def find_point(self,
                    data_point: DataPoint[DataType]) -> int:
-        abs_tols = np.concatenate([get_abs_tol(data_var) * np.ones(np.prod(shape)) for \
-                                   data_var, shape in self.shapes().items()])
+        
         # Find correct support point
         mask = np.all(np.isclose(
             self.to_matrix(),
             data_point.to_vector(),
-            atol=abs_tols),
+            atol=self.abs_tols),
             axis=1)
         row_index = np.where(mask)[0]
         if not len(row_index):
             raise ValueError("DataTable.find_point: Data point not found in data table.")
         return row_index[0]
-        
-    def get_ctrl_parameters(self,
-                            ambient_condition: DataPoint[Ambient]) -> np.ndarray:
-        return self.ambient_interp.evaluate_to_vector(query=ambient_condition)
+    
+    def fill_point_from_vector(self,
+                               ind: int,
+                               vector: np.ndarray):
+        i = 0
+        for k in self.order:
+            n = self.data[k][ind].size
+            self.data[k][ind] = vector[i:i+n].reshape(self.data[k].shape[1:])
+            i += n
 
     
     @classmethod

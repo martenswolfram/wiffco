@@ -57,21 +57,12 @@ def test_acc_metrics_constraint():
                           np.array([-np.inf]))
     
     # Constraint evaluation
-    violated_constraint_eval = linear_accumulated_constraint.evaluate(
+    constraint_satisfied = linear_accumulated_constraint.evaluate_satisfied(
         constr_input_data=DataPoint({AccumulatedMetric.ACCRUED_DAMAGE: np.array([700]),
-                                 AccumulatedMetric.REVENUE: np.array([0])}))
-    assert np.array_equal(violated_constraint_eval.lower_diff,
-                          np.array([np.inf]))
-    assert np.array_equal(violated_constraint_eval.upper_diff,
-                          np.array([200]))
-    assert violated_constraint_eval.satisfied() is not True
+                                     AccumulatedMetric.REVENUE: np.array([0])}))
+    assert constraint_satisfied is False
     
-    satisfied_constraint_eval = linear_accumulated_constraint.evaluate(
+    constraint_satisfied = linear_accumulated_constraint.evaluate_satisfied(
         constr_input_data=DataPoint({AccumulatedMetric.ACCRUED_DAMAGE: np.array([300]),
                                      AccumulatedMetric.REVENUE: np.array([0])}))
-    assert np.array_equal(satisfied_constraint_eval.lower_diff,
-                          np.array([np.inf]))
-    assert np.array_equal(satisfied_constraint_eval.upper_diff,
-                          np.array([-200]))
-    assert satisfied_constraint_eval.satisfied() is True
-    
+    assert constraint_satisfied is True

@@ -24,17 +24,6 @@ class UpperBoundConstraint:
         self.upper_bound = upper_bound
         self.constraint_fun = constraint_fun
 
-class TwoSidedConstraintEval:
-    def __init__(self,
-                 lower_diff: np.ndarray,
-                 upper_diff: np.ndarray):
-        self.lower_diff = lower_diff
-        self.upper_diff = upper_diff
-
-    def satisfied(self, abs_tol: float = 0):
-        return all(self.lower_diff >= - abs_tol) and \
-            all(self.upper_diff <= abs_tol)
-
 class TwoSidedConstraint(Component, Generic[DataType]):
     def __init__(self,
                  constraint_name: str,
@@ -42,16 +31,16 @@ class TwoSidedConstraint(Component, Generic[DataType]):
         super().__init__(component_name=constraint_name,
                          component_params=constraint_params)
         
-    def evaluate(self,
-                 constr_input_data: DataPoint[DataType]) -> TwoSidedConstraintEval:
+    def evaluate_satisfied(self,
+                 constr_input_data: DataPoint[DataType]) -> bool:
 
         self.validate_inputs(input_data={constr_input_data.data_type: constr_input_data})
 
-        return self._evaluate(constr_input_data=constr_input_data)
+        return self._evaluate_satisfied(constr_input_data=constr_input_data)
     
     @abstractmethod
-    def _evaluate(self,
-                  constr_input_data: DataPoint[DataVariable]) -> TwoSidedConstraintEval:
+    def _evaluate_satisfied(self,
+                  constr_input_data: DataPoint[DataVariable]) -> bool:
         pass
 
     @abstractmethod
@@ -127,8 +116,8 @@ class SeparateLinearConstraints(TwoSidedConstraint):
                          constraint_params=constraint_params)
         self.bounds = constraint_params.bounds
         
-    def _evaluate(self,
-                  constr_input_data: DataPoint[DataVariable]) -> TwoSidedConstraintEval:
+    def _evaluate_satisfied(self,
+                  constr_input_data: DataPoint[DataVariable]) -> bool:
         relevant_constr_input_data = DataPoint(
             {constr_var: constr_data for \
              constr_var, constr_data in constr_input_data.data.items() \
@@ -136,8 +125,9 @@ class SeparateLinearConstraints(TwoSidedConstraint):
 
         lower_diff = (relevant_constr_input_data - self.bounds.lower_bound).to_vector()
         upper_diff = (relevant_constr_input_data - self.bounds.upper_bound).to_vector()
-        return TwoSidedConstraintEval(lower_diff=lower_diff,
-                                      upper_diff=upper_diff)
+        
+        return all(lower_diff >= - self.bounds.lower_bound.abs_tols) and \
+            all(upper_diff <= self.bounds.upper_bound.abs_tols)
 
     # TODO: In the following functions, make sure that the order of the variables is safe!!
     def scipy_constraint(self, eval_constraint_from_x):
@@ -145,26 +135,29 @@ class SeparateLinearConstraints(TwoSidedConstraint):
         def eval_nl_constraints(x):
             # TODO: should eval_constraint_from_x be vector-to-vector? 
             constraints_eval = eval_constraint_from_x(x)
-            return np.array(list(constraints_eval[constr_var] for \
-                                 constr_var in self.bounds.upper_bound.order))
+            result = np.concatenate(list(constraints_eval[constr_var] for \
+                                    constr_var in self.bounds.upper_bound.order))
+            return result
         
         return NonlinearConstraint(fun=eval_nl_constraints,
-                                   lb=self.bounds.upper_bound,
-                                   ub=self.bounds.lower_bound)
+                                   lb=self.bounds.lower_bound.to_vector(),
+                                   ub=self.bounds.upper_bound.to_vector())
     
     def upper_bound_constraints(self) -> List[UpperBoundConstraint]:
         ub_constraints = []
         for constr_var in self.bounds.upper_bound.keys():
             # lower bound
-            def constraint_fun(constr_var_values, constr_var=constr_var):
-                return -constr_var_values[constr_var]
-            ub_constraint = UpperBoundConstraint(upper_bound=-self.bounds.lower_bound[constr_var],
-                                                 constraint_fun=constraint_fun)
-            ub_constraints.append(ub_constraint)
+            if self.bounds.lower_bound[constr_var] > -np.inf:
+                def constraint_fun(constr_var_values, constr_var=constr_var):
+                    return -constr_var_values[constr_var]
+                ub_constraint = UpperBoundConstraint(upper_bound=-self.bounds.lower_bound[constr_var],
+                                                     constraint_fun=constraint_fun)
+                ub_constraints.append(ub_constraint)
             # upper bound
-            def constraint_fun(constr_var_values, constr_var=constr_var):
-                return constr_var_values[constr_var]
-            ub_constraint = UpperBoundConstraint(upper_bound=self.bounds.lower_bound[constr_var],
-                                                 constraint_fun=constraint_fun)
-            ub_constraints.append(ub_constraint)
+            if self.bounds.upper_bound[constr_var] < np.inf:
+                def constraint_fun(constr_var_values, constr_var=constr_var):
+                    return constr_var_values[constr_var]
+                ub_constraint = UpperBoundConstraint(upper_bound=self.bounds.upper_bound[constr_var],
+                                                    constraint_fun=constraint_fun)
+                ub_constraints.append(ub_constraint)
         return ub_constraints

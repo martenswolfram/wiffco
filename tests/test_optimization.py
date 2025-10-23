@@ -10,7 +10,7 @@ from twain_wifco.statistics import Statistics
 from twain_wifco.interface import (
     Control,
     AccumulatedMetric,
-    get_abs_tol)
+    DataPoint)
 from twain_wifco.optimization import (
     ControlEvaluationSystem,
     GridSearch,
@@ -47,7 +47,8 @@ def perturbed_control_policy_test(
     expected_accumulated_metrics, constraints_satisfied = control_evaluation_system.expected_acc_metrics(
                 ambient_condition_statistics=ambient_condition_statistics,
                 control_policy=optimal_policy,
-                duration=duration)
+                duration=duration,
+                eval_constraints=True)
     assert constraints_satisfied is True
     optimal_reduced_metric = control_evaluation_system.multi_metrics_reduction.evaluate(acc_metrics=expected_accumulated_metrics)
     
@@ -94,8 +95,8 @@ def test_grid_search():
     assert constraints_satisfied is True
     
     # Evaluate result
-    assert np.array_equal(optimal_policy.amb_to_ctrl_interp_params.out_data.data[Control.POWER_REGULATION],
-                          np.array([[3], [3], [1], [4], [4], [2]]))
+    assert optimal_policy.control_out_data == DataPoint(
+           {Control.POWER_REGULATION: np.array([[3], [3], [1], [4], [4], [2]])})
     
 def test_simultaneous_optimization():
     json_path = test_data_folder / "simultaneous_optimization.json"
@@ -120,40 +121,25 @@ def test_simultaneous_optimization():
                                   perturbation_num=100)
 
 
-# def test_lagrangian_relaxation():
-#     json_path = test_data_folder / "lagrangian_relaxation.json"
-#     lagrangian_relaxation: SimultaneousOptimization = control_optimization_from_json(json_path=json_path)
+def test_lagrangian_relaxation():
+    json_path = test_data_folder / "lagrangian_relaxation.json"
+    lagrangian_relaxation: SimultaneousOptimization = control_optimization_from_json(json_path=json_path)
 
-#     # Initialization
-#     assert lagrangian_relaxation.optimization_name == "lagrangian_relaxation"
-#     # assert lagrangian_relaxation.max_num_amb_cond == 10
+    # Initialization
+    assert lagrangian_relaxation.optimization_name == "lagrangian_relaxation"
+    # assert lagrangian_relaxation.max_num_amb_cond == 10
     
-#     # Optimization
-#     optimal_policy = lagrangian_relaxation.optimize_policy(
-#         control_eval_system=control_evaluation_system,
-#         ambient_condition_statistics=ambient_statistics,
-#         duration=duration)
+    # Optimization
+    optimal_policy = lagrangian_relaxation.optimize_policy(
+        control_eval_system=control_evaluation_system,
+        ambient_condition_statistics=ambient_statistics,
+        duration=duration)
     
-#     # Evaluate result
-#     expected_accumulated_metrics = control_evaluation_system.expected_acc_metrics(
-#         ambient_condition_statistics=ambient_statistics,
-#         control_policy=optimal_policy,
-#         duration=duration,
-#         max_num_amb_cond=lagrangian_relaxation.max_num_amb_cond)
-        
-#     optimal_revenue = expected_accumulated_metrics[AccumulatedMetric.REVENUE]
-#     assert optimal_revenue > 0
-#     linear_acc_contraints: SeparateLinearConstraints = control_evaluation_system.accumulated_constraint
-#     assert expected_accumulated_metrics[AccumulatedMetric.ACCRUED_DAMAGE] == \
-#         pytest.approx(
-#         linear_acc_contraints.bounds[AccumulatedMetric.ACCRUED_DAMAGE][1],
-#         abs=get_abs_tol(data_var=AccumulatedMetric.ACCRUED_DAMAGE))
-#     pass
-
-#     # Evaluate result
-#     perturbed_discrete_control_policy_test(control_evaluation_system=control_evaluation_system,
-#                                            ambient_condition_statistics=ambient_statistics,
-#                                            duration=duration,
-#                                            optimal_policy=optimal_policy,
-#                                            diff=0.01)
+    # Evaluate result
+    perturbed_control_policy_test(control_evaluation_system=control_evaluation_system,
+                                  ambient_condition_statistics=ambient_statistics,
+                                  duration=duration,
+                                  optimal_policy=optimal_policy,
+                                  perturbation_scale=1,
+                                  perturbation_num=100)
     
