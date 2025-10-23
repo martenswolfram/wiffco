@@ -14,7 +14,8 @@ from twain_wifco.interface import (
     DataType,
     DataPoint,
     DataTable,
-    Interface)
+    Interface,
+    get_abs_tol)
 
 class UpperBoundConstraint:
     def __init__(self,
@@ -30,9 +31,9 @@ class TwoSidedConstraintEval:
         self.lower_diff = lower_diff
         self.upper_diff = upper_diff
 
-    def satisfied(self):
-        return all(self.lower_diff >= 0) and \
-            all(self.upper_diff <= 0)
+    def satisfied(self, abs_tol: float = 0):
+        return all(self.lower_diff >= - abs_tol) and \
+            all(self.upper_diff <= abs_tol)
 
 class TwoSidedConstraint(Component, Generic[DataType]):
     def __init__(self,

@@ -19,12 +19,12 @@ class ScatteredInterpolatorType(Enum):
 
 class ScatteredInterpolatorParams(Generic[DataType]):
     def __init__(self,
-                 scattered_interp_type: ScatteredInterpolatorType,
                  support_data: DataTable[DataType],
-                 out_data: DataTable[DataType]):
-        self.scattered_interp_type = scattered_interp_type
+                 out_data: DataTable[DataType],
+                 scattered_interp_type: ScatteredInterpolatorType = ScatteredInterpolatorType.LINEAR):
         self.support_data = support_data
         self.out_data = out_data
+        self.scattered_interp_type = scattered_interp_type
         
 InDataType = TypeVar("InDataType", Control, Ambient)
 OutDataType = TypeVar("OutDataType", bound=ModelOutput)
@@ -74,12 +74,12 @@ class ScatteredInterpolator:
         pass
 
     def evaluate_to_vector(self,
-                        query: DataPoint[InDataType]) -> DataPoint[OutDataType]:
-        x = query.to_vector()
+                           query: DataPoint[InDataType]) -> DataPoint[OutDataType]:
+        x = query.to_vector(keys=self.support_data.order)
         return self.interpolator(x).flatten()
         
     def evaluate(self,
                  query: DataPoint[InDataType]) -> DataPoint[OutDataType]:
         result = self.evaluate_to_vector(query=query)
-        self.out_data_point.from_vector(result)
+        self.out_data_point.fill_from_vector(result)
         return self.out_data_point

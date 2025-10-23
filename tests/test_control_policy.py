@@ -10,24 +10,11 @@ from twain_wifco.interface import (
     
 def test_discrete_control_policy():
     test_data_folder = pathlib.Path(__file__).parent / "data"
-    json_path = test_data_folder / "scattered_interp_policy.json"
+    json_path = test_data_folder / "discrete_control_policy.json"
     simple_control_policy = control_policy_from_json(json_path=json_path)
-    
-    ambient_support_data = np.array([[ 10,    0,  7],
-                                     [ 20,   60,  5],
-                                     [ 30,  120,  2],
-                                     [ 20,  180,  5],
-                                     [ 10,  240,  5],
-                                     [  5,  300,  7]])
-    control_setpoint_data = np.array([[1, 5],
-                                      [2, 6],
-                                      [3, 7],
-                                      [4, 8],
-                                      [3, 9],
-                                      [2, 0]])
-    
+        
     # Initialization
-    assert simple_control_policy.component_name == "interp_control_policy"
+    assert simple_control_policy.component_name == "discrete_control_policy"
     
     # retrieve control setpoints for dicrete ambient conditions
     # Invalid ambient condition keys

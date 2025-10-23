@@ -1,7 +1,7 @@
 {
     "name": "discrete_evaluation_system",
     "relative_directory": "./",
-    "plant_model_file": "power_damage_scattered_model.json",
+    "plant_model_file": "power_damage_symbolic_model.json",
     "aggregation_file": "revenue_damage_aggregation.json",
     "control_constraint_file": "linear_control_constraint.json",
     "metrics_accumulation_file": "revenue_damage_accumulation.json",

@@ -1,9 +1,7 @@
 {
-    "name": "interp_control_policy",
-    "policy_type": "scattered_interp",
+    "name": "discrete_control_policy",
     "policy_params": {
-        "scattered_interp_type": "linear",
-        "support_data": {
+        "ambient_support_data": {
             "wind_speed": [[10],
                            [20],
                            [30],
@@ -23,7 +21,7 @@
                                   [5],
                                   [7]]
         },
-        "out_data": {
+        "control_out_data": {
             "power_regulation": [[1],
                                  [2],
                                  [3],

@@ -73,6 +73,8 @@ def get_abs_tol(data_var: DataVariable) -> float:
         return 0.001
     elif data_var == Ambient.ELECTRICITY_PRICE:
         return 0.001
+    elif data_var == Control.POWER_REGULATION:
+        return 0.1
     elif data_var == AccumulatedMetric.ACCRUED_DAMAGE:
         return 0.1
     else:
@@ -93,13 +95,18 @@ class DataCollection(Generic[DataType]):
     def keys(self):
         return self.data.keys()
     
+    def items(self):
+        return self.data.items()
+    
     def __getitem__(self, key: DataType) -> np.ndarray:
         return self.data[key]
     
-    def to_vector(self) -> np.ndarray:
-        return np.concatenate([self.data[k].ravel() for k in self.order])
+    def to_vector(self, keys: List[DataType] = None) -> np.ndarray:
+        if keys is None:
+            keys = self.order
+        return np.concatenate([self.data[k].ravel() for k in self.order if k in keys])
 
-    def from_vector(self, vector: np.ndarray):
+    def fill_from_vector(self, vector: np.ndarray):
         i = 0
         for k in self.order:
             n = self.data[k].size
@@ -136,6 +143,18 @@ class DataPoint(DataCollection[DataType]):
             new_data[k] = np.subtract(self.data[k], other.data[k])
 
         return DataPoint(new_data, self.order)
+    
+    @classmethod
+    def from_vector(cls,
+                    data_vector: np.ndarray,
+                    order: List[DataVariable],
+                    shapes_dict: Dict[DataType, Tuple[int, ...]]) -> "DataTable[DataType]":
+        data_dict = {}
+        col_index = 0
+        for var in order:
+            numel = np.prod(shapes_dict[var])
+            data_dict[var] = np.reshape(data_vector[col_index:(col_index + numel)], shape=shapes_dict[var])
+        return cls(data_dict, order)
 
 @dataclass(eq=False)
 class DataTable(DataCollection[DataType]):
@@ -164,6 +183,26 @@ class DataTable(DataCollection[DataType]):
         return DataTable({
             k: self.data[k][ids] for k in self.order
         }, self.order)
+                    
+    def find_point(self,
+                   data_point: DataPoint[DataType]) -> int:
+        abs_tols = np.concatenate([get_abs_tol(data_var) * np.ones(np.prod(shape)) for \
+                                   data_var, shape in self.shapes().items()])
+        # Find correct support point
+        mask = np.all(np.isclose(
+            self.to_matrix(),
+            data_point.to_vector(),
+            atol=abs_tols),
+            axis=1)
+        row_index = np.where(mask)[0]
+        if not len(row_index):
+            raise ValueError("DataTable.find_point: Data point not found in data table.")
+        return row_index[0]
+        
+    def get_ctrl_parameters(self,
+                            ambient_condition: DataPoint[Ambient]) -> np.ndarray:
+        return self.ambient_interp.evaluate_to_vector(query=ambient_condition)
+
     
     @classmethod
     def from_matrix(cls,
@@ -184,16 +223,9 @@ class DataTable(DataCollection[DataType]):
                          data_points: List[DataPoint]):
         if len(data_points) == 0:
             return cls({})
-        # data_point = data_points[0]
         data_dict = {var: np.concatenate(list(data_point[var][np.newaxis, :] for \
-                                         data_point in data_points)) for \
-                                            var in data_points[0].order}
-        # for data_point in data_points[1:]:
-        #     for var in data_point.order:
-        #         data_dict[var]
-
-        #     numel = np.prod(shapes_dict[var])
-        #     data_dict[var] = np.reshape(data_matrix[:, col_index:(col_index + numel)], shape=(num_points, *(shapes_dict[var])))
+                                              data_point in data_points)) for \
+                                                var in data_points[0].order}
             
         return cls(data_dict)
 

@@ -5,7 +5,7 @@ from twain_wifco.config import (
     control_evaluation_system_from_json,
     control_optimization_from_json,
     statistics_from_json)
-from twain_wifco.control_policy import ScatteredInterpPolicy
+from twain_wifco.control_policy import DiscreteControlPolicy
 from twain_wifco.statistics import Statistics
 from twain_wifco.interface import (
     Control,
@@ -35,48 +35,39 @@ ambient_statistics = statistics_from_json(json_path=json_path)
 # Duration
 duration = 20
 
-def perturbed_scattered_control_policy_test(
+def perturbed_control_policy_test(
         control_evaluation_system: ControlEvaluationSystem,
         ambient_condition_statistics: Statistics,
         duration: int,
-        optimal_policy: ScatteredInterpPolicy,
-        diff: float):
+        optimal_policy: DiscreteControlPolicy,
+        perturbation_scale: float,
+        perturbation_num: int):
     
     # Compute optimal results
-    expected_accumulated_metrics = control_evaluation_system.expected_acc_metrics(
+    expected_accumulated_metrics, constraints_satisfied = control_evaluation_system.expected_acc_metrics(
                 ambient_condition_statistics=ambient_condition_statistics,
                 control_policy=optimal_policy,
                 duration=duration)
+    assert constraints_satisfied is True
     optimal_reduced_metric = control_evaluation_system.multi_metrics_reduction.evaluate(acc_metrics=expected_accumulated_metrics)
     
-    # Compare with perturbed control policies
-    # loop over ambient conditions to be perturbed
-    for amb_cond_ctr_setpoints in optimal_policy.ambient_interp.out_data:
-        # loop over control variables to be perturbed
-        for ctrl_var in amb_cond_ctr_setpoints.order:
-            ctrl_data = np.array(amb_cond_ctr_setpoints[ctrl_var].data)
-            # Store original control setpoints
-            original_ctrl_data = np.copy(ctrl_data)
 
-            for perturbation in [diff, -diff]:
-                for stp, orig_stp in zip(ctrl_data.flat,
-                                         original_ctrl_data.flat):
-                    stp = orig_stp + perturbation                    
-                    if control_evaluation_system.control_constraint.evaluate(
-                        amb_cond_ctr_setpoints).satisfied():
-                        expected_accumulated_metrics = control_evaluation_system.expected_acc_metrics(
-                            ambient_condition_statistics=ambient_condition_statistics,
-                            control_policy=optimal_policy,
-                            duration=duration)
-                        reduced_metric = control_evaluation_system.multi_metrics_reduction.evaluate(
-                            acc_metrics=expected_accumulated_metrics)
-                        if control_evaluation_system.accumulated_constraint.evaluate(
-                            expected_accumulated_metrics).satisfied():
-                            is_suboptimal = (optimal_reduced_metric > reduced_metric if \
-                                control_evaluation_system.multi_metrics_reduction.maximize else \
-                                optimal_reduced_metric < reduced_metric)
-                            assert is_suboptimal == True
-            ctrl_data = original_ctrl_data
+    for _ in np.arange(perturbation_num):
+        perturbed_policy = optimal_policy.random_perturbation(scale=perturbation_scale)
+        expected_accumulated_metrics, constraints_satisfied = \
+            control_evaluation_system.expected_acc_metrics(ambient_condition_statistics=ambient_condition_statistics,
+                                                            control_policy=perturbed_policy,
+                                                            duration=duration,
+                                                            eval_constraints=True)
+        reduced_metric = control_evaluation_system.multi_metrics_reduction.evaluate(
+            acc_metrics=expected_accumulated_metrics)
+        perturbed_is_suboptimal = (
+            optimal_reduced_metric > reduced_metric if \
+            control_evaluation_system.multi_metrics_reduction.maximize else \
+            optimal_reduced_metric < reduced_metric)
+                        
+        if constraints_satisfied:
+            assert perturbed_is_suboptimal
 
 def test_grid_search():
     json_path = test_data_folder / "grid_search_optimization.json"
@@ -94,34 +85,39 @@ def test_grid_search():
     optimal_policy = grid_search.optimize_policy(control_eval_system=control_evaluation_system,
                                                  ambient_condition_statistics=ambient_statistics,
                                                  duration=duration)
+    # Compute optimal results
+    _, constraints_satisfied = control_evaluation_system.expected_acc_metrics(
+                ambient_condition_statistics=ambient_statistics,
+                control_policy=optimal_policy,
+                duration=duration,
+                eval_constraints=True)
+    assert constraints_satisfied is True
     
     # Evaluate result
-    perturbed_scattered_control_policy_test(control_evaluation_system=control_evaluation_system,
-                                           ambient_condition_statistics=ambient_statistics,
-                                           duration=duration,
-                                           optimal_policy=optimal_policy,
-                                           diff=1)
-
-# def test_simultaneous_optimization():
-#     json_path = test_data_folder / "simultaneous_optimization.json"
-#     simultaneous_optimization: SimultaneousOptimization = control_optimization_from_json(json_path=json_path)
-
-#     # Initialization
-#     assert simultaneous_optimization.optimization_name == "simultaneous_optimization"
-#     assert simultaneous_optimization.max_num_amb_cond == 10
+    assert np.array_equal(optimal_policy.amb_to_ctrl_interp_params.out_data.data[Control.POWER_REGULATION],
+                          np.array([[3], [3], [1], [4], [4], [2]]))
     
-#     # Optimization
-#     optimal_policy = simultaneous_optimization.optimize_policy(
-#         control_eval_system=control_evaluation_system,
-#         ambient_condition_statistics=ambient_statistics,
-#         duration=duration)
+def test_simultaneous_optimization():
+    json_path = test_data_folder / "simultaneous_optimization.json"
+    simultaneous_optimization: SimultaneousOptimization = control_optimization_from_json(json_path=json_path)
+
+    # Initialization
+    assert simultaneous_optimization.optimization_name == "simultaneous_optimization"
+    assert simultaneous_optimization.max_num_amb_cond == 10
     
-#     # Evaluate result
-#     perturbed_discrete_control_policy_test(control_evaluation_system=control_evaluation_system,
-#                                            ambient_condition_statistics=ambient_statistics,
-#                                            duration=duration,
-#                                            optimal_policy=optimal_policy,
-#                                            diff=0.01)
+    # Optimization
+    optimal_policy = simultaneous_optimization.optimize_policy(
+        control_eval_system=control_evaluation_system,
+        ambient_condition_statistics=ambient_statistics,
+        duration=duration)
+    
+    # Evaluate result
+    perturbed_control_policy_test(control_evaluation_system=control_evaluation_system,
+                                  ambient_condition_statistics=ambient_statistics,
+                                  duration=duration,
+                                  optimal_policy=optimal_policy,
+                                  perturbation_scale=1,
+                                  perturbation_num=100)
 
 
 # def test_lagrangian_relaxation():

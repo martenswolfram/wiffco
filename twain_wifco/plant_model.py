@@ -93,8 +93,9 @@ class FactorizedScatteredInterp(PlantModel):
                   control_input: Dict[Control, np.ndarray]):
         ambient_eval = self.ambient_interp.evaluate(query=meteorological_condition)
         control_eval = self.control_interp.evaluate(query=control_input)
-        return DataPoint({out_var: ambient_eval[out_var] * control_eval[out_var] for \
-                          out_var in self.ambient_interp.out_data_point.keys()})
+        result = {out_var: ambient_eval[out_var] * control_eval[out_var] for \
+                          out_var in self.ambient_interp.out_data_point.keys()}
+        return DataPoint(result)
             
         
 class SymbolicModelParams(ComponentParams):
@@ -112,17 +113,17 @@ class SymbolicModelParams(ComponentParams):
         return Interface(
             all_shapes={    
                 Ambient: {
-                    amb_var: None for \
+                    amb_var: (1,) for \
                     amb_var in self.ambient_mappings.keys()},
                 Control: {
-                    ctrl_var: None for \
+                    ctrl_var: (1,) for \
                     ctrl_var in self.control_mappings.keys()}
                 }
             )
 
     def output_interface(self) -> Interface:
         return Interface(all_shapes={
-            Type[ModelOutput]: {out_var: None for \
+            Type[ModelOutput]: {out_var: (1,) for \
                                 out_var in self.output_functions.keys()}})
     
 def symbolic_model_params_from_dict(
@@ -169,11 +170,11 @@ class SymbolicModel(PlantModel):
         for amb_var, symbol_name in self.params.ambient_mappings.items():
             value_map[symbol_name] = meteorological_condition[amb_var]
         
-        results = {}
+        result = {}
         symbol_values = [value_map[s] for s in self.params.symbols.keys()]
         for model_output, fun in self.params.output_functions.items():
-            results[model_output] = fun(*symbol_values)
+            result[model_output] = fun(*symbol_values)
 
-        return DataPoint(results)
+        return DataPoint(result)
             
         

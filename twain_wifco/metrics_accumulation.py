@@ -21,7 +21,7 @@ class MetricsAccumulation(Component):
     
     def acc_metrics(self,
                     aggregate: DataPoint[Aggregated],
-                    duration: int):
+                    duration: int) -> DataPoint[AccumulatedMetric]:
         
         self.validate_inputs(input_data={Aggregated: aggregate})
 
@@ -31,7 +31,7 @@ class MetricsAccumulation(Component):
     @abstractmethod
     def _acc_metrics(self,
                      aggregate: DataPoint[Aggregated],
-                     duration: int):
+                     duration: int) -> DataPoint[AccumulatedMetric]:
         pass
     
     def expected_acc_metrics(self,
@@ -91,7 +91,7 @@ class DiscountedIntegration(MetricsAccumulation):
 
     def _acc_metrics(self,
                     aggregate: DataPoint[Aggregated],
-                    duration: int):
+                    duration: int) -> DataPoint[AccumulatedMetric]:
         accumulated_metrics = {}
         for acc_metric, integration_mapping in self.integration_mappings.items():
             discount_rate = integration_mapping.discount_rate
