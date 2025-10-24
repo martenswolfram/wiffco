@@ -23,7 +23,7 @@ def test_scattered_plant_model():
     with pytest.raises(ValueError) as excinfo: 
         power_damage_scattered_model.evaluate(meteorological_condition=valid_met_condition,
                                         control_input=invalid_ctrl_input)
-    assert "Insufficient input variables" in str(excinfo.value)
+    assert "missing required variables of type Control" in str(excinfo.value)
 
     # Valid input
     valid_ctrl_input = DataPoint({Control.POWER_REGULATION: np.array([2])})
@@ -47,7 +47,7 @@ def test_symbolic_model():
     with pytest.raises(ValueError) as excinfo: 
         power_damage_sybolic_model.evaluate(meteorological_condition=valid_met_condition,
                                         control_input=invalid_ctrl_input)
-    assert "Insufficient input variables" in str(excinfo.value)
+    assert "missing required variables of type Control" in str(excinfo.value)
 
     # Valid input
     valid_ctrl_input = DataPoint({Control.POWER_REGULATION: np.array([2])})

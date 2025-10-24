@@ -1,11 +1,9 @@
 from typing import (
     List,
-    Set,
     Type,
     Tuple,
     TypeVar,
     Dict,
-    Any,
     Generic
 )
 import numpy as np
@@ -298,48 +296,98 @@ class DataTable(DataCollection[DataType]):
         }
         return cls(data_dict, order)
 
+# ======================================================================
+# INTERFACE AND COMPONENT CLASSES
+# ======================================================================
 
 class Interface:
+    """Defines input and output variable structures for a component.
+
+    Each interface specifies the required variables and their expected shapes,
+    grouped by their data type (e.g. Ambient, Control, ModelOutput, etc.).
+
+    Attributes:
+        all_shapes: Dictionary mapping data types to variable-shape dictionaries.
+            Example:
+                {
+                    Ambient: {Ambient.WIND_SPEED: (1,), Ambient.WIND_DIRECTION: (1,)},
+                    Control: {Control.POWER_REGULATION: (1,)}
+                }
+    """
+
     def __init__(self,
                  all_shapes: Dict[Type[DataVariable],
                                   Dict[DataVariable, Tuple[int, ...]]]):
         self.all_shapes = all_shapes
 
-    def shapes(self, data_type: Type[DataVariable]):
+    def shapes(self, data_type: Type[DataVariable]) -> Dict[DataVariable, Tuple[int, ...]]:
+        """Return the shape dictionary for a given data type."""
         return self.all_shapes[data_type]
-        
+
     def validate_shapes(self,
                         external_shapes: Dict[Type[DataVariable],
                                               Dict[DataVariable, Tuple[int, ...]]],
                         component_name: str):
-        for data_type, data_type_shapes in self.all_shapes.items():
-            missing_vars = data_type_shapes.keys() - external_shapes[data_type].keys()
-            if len(missing_vars):
-                msg = (f"Insufficient input variables for component '{component_name}'. "
-                    f"Missing variable(s): {missing_vars}")
-                raise ValueError(msg)
-            for var, shape in data_type_shapes.items():
-                if shape is None:
-                    continue
-                if not (shape == external_shapes[data_type][var]):
-                    msg = (f"Input variable dimensions mismatch for component '{component_name}'. "
-                        f"Mismatch variable: {var}")
-                    raise ValueError(msg)
+        """Validate that all required variables exist and have matching shapes.
+
+        Args:
+            external_shapes: Mapping of variable shapes provided by external data.
+            component_name: Name of the component being validated.
+
+        Raises:
+            ValueError: If required variables are missing or shape mismatches occur.
+        """
+        for data_type, required_shapes in self.all_shapes.items():
+            provided_shapes = external_shapes.get(data_type, {})
+
+            # Check for missing variables
+            missing_vars = required_shapes.keys() - provided_shapes.keys()
+            if missing_vars:
+                raise ValueError(
+                    f"Component '{component_name}' missing required variables of type "
+                    f"{data_type.__name__}: {missing_vars}"
+                )
+
+            # Check for shape mismatches
+            for var, req_shape in required_shapes.items():
+                if req_shape is None:
+                    continue  # shape is not constrained
+                if provided_shapes[var] != req_shape:
+                    raise ValueError(
+                        f"Component '{component_name}' shape mismatch for variable '{var}'. "
+                        f"Expected {req_shape}, got {provided_shapes[var]}."
+                    )
+
 
 class ComponentParams(ABC):
+    """Abstract base class for all component parameter sets.
 
-    def __init__(self):
-        pass
-        
+    A `ComponentParams` subclass specifies the input and output interface
+    for a specific type of component.
+    """
+
     @abstractmethod
     def input_interface(self) -> Interface:
-        pass
-    
+        """Return the input interface definition for the component."""
+        raise NotImplementedError
+
     @abstractmethod
     def output_interface(self) -> Interface:
-        pass
+        """Return the output interface definition for the component."""
+        raise NotImplementedError
+
 
 class Component(ABC):
+    """Abstract base class for all components in the toolbox.
+
+    A `Component` represents any computational unit (control policy, model, aggregator)
+    that transforms a set of input variables into output variables.
+
+    Attributes:
+        component_name: Descriptive name of the component.
+        input_interface: Interface object defining required input variables.
+        output_interface: Interface object defining produced output variables.
+    """
 
     def __init__(self,
                  component_name: str,
@@ -347,10 +395,26 @@ class Component(ABC):
         self.component_name = component_name
         self.input_interface = component_params.input_interface()
         self.output_interface = component_params.output_interface()
-        
+
     def validate_inputs(self,
                         input_data: Dict[Type[DataVariable], DataCollection[DataVariable]]):
+        """Validate that input data satisfies this component’s interface.
+
+        Args:
+            input_data: Mapping from data type (e.g. Ambient, Control)
+                to `DataCollection` instances containing actual data.
+
+        Raises:
+            ValueError: If input variables are missing or mismatched in shape.
+        """
+        # Collect the external data shapes for validation
+        external_shapes = {
+            dtype: dcoll.shapes()
+            for dtype, dcoll in input_data.items()
+        }
+
+        # Validate consistency with the declared input interface
         self.input_interface.validate_shapes(
-            external_shapes={data_type: data_collection.shapes() for \
-                             data_type, data_collection in input_data.items()},
-                             component_name=self.component_name)
+            external_shapes=external_shapes,
+            component_name=self.component_name
+        )

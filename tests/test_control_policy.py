@@ -22,7 +22,7 @@ def test_discrete_control_policy():
     
     with pytest.raises(ValueError) as excinfo:
         simple_control_policy.get_control_setpoints(invalid_amb_condition)
-    assert "Insufficient input variables" in str(excinfo.value)
+        assert "missing required variables of type Ambient" in str(excinfo.value)
 
     # Valid ambient condition
     valid_ambient_condition = DataPoint(
