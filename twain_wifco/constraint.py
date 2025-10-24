@@ -1,14 +1,12 @@
-from typing import Dict, Any, List, Type, Generic, Callable
+from typing import Dict, Any, List, Generic, Callable
 from abc import abstractmethod
 import numpy as np
-from scipy.optimize import NonlinearConstraint
+from scipy.optimize import NonlinearConstraint, Bounds
 from enum import Enum
 from twain_wifco.interface import (
     Component,
     ComponentParams,
-    Control,
-    Aggregated,
-    AccumulatedMetric,
+    data_type_from_string,
     DataVariable,
     DataType,
     DataPoint,
@@ -148,12 +146,7 @@ def separate_constraints_params_from_dict(param_dict: Dict[str, Any]) -> Separat
     Returns:
         SeparateConstraintsParams: Constructed parameters object.
     """
-    data_type_map = {
-        "control": Control,
-        "aggregate": Aggregated,
-        "accumulated_metric": AccumulatedMetric
-    }
-    data_type = data_type_map[param_dict["data_type"]]
+    data_type = data_type_from_string(param_dict["data_type"])
 
     upper_bound_data = {}
     lower_bound_data = {}
