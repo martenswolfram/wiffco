@@ -2,7 +2,7 @@ import pathlib
 from twain_wifco.config import (
     statistics_from_json,
     metrics_accumulation_from_json)
-from twain_wifco.interface import AccumulatedMetric
+from twain_wifco.interface import AccumulatedMetric, Aggregated
 
     
 def test_simple_product_accumulation():
@@ -25,5 +25,6 @@ def test_simple_product_accumulation():
         aggregate_statistics=aggregate_statistics,
         duration=duration)
     assert expected_accumulated_metrics[AccumulatedMetric.REVENUE] > 0
-    assert expected_accumulated_metrics[AccumulatedMetric.ACCRUED_DAMAGE] > 0
+    assert expected_accumulated_metrics[AccumulatedMetric.ACCRUED_DAMAGE] == \
+        duration * aggregate_statistics.expected_value()[Aggregated.DAMAGE_RATE]
     
