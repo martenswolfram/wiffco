@@ -81,5 +81,5 @@ class ScatteredInterpolator:
     def evaluate(self,
                  query: DataPoint[InDataType]) -> DataPoint[OutDataType]:
         result = self.evaluate_to_vector(query=query)
-        self.out_data_point.fill_from_vector(result)
+        self.out_data_point.update_from_vector(result)
         return self.out_data_point

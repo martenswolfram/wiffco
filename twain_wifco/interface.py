@@ -79,7 +79,7 @@ def get_abs_tol(data_var: DataVariable) -> float:
         return 0.0
 
 @dataclass
-class DataCollection(Generic[DataType], ABC):
+class DataCollection(Generic[DataType]):
     data: dict[DataType, np.ndarray]
     data_type: Type[DataType] | None = None
     order: list[DataType] | None = None
@@ -93,10 +93,11 @@ class DataCollection(Generic[DataType], ABC):
             if self.abs_tols is None:
                 self.abs_tols = {data_var: get_abs_tol(data_var) for data_var in self.order}
     
-    @abstractmethod
     def shapes(self):
-        ...
-        
+        raise NotImplementedError(
+            f"{self.__class__.__name__} must implement `shapes()`"
+        )
+
     def keys(self):
         return self.data.keys()
     
@@ -119,23 +120,22 @@ class DataCollection(Generic[DataType], ABC):
             keys = self.order
         return np.concatenate([self.data[k].ravel() for k in self.order if k in keys])
 
-    def fill_from_vector(self, vector: np.ndarray):
-        i = 0
-        for k in self.order:
-            n = self.data[k].size
-            self.data[k] = vector[i:i+n].reshape(self.data[k].shape)
-            i += n
+    def update_from_vector(self, vector: np.ndarray):
+        offset = 0
+        for key in self.order:
+            size = self.data[key].size
+            self.data[key] = vector[offset:offset+size].reshape(self.data[key].shape)
+            offset += size
      
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, DataCollection):
             return False
         if set(self.data.keys()) != set(other.data.keys()):
             return False
-        for k in self.data.keys():
-            if not np.array_equal(self.data[k], other.data[k]):
-                return False
-        return True
-
+        return all(
+            np.allclose(self.data[key], other.data[key], atol=self.abs_tol(key))
+            for key in self.data.keys()
+        )
 
 @dataclass(eq=False)
 class DataPoint(DataCollection[DataType]):
@@ -190,13 +190,13 @@ class DataTable(DataCollection[DataType]):
             k: self.data[k][idx] for k in self.order
         }, self.order)
         
-    def get_points(self, ids: np.ndarray) -> DataPoint[DataType]:
+    def get_points(self, ids: np.ndarray) -> "DataTable[DataType]":
         return DataTable({
             k: self.data[k][ids] for k in self.order
         }, self.order)
                     
-    def find_point(self,
-                   data_point: DataPoint[DataType]) -> int:
+    def find_matching_point(self,
+                            data_point: DataPoint[DataType]) -> int:
         
         # Find correct support point
         mask = np.all(np.isclose(
@@ -209,16 +209,15 @@ class DataTable(DataCollection[DataType]):
             raise ValueError("DataTable.find_point: Data point not found in data table.")
         return row_index[0]
     
-    def fill_point_from_vector(self,
-                               ind: int,
-                               vector: np.ndarray):
+    def update_point_from_vector(self,
+                                 ind: int,
+                                 vector: np.ndarray):
         i = 0
         for k in self.order:
             n = self.data[k][ind].size
             self.data[k][ind] = vector[i:i+n].reshape(self.data[k].shape[1:])
             i += n
 
-    
     @classmethod
     def from_matrix(cls,
                     data_matrix: np.ndarray,

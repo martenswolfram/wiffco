@@ -53,13 +53,13 @@ class DiscreteControlPolicy(Component):
         
         self.validate_inputs(input_data={Ambient: ambient_condition})
 
-        point_index = self.ambient_support_data.find_point(
+        point_index = self.ambient_support_data.find_matching_point(
             data_point=ambient_condition)
         return self.control_out_data.get_point(point_index)
 
     def set_control_data(self,
                          control_data_vector: np.array):
-        self.control_out_data.fill_from_vector(control_data_vector)
+        self.control_out_data.update_from_vector(control_data_vector)
         
     def random_perturbation(self,
                             scale: float = 1):

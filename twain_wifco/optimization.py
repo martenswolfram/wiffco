@@ -465,7 +465,7 @@ class LagrangianRelaxation(ControlPolicyOptimization):
 
                 # Separate optimization for each ambient condition
                 def cost_function(ctrl_setpoints_vec, i_ac=i_ac):
-                    control_setpoints.fill_point_from_vector(ind=i_ac,
+                    control_setpoints.update_point_from_vector(ind=i_ac,
                                                              vector=ctrl_setpoints_vec)
                     acc_metrics, _ = opt_mgr.control_eval_system.acc_metrics_from_ambient_cond(
                         ambient_condition=ambient_condition,
@@ -497,7 +497,7 @@ class LagrangianRelaxation(ControlPolicyOptimization):
                                method=self.scipy_method,
                                constraints=constraints,
                                options=self.scipy_options)
-                control_setpoints.fill_point_from_vector(ind=i_ac,
+                control_setpoints.update_point_from_vector(ind=i_ac,
                                                          vector=res.x)
                 
                 # Recompute final accumulated metrics
