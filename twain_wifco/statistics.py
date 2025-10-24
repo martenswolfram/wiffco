@@ -1,4 +1,4 @@
-from typing import Dict, Any
+from typing import Dict, Any, Generic
 from abc import abstractmethod
 from enum import Enum
 import numpy as np
@@ -53,7 +53,7 @@ class SystematicSample:
         )
 
 
-class Statistics(Component):
+class Statistics(Component, Generic[DataType]):
     """Abstract base class for statistics computations.
 
     Args:
