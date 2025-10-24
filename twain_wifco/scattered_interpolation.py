@@ -117,7 +117,7 @@ class ScatteredInterpolator(Generic[InDataType, OutDataType]):
         Returns:
             DataPoint[OutDataType]: Interpolated output values.
         """
-        x = query.to_vector(keys=self.support_data.order)
+        x = query.to_vector(order=self.support_data.order)
         result = self.interpolator(x).flatten()
         self.out_data_point.update_from_vector(result)
         return self.out_data_point

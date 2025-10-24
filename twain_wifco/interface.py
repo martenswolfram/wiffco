@@ -157,19 +157,25 @@ class DataCollection(Generic[DataType]):
         return self.abs_tols[key]
 
     def to_vector(self,
-                  keys: List[DataType] | None = None,
+                  order: List[DataType] | None = None,
                   batch_multiply: int | None = None) -> np.ndarray:
-        """Flatten and concatenate all variable arrays into a single vector."""
-        if keys is None:
-            keys = self.order
+        """
+        Flatten and concatenate all variable arrays into a single vector.
+        Note that the order can be specified differently.
+        """
+        if order is None:
+            order = self.order
         if batch_multiply is None:
-            return np.concatenate([self.data[k].ravel() for k in self.order if k in keys])
+            return np.concatenate([self.data[k].ravel() for k in order])
         else:
             # For batch evaluation, tile the bounds for each variable
-            return np.concatenate([np.tile(self.data[k].ravel(), batch_multiply) for k in self.order if k in keys])
+            return np.concatenate([np.tile(self.data[k].ravel(), batch_multiply) for k in order])
 
     def update_from_vector(self, vector: np.ndarray):
-        """Update variable data from a flattened vector."""
+        """
+        Update variable data from a flattened vector.
+        Note that this assumes that the vector was created with matching order.
+        """
         offset = 0
         for key in self.order:
             size = self.data[key].size

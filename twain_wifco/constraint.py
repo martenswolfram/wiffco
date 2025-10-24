@@ -42,6 +42,7 @@ class TwoSidedBounds:
         self.data_type = upper_bound.data_type
         self.upper_bound = upper_bound
         self.lower_bound = lower_bound
+        self.order = upper_bound.order
 
 class Constraint(Component, Generic[DataType]):
     """Abstract base class for all constraints.
@@ -55,16 +56,6 @@ class Constraint(Component, Generic[DataType]):
                  constraint_params: ComponentParams):
         super().__init__(component_name=constraint_name,
                          component_params=constraint_params)
-
-    def two_sided_bounds(self) -> TwoSidedBounds:
-        """Return two-sided bounds object for optimization, if possible.
-        This is only applicable if the constraint variables are directly evaluated against these bounds, and
-        can be provided by inherited classes, if applicable.  
-
-        Returns:
-            None: No bounds provided by base class.
-        """
-        return None
 
     def evaluate_satisfied(self,
                            constr_input_data: DataPoint[DataType]) -> bool:
@@ -93,25 +84,14 @@ class Constraint(Component, Generic[DataType]):
         pass
 
     @abstractmethod
-    def scipy_constraint_batch(self,
-                               x_order: List[DataType],
-                               x_shapes_dict: Dict[DataType, Tuple[int, ...]],
-                               num_points: int):
-        """ Creates a SciPy NonlinearConstraint object for batch constraint evaluation"""
+    def scipy_object(self,
+                     x_order: List[DataType],
+                     x_shapes_dict: Dict[DataType, Tuple[int, ...]],
+                     num_points: int | None = None,
+                     x_constraint_evaluation: Callable | None = None):
+        """ Creates SciPy objects for constraint evaluation"""
         pass
-
-    @abstractmethod
-    def scipy_constraint(self, eval_constraint_from_x: Callable) -> NonlinearConstraint:
-        """Return a SciPy NonlinearConstraint object for optimization.
-
-        Args:
-            eval_constraint_from_x (Callable): Function to evaluate constraint from optimization variables.
-
-        Returns:
-            NonlinearConstraint: SciPy constraint object.
-        """
-        pass
-
+    
     @abstractmethod
     def upper_bound_constraints(self) -> List[UpperBoundConstraint]:
         """Convert all constraints into upper-bound constraints.
@@ -197,15 +177,6 @@ class SeparateConstraints(Constraint):
                          constraint_params=constraint_params)
         self.bounds = constraint_params.bounds
 
-    def two_sided_bounds(self) -> TwoSidedBounds:
-        """Return two-sided bounds object for optimization.
-
-        Returns:
-            TwoSidedBounds: Tow-sided bounds object.
-        """
-        # return self.bounds
-        return None
-
     def _evaluate_satisfied(self,
                             constr_input_data: DataPoint[DataVariable]) -> bool:
         """Check if all constraints are satisfied for the given input.
@@ -221,49 +192,49 @@ class SeparateConstraints(Constraint):
             {var: constr_input_data[var] for var in constr_input_data.keys() if var in variables}
         )
 
-        lower_diff = (relevant_data - self.bounds.lower_bound).to_vector()
-        upper_diff = (relevant_data - self.bounds.upper_bound).to_vector()
+        lower_diff = (relevant_data - self.bounds.lower_bound).to_vector(order=self.bounds.order)
+        upper_diff = (relevant_data - self.bounds.upper_bound).to_vector(order=self.bounds.order)
 
         return all(lower_diff >= -self.bounds.lower_bound.abs_tols_vec()) and \
                all(upper_diff <= self.bounds.upper_bound.abs_tols_vec())
 
-    def scipy_constraint_batch(self,
-                               x_order: List[DataType],
-                               x_shapes_dict: Dict[DataType, Tuple[int, ...]],
-                               num_points: int):
-        """ Creates a SciPy NonlinearConstraint object for batch constraint evaluation"""
-        def eval_constraints(x):
-            # need to convert to DataTable and back because the variable orders could be different
-            # Create data table 
-            input_table = DataTable.from_vector(data_vector=x,
-                                                order=x_order,
-                                                shapes_dict=x_shapes_dict,
-                                                num_points=num_points)
-            return np.concatenate([input_table[var].ravel() for var in self.bounds.upper_bound.order])            
-        lb = self.bounds.lower_bound.to_vector(batch_multiply=num_points)
-        ub = self.bounds.upper_bound.to_vector(batch_multiply=num_points)
-        
-        return NonlinearConstraint(fun=eval_constraints, lb=lb, ub=ub)
-
-    def scipy_constraint(self, eval_constraint_from_x: Callable) -> NonlinearConstraint:
-        """Convert to SciPy NonlinearConstraint for optimization.
-
-        Args:
-            eval_constraint_from_x (Callable): Function that evaluates constraints from optimization variables.
-
-        Returns:
-            NonlinearConstraint: SciPy constraint object.
-        """
-        def eval_nl_constraints(x):
-            constraints_eval = eval_constraint_from_x(x)
-            return np.concatenate([constraints_eval[var].ravel() for var in self.bounds.upper_bound.order])
-
-        return NonlinearConstraint(
-            fun=eval_nl_constraints,
-            lb=self.bounds.lower_bound.to_vector(),
-            ub=self.bounds.upper_bound.to_vector()
-        )
-
+    def scipy_object(self,
+                     x_order: List[DataType],
+                     x_shapes_dict: Dict[DataType, Tuple[int, ...]],
+                     num_points: int | None = None,
+                     x_constraint_evaluation: Callable | None = None):
+        """ Creates SciPy objects for constraint evaluation"""
+        if x_constraint_evaluation is None:
+            # If x is only passed through, create a SciPy-Bounds object, based on the external variable order
+            lb = self.bounds.lower_bound.to_vector(order=x_order, batch_multiply=num_points)
+            ub = self.bounds.upper_bound.to_vector(order=x_order, batch_multiply=num_points)
+            return Bounds(lb=lb, ub=ub)
+        else:
+            # Otherwise create a SciPy-NonlinearConstraint object
+            if num_points is None:
+                # Single-point evaluation
+                def eval_constraint(x):
+                    constr_evaluation = x_constraint_evaluation(x)                    
+                    return np.concatenate([constr_evaluation[var].ravel() for var in self.bounds.order])    
+                lb = self.bounds.lower_bound.to_vector(order=self.bounds.order)
+                ub = self.bounds.upper_bound.to_vector(order=self.bounds.order)
+                return NonlinearConstraint(fun=eval_constraint, lb=lb, ub=ub)
+            else:
+                # Batch-constraint evaluation
+                def eval_constraints(x):
+                    input_table = DataTable.from_vector(data_vector=x,
+                                                        order=x_order,
+                                                        shapes_dict=x_shapes_dict,
+                                                        num_points=num_points)
+                    constr_evaluations = []
+                    for input_point in input_table:
+                        constr_evaluations.append(x_constraint_evaluation(input_point.to_vector()))
+                    tiled_evaluations = DataTable.from_data_points(constr_evaluations)
+                    return np.concatenate([tiled_evaluations[var].ravel() for var in self.bounds.order])    
+                lb = self.bounds.lower_bound.to_vector(order=self.bounds.order, batch_multiply=num_points)
+                ub = self.bounds.upper_bound.to_vector(order=self.bounds.order, batch_multiply=num_points)
+                return NonlinearConstraint(fun=eval_constraints, lb=lb, ub=ub)
+    
     def upper_bound_constraints(self) -> List[UpperBoundConstraint]:
         """Convert to a list of upper-bound constraints for optimization.
 

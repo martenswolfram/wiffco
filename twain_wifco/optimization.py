@@ -354,37 +354,34 @@ class SimultaneousOptimization(ControlPolicyOptimization):
 
         # Constraints
         constraints = []
-
+        # Order and shapes of control variables
+        x_order = opt_mgr.control_policy.control_out_data.order
+        x_shapes_dict=opt_mgr.control_policy.control_out_data.shapes()
         # define constraint based on accumulated metrics
         acc_metrics_constraint = \
-            opt_mgr.control_eval_system.accumulated_constraint.scipy_constraint(
-                eval_constraint_from_x=expected_acc_metrics_w_cache)
+            opt_mgr.control_eval_system.accumulated_constraint.scipy_object(
+                x_order=x_order,
+                x_shapes_dict=x_shapes_dict,                     
+                x_constraint_evaluation=expected_acc_metrics_w_cache)
         constraints.append(acc_metrics_constraint)
 
         # define control-constraints
         num_ac = len(opt_mgr.control_policy.control_out_data)
-        two_sided_bounds = opt_mgr.control_eval_system.control_constraint.two_sided_bounds()
-        bounds = None
-        if two_sided_bounds is not None:
-            # Handle as decision variable bounds if possible
-            lower_bound_tiled = np.tile(two_sided_bounds.lower_bound.to_vector(), num_ac)
-            upper_bound_tiled = np.tile(two_sided_bounds.upper_bound.to_vector(), num_ac)
-            bounds = Bounds(lb=lower_bound_tiled, ub=upper_bound_tiled)
+        control_constraint_object = opt_mgr.control_eval_system.control_constraint.scipy_object(
+            x_order=x_order,
+            x_shapes_dict=x_shapes_dict,
+            num_points=num_ac,
+        )
+        if isinstance(control_constraint_object, Bounds):
+            bounds = control_constraint_object
         else:
-            # Handle as nonlinear constraint functions otherwise
-            bounds = None
-            batch_control_constraint = opt_mgr.control_eval_system.control_constraint.scipy_constraint_batch(
-                x_order=opt_mgr.control_policy.control_out_data.order,
-                x_shapes_dict=opt_mgr.control_policy.control_out_data.shapes(),
-                num_points=num_ac
-            )
-            constraints.append(batch_control_constraint)
+            constraints.append(control_constraint_object)
 
         x0 = opt_mgr.control_policy.control_out_data.to_vector()
         res = minimize(cost_function,
                        x0,
-                       bounds=bounds,
                        method=self.scipy_method,
+                       bounds=bounds,
                        constraints=constraints,
                        options=self.scipy_options)
         opt_mgr.control_policy.set_control_data(control_data_vector=res.x)
@@ -458,9 +455,10 @@ class LagrangianRelaxation(ControlPolicyOptimization):
             for i_ac, (prob_weight, ambient_condition) in enumerate(ambient_condition_sample.weighted_variables_iter()):
 
                 # Separate optimization for each ambient condition
+                # Cost function
                 def cost_function(ctrl_setpoints_vec, i_ac=i_ac):
                     control_setpoints.update_point_from_vector(ind=i_ac,
-                                                             vector=ctrl_setpoints_vec)
+                                                               vector=ctrl_setpoints_vec)
                     acc_metrics, _ = opt_mgr.control_eval_system.acc_metrics_from_ambient_cond(
                         ambient_condition=ambient_condition,
                         control_setpoints=control_setpoints.get_point(i_ac),
@@ -476,23 +474,34 @@ class LagrangianRelaxation(ControlPolicyOptimization):
                         scalar_objective -= lagrangian_lambda.dot(ub_constraint.constraint_fun(acc_metrics))
                     # Scipy will minimize a cost function, hence take the negative value
                     return - scalar_objective
+                
+                # Order and shapes of control variables
+                x_order = opt_mgr.control_policy.control_out_data.order
+                x_shapes_dict=opt_mgr.control_policy.control_out_data.shapes()
+                
                 # control constraints
-                def get_ctrl_setpoints_for_ac(x):
-                    return DataPoint.from_vector(data_vector=x,
-                                                 order=opt_mgr.control_policy.control_out_data.order,
-                                                 shapes_dict=opt_mgr.control_policy.control_out_data.shapes())
-                constraints = opt_mgr.control_eval_system.control_constraint.scipy_constraint(
-                    eval_constraint_from_x=get_ctrl_setpoints_for_ac)
+                control_constraint_object = opt_mgr.control_eval_system.control_constraint.scipy_object(
+                    x_order=x_order,
+                    x_shapes_dict=x_shapes_dict
+                )
+                if isinstance(control_constraint_object, Bounds):
+                    bounds = control_constraint_object
+                    control_constraint = None
+                else:
+                    bounds = None
+                    control_constraint = control_constraint_object
 
                 # Minimize Lagrangian
+                # Initial value
                 x0 = control_setpoints.get_point(i_ac).to_vector()
                 res = minimize(cost_function,
                                x0,
                                method=self.scipy_method,
-                               constraints=constraints,
+                               bounds=bounds,
+                               constraints=control_constraint,
                                options=self.scipy_options)
                 control_setpoints.update_point_from_vector(ind=i_ac,
-                                                         vector=res.x)
+                                                           vector=res.x)
                 
                 # Recompute final accumulated metrics
                 acc_metrics, _ = opt_mgr.control_eval_system.acc_metrics_from_ambient_cond(

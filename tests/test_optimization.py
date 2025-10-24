@@ -1,5 +1,4 @@
 import pathlib
-import pytest
 import numpy as np
 from twain_wifco.config import (
     control_evaluation_system_from_json,
@@ -14,7 +13,6 @@ from twain_wifco.optimization import (
     ControlEvaluationSystem,
     GridSearch,
     SimultaneousOptimization)
-from twain_wifco.constraint import SeparateConstraints
 
 test_data_folder = pathlib.Path(__file__).parent / "data"
     
