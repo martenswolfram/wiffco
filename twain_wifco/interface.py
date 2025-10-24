@@ -46,6 +46,20 @@ class AccumulatedMetric(Enum):
     REVENUE = "revenue"
     ACCRUED_DAMAGE = "accrued_damage"
 
+def data_type_from_string(data_type_string: str):
+    match data_type_string:
+        case "ambient":
+            return Ambient
+        case "control":
+            return Control
+        case "model_output":
+            return ModelOutput
+        case "aggregate":
+            return Aggregated
+        case "accumulated_metric":
+            return AccumulatedMetric
+    raise ValueError(f"'{data_type_string}' is not a valid data type string.")
+
 
 # ======================================================================
 # TYPE DEFINITIONS
@@ -61,16 +75,6 @@ DataType = TypeVar("DataType",
                    ModelOutput,
                    Aggregated,
                    AccumulatedMetric)
-
-StatisticalType = TypeVar("StatisticalType",
-                          Ambient,
-                          Aggregated)
-
-ConstraintType = TypeVar("ConstraintType",
-                         Control,
-                         Aggregated,
-                         AccumulatedMetric)
-
 
 # ======================================================================
 # HELPER FUNCTIONS

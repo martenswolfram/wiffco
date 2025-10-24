@@ -1,18 +1,8 @@
 import pathlib
 import pytest
-from typing import Dict
 import numpy as np
 from twain_wifco.config import statistics_from_json
 from twain_wifco.interface import Ambient, DataTable
-
-# def support_points_equal(support_points_1: DataTable[Ambient],
-#                          support_points_2: DataTable[Ambient]):
-#     for var in support_points_1.data.keys():
-#         if not support_points_2.data[var] == \
-#             pytest.approx(support_points_1.data[var]):
-#             return False
-#     return True
-    
 
 def test_statistics():
     test_data_folder = pathlib.Path(__file__).parent / "data"

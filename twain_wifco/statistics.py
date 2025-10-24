@@ -1,20 +1,19 @@
-from typing import Dict, Any, Type
+from typing import Dict, Any, Type, Generic
 from abc import abstractmethod
 from enum import Enum
 import numpy as np
 from twain_wifco.interface import (
     Component,
-    ComponentParams,    
-    StatisticalType,
-    Ambient,
-    Aggregated,
+    ComponentParams,
+    DataType,
     DataTable,
     DataPoint,
-    Interface)
+    Interface,
+    data_type_from_string)
 
 class SystematicSample:
     def __init__(self,
-                 support_data: DataTable[StatisticalType],
+                 support_data: DataTable[DataType],
                  normalized_weights: np.ndarray,
                  probability_covered: float = 1):
         self.support_data = support_data
@@ -57,10 +56,8 @@ class StatisticsType(Enum):
 
 class DiscreteStatisticsParams(ComponentParams):
     def __init__(self,
-                 statistical_type: Type[StatisticalType],
-                 support_data: DataTable[StatisticalType],
+                 support_data: DataTable[DataType],
                  prevalence: np.ndarray):
-        self.statistical_type = statistical_type
         self.support_data = support_data
         self.prevalence = prevalence
 
@@ -68,23 +65,18 @@ class DiscreteStatisticsParams(ComponentParams):
         return Interface(all_shapes={})
 
     def output_interface(self):
-        if self.statistical_type == Ambient:
-            return Interface(all_shapes={Ambient: self.support_data.shapes()})
-        else:
-            return Interface(all_shapes={Aggregated: self.support_data.shapes()})
+        return Interface(all_shapes={
+            self.support_data.data_type: self.support_data.shapes()
+            })
         
 def discrete_statistics_params_from_dict(param_dict: Dict[str, Any]):
     
-    if param_dict["data_type"] == "ambient":
-        data_type = Ambient
-    elif param_dict["data_type"] == "aggregate":
-        data_type = Aggregated
+    data_type = data_type_from_string(param_dict["data_type"])
     support_data = DataTable({data_type(in_var): np.array(supp) for \
                               in_var, supp in param_dict["support_data"].items()})
     prevalence = np.array(param_dict["prevalence"])
     prevalence = prevalence / np.sum(prevalence)    
-    return DiscreteStatisticsParams(statistical_type=data_type,
-                                    support_data=support_data,
+    return DiscreteStatisticsParams(support_data=support_data,
                                     prevalence=prevalence)
 
 class DiscreteStatistics(Statistics):

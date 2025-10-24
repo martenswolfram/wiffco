@@ -106,8 +106,7 @@ class ControlEvaluationSystem:
             pass
 
         aggregate_support = DataTable.from_data_points(aggregate_list)
-        discrete_statistics_params = DiscreteStatisticsParams(statistical_type=Aggregated,
-                                                              support_data=aggregate_support,
+        discrete_statistics_params = DiscreteStatisticsParams(support_data=aggregate_support,
                                                               prevalence=ambient_condition_sample.normalized_weights)
         
         new_name = ""
@@ -236,7 +235,6 @@ class GridSearch(ControlPolicyOptimization):
                     {aggr_var: aggr_eval[np.arange(num_ambient_conditions), ctrl_indices] for \
                      aggr_var, aggr_eval in aggregate_evaluations.items()})
                 discrete_stat_params = DiscreteStatisticsParams(
-                    statistical_type=Aggregated,
                     support_data=aggr_support_data,
                     prevalence=ambient_condition_sample.normalized_weights)
                 discrete_aggr_stat = DiscreteStatistics(

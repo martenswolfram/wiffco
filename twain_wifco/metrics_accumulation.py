@@ -1,5 +1,4 @@
 from typing import Dict, Any
-import numpy as np
 from abc import abstractmethod
 from enum import Enum
 from twain_wifco.statistics import (

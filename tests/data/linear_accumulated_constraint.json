@@ -1,6 +1,6 @@
 {
     "name": "linear_accumulated_constraint",
-    "constraint_type": "separate_linear_constraints",
+    "constraint_type": "separate_constraints",
     "constraint_params":{
         "data_type": "accumulated_metric",
         "upper_bound": {

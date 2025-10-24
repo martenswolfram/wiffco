@@ -9,7 +9,6 @@ from twain_wifco.interface import (
     Control,
     Aggregated,
     AccumulatedMetric,
-    ConstraintType,
     DataVariable,
     DataType,
     DataPoint,
@@ -93,20 +92,20 @@ class Constraint(Component, Generic[DataType]):
 
 
 class ConstraintType(Enum):
-    SEPARATE_LINEAR_CONSTRAINTS = "separate_linear_constraints"
+    SEPARATE_CONSTRAINTS = "separate_constraints"
 
 
 class TwoSidedBounds:
-    """Container for upper and lower bounds for multiple variables.
+    """Container for upper and lower bounds for multiple variables of the same type.
 
     Attributes:
-        upper_bound (DataPoint[ConstraintType]): Upper bounds.
-        lower_bound (DataPoint[ConstraintType]): Lower bounds.
+        upper_bound (DataPoint[DataType]): Upper bounds.
+        lower_bound (DataPoint[DataType]): Lower bounds.
         data_type (Type[DataType]): Type of data stored.
     """
     def __init__(self,
-                 upper_bound: DataPoint[ConstraintType],
-                 lower_bound: DataPoint[ConstraintType]):
+                 upper_bound: DataPoint[DataType],
+                 lower_bound: DataPoint[DataType]):
         self.data_type = upper_bound.data_type
         self.upper_bound = upper_bound
         self.lower_bound = lower_bound

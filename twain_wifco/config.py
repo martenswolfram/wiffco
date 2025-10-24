@@ -107,7 +107,7 @@ def constraint_from_json(json_path: pathlib.Path):
     param_dict = parse_json_file(path=json_path)
     constraint_name = param_dict["name"]
     constraint_type = ConstraintType(param_dict["constraint_type"])
-    if constraint_type == ConstraintType.SEPARATE_LINEAR_CONSTRAINTS:
+    if constraint_type == ConstraintType.SEPARATE_CONSTRAINTS:
         params = separate_constraints_params_from_dict(param_dict=param_dict["constraint_params"])
         return SeparateConstraints(constraint_name=constraint_name,
                                          constraint_params=params)
