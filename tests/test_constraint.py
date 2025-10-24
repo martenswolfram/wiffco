@@ -10,7 +10,7 @@ from twain_wifco.interface import (
     
 def test_linear_control_constraint():
     test_data_folder = pathlib.Path(__file__).parent / "data"
-    json_path = test_data_folder / "linear_control_constraint.json"
+    json_path = test_data_folder / "constraint_control.json"
     linear_control_constraint = constraint_from_json(json_path=json_path)
         
     # Constraint evaluation
@@ -35,7 +35,7 @@ def test_linear_control_constraint():
 
 def test_acc_metrics_constraint():
     test_data_folder = pathlib.Path(__file__).parent / "data"
-    json_path = test_data_folder / "linear_accumulated_constraint.json"
+    json_path = test_data_folder / "constraint_accumulated.json"
     linear_accumulated_constraint = constraint_from_json(json_path=json_path)
         
     # Initialization

@@ -29,7 +29,7 @@ json_path = test_data_folder / "control_evaluation_system.json"
 control_evaluation_system = control_evaluation_system_from_json(json_path=json_path)
 
 # Ambient conditions
-json_path = test_data_folder / "discrete_ambient_statistics.json"
+json_path = test_data_folder / "statistics_discrete_ambient.json"
 ambient_statistics = statistics_from_json(json_path=json_path)
 
 # Duration
@@ -71,7 +71,7 @@ def perturbed_control_policy_test(
             assert perturbed_is_suboptimal
 
 def test_grid_search():
-    json_path = test_data_folder / "grid_search_optimization.json"
+    json_path = test_data_folder / "optimization_grid_search.json"
     grid_search: GridSearch = control_optimization_from_json(json_path=json_path)
     
     # Initialization
@@ -99,7 +99,7 @@ def test_grid_search():
            {Control.POWER_REGULATION: np.array([[3], [2], [2], [2], [3], [3]])})
     
 def test_simultaneous_optimization():
-    json_path = test_data_folder / "simultaneous_optimization.json"
+    json_path = test_data_folder / "optimization_simultaneous.json"
     simultaneous_optimization: SimultaneousOptimization = control_optimization_from_json(json_path=json_path)
 
     # Initialization
@@ -122,7 +122,7 @@ def test_simultaneous_optimization():
 
 
 def test_lagrangian_relaxation():
-    json_path = test_data_folder / "lagrangian_relaxation.json"
+    json_path = test_data_folder / "optimization_lagrangian_relaxation.json"
     lagrangian_relaxation: SimultaneousOptimization = control_optimization_from_json(json_path=json_path)
 
     # Initialization

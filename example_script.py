@@ -12,15 +12,15 @@ json_path = config_folder / "control_evaluation_system.json"
 control_evaluation_system = control_evaluation_system_from_json(json_path=json_path)
 
 # Ambient conditions
-json_path = config_folder / "discrete_ambient_statistics.json"
+json_path = config_folder / "statistics_discrete_ambient.json"
 ambient_statistics = statistics_from_json(json_path=json_path)
 
 # Evaluation period
 duration = 20
 
-for file_name in ["grid_search_optimization.json",
-                  "simultaneous_optimization.json",
-                  "lagrangian_relaxation.json"]:
+for file_name in ["optimization_grid_search.json",
+                  "optimization_simultaneous.json",
+                  "optimization_lagrangian_relaxation.json"]:
     json_path = config_folder / file_name
     optimization = control_optimization_from_json(json_path=json_path)
     

@@ -11,7 +11,7 @@ from twain_wifco.interface import (
 test_data_folder = pathlib.Path(__file__).parent / "data"
 
 def test_scattered_plant_model():
-    json_path = test_data_folder / "power_damage_scattered_model.json"
+    json_path = test_data_folder / "model_scattered.json"
     power_damage_scattered_model = plant_model_from_json(json_path=json_path)
     
     # Initialization
@@ -35,7 +35,7 @@ def test_scattered_plant_model():
     assert output == expected_output
 
 def test_symbolic_model():
-    json_path = test_data_folder / "power_damage_symbolic_model.json"
+    json_path = test_data_folder / "model_symbolic.json"
     power_damage_sybolic_model = plant_model_from_json(json_path=json_path)
     
     # Initialization

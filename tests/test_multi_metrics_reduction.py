@@ -6,7 +6,7 @@ from twain_wifco.interface import AccumulatedMetric
     
 def test_linear_constraint():
     test_data_folder = pathlib.Path(__file__).parent / "data"
-    json_path = test_data_folder / "scalar_metrics_weighting.json"
+    json_path = test_data_folder / "metrics_reduction_scalar_weighting.json"
     scalar_metrics_weighting = multi_metrics_reduction_from_json(json_path=json_path)
         
     # Initialization

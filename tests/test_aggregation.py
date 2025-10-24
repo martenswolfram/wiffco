@@ -11,7 +11,7 @@ from twain_wifco.interface import (
     
 def test_simple_product_aggregation():
     test_data_folder = pathlib.Path(__file__).parent / "data"
-    json_path = test_data_folder / "revenue_damage_aggregation.json"
+    json_path = test_data_folder / "aggregation_revenue_damage.json"
     simple_product_aggregation = aggregation_from_json(json_path=json_path)
     
     # Output aggregation
