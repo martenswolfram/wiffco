@@ -179,45 +179,46 @@ class GridSearch(ControlPolicyOptimization):
         ambient_condition_sample = ambient_condition_statistics.systematic_sample(N_max=self.max_num_amb_cond)
         num_ambient_conditions = ambient_condition_sample.N
         ctrl_variables_order = list(self.control_setpoint_vectors.keys())
-        control_setpoints_list = [setpoints for ctrl_var in ctrl_variables_order for \
+        control_setpoint_vectors_list = [setpoints for ctrl_var in ctrl_variables_order for \
                                   setpoints in self.control_setpoint_vectors[ctrl_var].vectors]
-        ctrl_setpoint_combinations = np.array(list(itertools.product(*control_setpoints_list)))
-        ctrl_setpoints_table = DataTable.from_matrix(
-            data_matrix=ctrl_setpoint_combinations,
-            order=ctrl_variables_order,
-            shapes_dict={var: data.shape for var, data in self.control_setpoint_vectors.items()})
-        num_ctrl_settings = len(ctrl_setpoints_table)
+        num_ctrl_setpoint_combinations = np.prod([len(ctrl_setpoints) for ctrl_setpoints in control_setpoint_vectors_list])
+
+        ctrl_shapes_dict={var: data.shape for var, data in self.control_setpoint_vectors.items()}
 
         aggregate_evaluations = {
-            aggr_var: np.empty(shape=(num_ambient_conditions, num_ctrl_settings, *aggr_shape)) \
+            aggr_var: np.empty(shape=(num_ambient_conditions, num_ctrl_setpoint_combinations, *aggr_shape)) \
             for aggr_var, aggr_shape in control_eval_system.aggregation.output_interface.shapes(Aggregated).items()
             }
         print(f"Number of ambient conditions: {num_ambient_conditions}.")
-        print(f"Number of ctrl settings: {num_ctrl_settings}.")
-        num_eval = num_ctrl_settings * num_ambient_conditions
+        print(f"Number of ctrl settings: {num_ctrl_setpoint_combinations}.")
+        num_eval = num_ctrl_setpoint_combinations * num_ambient_conditions
         print(f"Performing {num_eval} system evaluations.")
         
         instantaneous_constr_satisfied_matrix = np.empty(
-            shape=(num_ambient_conditions, num_ctrl_settings), dtype=bool)
+            shape=(num_ambient_conditions, num_ctrl_setpoint_combinations), dtype=bool)
         
         for n_amb, ambient_condition in enumerate(ambient_condition_sample.support_data):
-            for n_ctrl, ctrl_setpoints in enumerate(ctrl_setpoints_table):
+            ctrl_setpoint_combinations = itertools.product(*control_setpoint_vectors_list)
+            for n_ctrl, ctrl_setpoints in enumerate(ctrl_setpoint_combinations):
+                control = DataPoint.from_vector(data_vector=ctrl_setpoints,
+                                                order=ctrl_variables_order,
+                                                shapes_dict=ctrl_shapes_dict)
                 aggregate, instantaneous_constr_satisfied = \
                     control_eval_system.aggregate_from_ambient_cond(
                         ambient_condition=ambient_condition,
-                        control_setpoints=ctrl_setpoints)
+                        control_setpoints=control)
                 instantaneous_constr_satisfied_matrix[n_amb, n_ctrl] = instantaneous_constr_satisfied
                 for agg_var in control_eval_system.aggregation.output_interface.shapes(Aggregated).keys():
                     aggregate_evaluations[agg_var][n_amb, n_ctrl] = aggregate[agg_var]
-        pass
+                pass
 
 
-        num_ctrl_policies = num_ambient_conditions**len(ctrl_setpoint_combinations)
+        num_ctrl_policies = num_ambient_conditions**num_ctrl_setpoint_combinations
         print(f"Evaluating {num_ctrl_policies} control policies.")
                 
         multi_metrics_reduced = []
         constraints_satisfied = []
-        ctrl_settings_indices_product = itertools.product(range(num_ctrl_settings), repeat=num_ambient_conditions)
+        ctrl_settings_indices_product = itertools.product(range(num_ctrl_setpoint_combinations), repeat=num_ambient_conditions)
         for ctrl_indices in ctrl_settings_indices_product:
             inst_constraints_satisfied = np.all(
                 instantaneous_constr_satisfied_matrix[np.arange(num_ambient_conditions),
@@ -256,10 +257,15 @@ class GridSearch(ControlPolicyOptimization):
         
         # Specify discrete control strategy
         # control settings (linear index) for each ambient condition
-        amb_cond_ctrl_indices = np.unravel_index(best_index, [num_ctrl_settings] * num_ambient_conditions)
+        amb_cond_ctrl_indices = np.unravel_index([best_index], [num_ctrl_setpoint_combinations] * num_ambient_conditions)
         # Corresponding control setpoints as DataTable
-        control_setpoints_data = ctrl_setpoints_table.get_points(list(amb_cond_ctrl_indices))
-        
+        control_setpoint_list = []
+        for multi_index in amb_cond_ctrl_indices:
+            control_setpoints = np.array(list(ctrl_vector[i] for i, ctrl_vector in zip(multi_index, control_setpoint_vectors_list)))
+            control_setpoint_list.append(DataPoint.from_vector(data_vector=control_setpoints,
+                                                                order=ctrl_variables_order,
+                                                                shapes_dict=ctrl_shapes_dict))
+        control_setpoints_data = DataTable.from_data_points(control_setpoint_list)
         discrete_control_policy_params = DiscreteControlPolicyParams(
             ambient_support_data=ambient_condition_sample.support_data,
             control_out_data=control_setpoints_data
