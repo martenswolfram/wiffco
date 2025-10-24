@@ -27,6 +27,20 @@ class UpperBoundConstraint:
         self.upper_bound = upper_bound
         self.constraint_fun = constraint_fun
 
+class TwoSidedBounds:
+    """Container for upper and lower bounds for multiple variables of the same type.
+
+    Attributes:
+        upper_bound (DataPoint[DataType]): Upper bounds.
+        lower_bound (DataPoint[DataType]): Lower bounds.
+        data_type (Type[DataType]): Type of data stored.
+    """
+    def __init__(self,
+                 upper_bound: DataPoint[DataType],
+                 lower_bound: DataPoint[DataType]):
+        self.data_type = upper_bound.data_type
+        self.upper_bound = upper_bound
+        self.lower_bound = lower_bound
 
 class Constraint(Component, Generic[DataType]):
     """Abstract base class for all constraints.
@@ -40,6 +54,16 @@ class Constraint(Component, Generic[DataType]):
                  constraint_params: ComponentParams):
         super().__init__(component_name=constraint_name,
                          component_params=constraint_params)
+
+    def two_sided_bounds(self) -> TwoSidedBounds:
+        """Return two-sided bounds object for optimization, if possible.
+        This is only applicable if the constraint variables are directly evaluated against these bounds, and
+        can be provided by inherited classes, if applicable.  
+
+        Returns:
+            None: No bounds provided by base class.
+        """
+        return None
 
     def evaluate_satisfied(self,
                            constr_input_data: DataPoint[DataType]) -> bool:
@@ -88,26 +112,8 @@ class Constraint(Component, Generic[DataType]):
         """
         pass
 
-
 class ConstraintType(Enum):
     SEPARATE_CONSTRAINTS = "separate_constraints"
-
-
-class TwoSidedBounds:
-    """Container for upper and lower bounds for multiple variables of the same type.
-
-    Attributes:
-        upper_bound (DataPoint[DataType]): Upper bounds.
-        lower_bound (DataPoint[DataType]): Lower bounds.
-        data_type (Type[DataType]): Type of data stored.
-    """
-    def __init__(self,
-                 upper_bound: DataPoint[DataType],
-                 lower_bound: DataPoint[DataType]):
-        self.data_type = upper_bound.data_type
-        self.upper_bound = upper_bound
-        self.lower_bound = lower_bound
-
 
 class SeparateConstraintsParams(ComponentParams):
     """Parameter container for SeparateConstraints.
@@ -182,6 +188,14 @@ class SeparateConstraints(Constraint):
                          constraint_params=constraint_params)
         self.bounds = constraint_params.bounds
 
+    def two_sided_bounds(self) -> TwoSidedBounds:
+        """Return two-sided bounds object for optimization.
+
+        Returns:
+            TwoSidedBounds: Tow-sided bounds object.
+        """
+        return self.bounds
+
     def _evaluate_satisfied(self,
                             constr_input_data: DataPoint[DataVariable]) -> bool:
         """Check if all constraints are satisfied for the given input.
@@ -214,7 +228,7 @@ class SeparateConstraints(Constraint):
         """
         def eval_nl_constraints(x):
             constraints_eval = eval_constraint_from_x(x)
-            return np.concatenate([constraints_eval[var] for var in self.bounds.upper_bound.order])
+            return np.concatenate([constraints_eval[var].ravel() for var in self.bounds.upper_bound.order])
 
         return NonlinearConstraint(
             fun=eval_nl_constraints,

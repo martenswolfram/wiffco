@@ -1,7 +1,7 @@
 from typing import Dict, Any, Tuple, Sequence
 from abc import ABC, abstractmethod
 import numpy as np
-from scipy.optimize import minimize
+from scipy.optimize import minimize, Bounds
 from functools import lru_cache
 import itertools
 from enum import Enum
@@ -363,19 +363,28 @@ class SimultaneousOptimization(ControlPolicyOptimization):
 
         # define control-constraints
         num_ac = len(opt_mgr.control_policy.control_out_data)
-        num_ctrl = np.prod(list(np.prod(shape) for \
-                               shape in opt_mgr.control_policy.control_out_data.shapes().values()))
+        two_sided_bounds = opt_mgr.control_eval_system.control_constraint.two_sided_bounds()
+        bounds = None
+        if two_sided_bounds is not None:
+            lower_bound_tiled = np.tile(two_sided_bounds.lower_bound.to_vector(), num_ac)
+            upper_bound_tiled = np.tile(two_sided_bounds.upper_bound.to_vector(), num_ac)
+            bounds = Bounds(lb=lower_bound_tiled, ub=upper_bound_tiled)
+        else:
+            bounds = None
+            num_ctrl = np.prod(list(np.prod(shape) for \
+                                shape in opt_mgr.control_policy.control_out_data.shapes().values()))
+            for i_ac in np.arange(num_ac):
+                def get_ctrl_setpoints_for_ac(x, i_ac=i_ac):
+                    return DataPoint.from_vector(data_vector=x[i_ac * num_ctrl : (i_ac + 1) * num_ctrl],
+                                                 order=opt_mgr.control_policy.control_out_data.order,
+                                                 shapes_dict=opt_mgr.control_policy.control_out_data.shapes())
+                constraints.append(opt_mgr.control_eval_system.control_constraint.scipy_constraint(
+                    eval_constraint_from_x=get_ctrl_setpoints_for_ac))
 
-        for i_ac in np.arange(num_ac):
-            def get_ctrl_setpoints_for_ac(x, i_ac=i_ac):
-                return DataPoint.from_vector(data_vector=x[i_ac * num_ctrl : (i_ac + 1) * num_ctrl],
-                                             order=opt_mgr.control_policy.control_out_data.order,
-                                             shapes_dict=opt_mgr.control_policy.control_out_data.shapes())
-            constraints.append(opt_mgr.control_eval_system.control_constraint.scipy_constraint(
-                eval_constraint_from_x=get_ctrl_setpoints_for_ac))
         x0 = opt_mgr.control_policy.control_out_data.to_vector()
         res = minimize(cost_function,
                        x0,
+                       bounds=bounds,
                        method=self.scipy_method,
                        constraints=constraints,
                        options=self.scipy_options)
