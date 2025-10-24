@@ -270,8 +270,8 @@ class GridSearch(ControlPolicyOptimization):
             ambient_support_data=ambient_condition_sample.support_data,
             control_out_data=control_setpoints_data
         )
-        return DiscreteControlPolicy(policy_name="optimized_discrete_control_policy",
-                                     policy_params=discrete_control_policy_params)
+        return DiscreteControlPolicy(name="optimized_discrete_control_policy",
+                                     params=discrete_control_policy_params)
 
 class SimultaneousOptimizationParams:
     def __init__(self,
@@ -331,8 +331,8 @@ class ContinuousOptimizationManager:
         discrete_control_policy_params = DiscreteControlPolicyParams(
             ambient_support_data=amb_cond_sample.support_data,
             control_out_data=control_setpoints)        
-        self.control_policy = DiscreteControlPolicy(policy_name="discrete_control_policy",
-                                                    policy_params=discrete_control_policy_params)
+        self.control_policy = DiscreteControlPolicy(name="discrete_control_policy",
+                                                    params=discrete_control_policy_params)
             
 class SimultaneousOptimization(ControlPolicyOptimization):
     def __init__(self,

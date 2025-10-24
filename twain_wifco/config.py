@@ -78,8 +78,8 @@ def control_policy_from_json(json_path: pathlib.Path):
     param_dict = parse_json_file(path=json_path)
     policy_name = param_dict["name"]
     params = discrete_control_policy_params_from_dict(param_dict=param_dict["policy_params"])
-    return DiscreteControlPolicy(policy_name=policy_name,
-                                 policy_params=params)
+    return DiscreteControlPolicy(name=policy_name,
+                                 params=params)
     
 def aggregation_from_json(json_path: pathlib.Path):
     param_dict = parse_json_file(path=json_path)
