@@ -13,7 +13,7 @@ from twain_wifco.interface import (
     ModelOutput,
     Interface,
 )
-from twain_wifco.utils import (
+from twain_wifco.scattered_interpolation import (
     ScatteredInterpolatorParams,
     ScatteredInterpolator,
     scattered_interpolator_params_from_dict,
