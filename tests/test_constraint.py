@@ -8,38 +8,29 @@ from twain_wifco.interface import (
     DataPoint)
 
     
-# def test_linear_control_constraint():
-#     test_data_folder = pathlib.Path(__file__).parent / "data"
-#     json_path = test_data_folder / "linear_control_constraint.json"
-#     linear_control_constraint = constraint_from_json(json_path=json_path)
+def test_linear_control_constraint():
+    test_data_folder = pathlib.Path(__file__).parent / "data"
+    json_path = test_data_folder / "linear_control_constraint.json"
+    linear_control_constraint = constraint_from_json(json_path=json_path)
         
-#     # Initialization
-#     assert linear_control_constraint.component_name == "linear_control_constraint"
-#     assert linear_control_constraint.constraint_variables == \
-#         [Control.POWER_REGULATION, Control.YAW_STEERING]
-#     assert np.array_equal(linear_control_constraint.stacked_lower_bound,
-#                           np.array([1, -np.inf]))
-#     assert np.array_equal(linear_control_constraint.stacked_upper_bound,
-#                           np.array([4, np.inf]))
-        
-#     # Constraint evaluation
-#     violated_constraint_eval = linear_control_constraint.evaluate(
-#         constr_values={Control.YAW_STEERING: np.array([0]),
-#                             Control.POWER_REGULATION: np.array([0])})
-#     assert np.array_equal(violated_constraint_eval.lower_diff,
-#                           np.array([-1, np.inf]))
-#     assert np.array_equal(violated_constraint_eval.upper_diff,
-#                           np.array([-4, -np.inf]))
-#     assert violated_constraint_eval.satisfied() is not True
+    # Constraint evaluation
+    constraint_satisfied = linear_control_constraint.evaluate_satisfied(
+        constr_input_data=DataPoint(
+            {
+                Control.YAW_STEERING: np.array([0]),
+                Control.POWER_REGULATION: np.array([0])
+            }
+        ))
+    assert constraint_satisfied is not True
     
-#     satisfied_constraint_eval = linear_control_constraint.evaluate(
-#         constr_values={Control.YAW_STEERING: np.array([0]),
-#                      Control.POWER_REGULATION: np.array([2])})
-#     assert np.array_equal(satisfied_constraint_eval.lower_diff,
-#                           np.array([1, np.inf]))
-#     assert np.array_equal(satisfied_constraint_eval.upper_diff,
-#                           np.array([-2, -np.inf]))
-#     assert satisfied_constraint_eval.satisfied() is True
+    constraint_satisfied = linear_control_constraint.evaluate_satisfied(
+        constr_input_data=DataPoint(
+            {
+                Control.YAW_STEERING: np.array([0]),
+                Control.POWER_REGULATION: np.array([2])
+            }
+        ))
+    assert constraint_satisfied is True
 
 
 def test_acc_metrics_constraint():

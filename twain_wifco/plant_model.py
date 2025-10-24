@@ -1,4 +1,8 @@
-from typing import Dict, Any, List, Type, Callable
+from typing import (
+    Dict,
+    Any,
+    Type,
+    Callable)
 from abc import abstractmethod
 from enum import Enum
 import numpy as np
@@ -10,8 +14,7 @@ from twain_wifco.interface import (
     Ambient,
     Control,
     ModelOutput,
-    Interface,
-    DataVariable)
+    Interface)
 from twain_wifco.utils import (
     ScatteredInterpolatorParams,
     ScatteredInterpolator,
