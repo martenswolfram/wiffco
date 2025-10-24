@@ -6,37 +6,57 @@ from typing import (
     TypeVar,
     Dict,
     Any,
-    Generic)
+    Generic
+)
 import numpy as np
 from dataclasses import dataclass
 from abc import ABC, abstractmethod
 from enum import Enum
 
+
+# ======================================================================
+# ENUMERATIONS
+# ======================================================================
+
 class Ambient(Enum):
+    """Enumeration of ambient (environmental and contextual) variables."""
     WIND_SPEED = "wind_speed"
     WIND_DIRECTION = "wind_direction"
     ELECTRICITY_PRICE = "electricity_price"
 
+
 class Control(Enum):
+    """Enumeration of control variables."""
     POWER_REGULATION = "power_regulation"
     YAW_STEERING = "yaw_steering"
 
+
 class ModelOutput(Enum):
+    """Enumeration of model output variables."""
     ELECTRICAL_POWER = "electrical_power"
     DAMAGE_RATE = "damage_rate"
 
+
 class Aggregated(Enum):
+    """Enumeration of aggregated variables (derived from outputs and ambient conditions)."""
     REVENUE_RATE = "revenue_rate"
     DAMAGE_RATE = "damage_rate"
-    
+
+
 class AccumulatedMetric(Enum):
+    """Enumeration of accumulated (time-integrated) metrics."""
     REVENUE = "revenue"
     ACCRUED_DAMAGE = "accrued_damage"
 
-# Union of data types
+
+# ======================================================================
+# TYPE DEFINITIONS
+# ======================================================================
+
+# Union of all possible data variable types
 DataVariable = Ambient | Control | ModelOutput | Aggregated | AccumulatedMetric
 
-# Data-type TypeVar
+# Generic type variables for class parameterization
 DataType = TypeVar("DataType",
                    Ambient,
                    Control,
@@ -44,105 +64,132 @@ DataType = TypeVar("DataType",
                    Aggregated,
                    AccumulatedMetric)
 
-# Allow statistical distributions only over Ambient condition and Aggregated variables
 StatisticalType = TypeVar("StatisticalType",
                           Ambient,
                           Aggregated)
 
-# Allow constraint variables to be only Control, Aggregated or AccumulatedMetric
 ConstraintType = TypeVar("ConstraintType",
                          Control,
                          Aggregated,
                          AccumulatedMetric)
 
+
+# ======================================================================
+# HELPER FUNCTIONS
+# ======================================================================
+
 def get_default_value(data_var: DataVariable,
                       shape: Tuple[int]) -> np.ndarray:
+    """Return a default numpy array for a given data variable."""
     if data_var == Control.POWER_REGULATION:
         return np.ones(shape=shape)
     elif data_var == Control.YAW_STEERING:
         return np.zeros(shape=shape)
-    else:
-        raise ValueError(f"No default value for data variable '{data_var}'.") 
+    raise ValueError(f"No default value defined for data variable '{data_var}'.")
+
 
 def get_abs_tol(data_var: DataVariable) -> float:
-    if data_var == Ambient.WIND_DIRECTION:
-        return 0.001
-    elif data_var == Ambient.WIND_SPEED:
-        return 0.001
-    elif data_var == Ambient.ELECTRICITY_PRICE:
-        return 0.001
-    elif data_var == Control.POWER_REGULATION:
-        return 0.1
-    elif data_var == AccumulatedMetric.ACCRUED_DAMAGE:
-        return 0.1
-    else:
-        return 0.0
+    """Return the absolute tolerance for a specific data variable."""
+    mapping = {
+        Ambient.WIND_DIRECTION: 0.001,
+        Ambient.WIND_SPEED: 0.001,
+        Ambient.ELECTRICITY_PRICE: 0.001,
+        Control.POWER_REGULATION: 0.1,
+        AccumulatedMetric.ACCRUED_DAMAGE: 0.1
+    }
+    return mapping.get(data_var, 0.0)
+
+
+# ======================================================================
+# DATA COLLECTION CLASSES
+# ======================================================================
 
 @dataclass
 class DataCollection(Generic[DataType]):
+    """Base container class for mapping variables to numpy arrays.
+
+    This class handles shared functionality between `DataPoint` and `DataTable`.
+    """
+
     data: dict[DataType, np.ndarray]
     data_type: Type[DataType] | None = None
     order: list[DataType] | None = None
     abs_tols: dict[DataType, float] | None = None
 
     def __post_init__(self):
+        """Validate and initialize derived attributes."""
         if self.order is None:
             self.order = list(self.data.keys())
         if len(self.order) > 0:
             self.data_type = type(self.order[0])
             if self.abs_tols is None:
-                self.abs_tols = {data_var: get_abs_tol(data_var) for data_var in self.order}
-    
+                self.abs_tols = {dv: get_abs_tol(dv) for dv in self.order}
+
     def shapes(self):
+        """Must be implemented by subclasses to return variable shapes."""
         raise NotImplementedError(
-            f"{self.__class__.__name__} must implement `shapes()`"
+            f"{self.__class__.__name__} must implement `shapes()`."
         )
 
     def keys(self):
+        """Return the variable keys of this collection."""
         return self.data.keys()
-    
+
     def items(self):
+        """Return key-value pairs of data variables and arrays."""
         return self.data.items()
-    
+
     def __getitem__(self, key: DataType) -> np.ndarray:
+        """Access the array corresponding to a given variable."""
         return self.data[key]
-    
-    def abs_tols_vec(self):
-        return np.concatenate(
-            [self.abs_tols[data_var] * np.ones(np.prod(self.shapes()[data_var])) for \
-             data_var in self.order])
-    
-    def abs_tol(self, key: DataType):
+
+    def abs_tols_vec(self) -> np.ndarray:
+        """Concatenate absolute tolerances into a flat vector."""
+        return np.concatenate([
+            self.abs_tols[dv] * np.ones(np.prod(self.shapes()[dv]))
+            for dv in self.order
+        ])
+
+    def abs_tol(self, key: DataType) -> float:
+        """Return the absolute tolerance for a single variable."""
         return self.abs_tols[key]
-    
-    def to_vector(self, keys: List[DataType] = None) -> np.ndarray:
+
+    def to_vector(self, keys: List[DataType] | None = None) -> np.ndarray:
+        """Flatten and concatenate all variable arrays into a single vector."""
         if keys is None:
             keys = self.order
         return np.concatenate([self.data[k].ravel() for k in self.order if k in keys])
 
     def update_from_vector(self, vector: np.ndarray):
+        """Update variable data from a flattened vector."""
         offset = 0
         for key in self.order:
             size = self.data[key].size
             self.data[key] = vector[offset:offset+size].reshape(self.data[key].shape)
             offset += size
-     
+
     def __eq__(self, other: object) -> bool:
+        """Compare two DataCollections elementwise within tolerance."""
         if not isinstance(other, DataCollection):
             return False
         if set(self.data.keys()) != set(other.data.keys()):
             return False
         return all(
-            np.allclose(self.data[key], other.data[key], atol=self.abs_tol(key))
-            for key in self.data.keys()
+            np.allclose(self.data[k], other.data[k], atol=self.abs_tol(k))
+            for k in self.data.keys()
         )
+
 
 @dataclass(eq=False)
 class DataPoint(DataCollection[DataType]):
+    """Represents a single data point (non-tabular)."""
+
     def shapes(self):
+        """Return the shape of each variable array."""
         return {k: v.shape for k, v in self.data.items()}
-    
+
     def __sub__(self, other: "DataPoint[DataType]") -> "DataPoint[DataType]":
+        """Subtract two DataPoint objects elementwise."""
         if set(self.data.keys()) != set(other.data.keys()):
             raise KeyError("DataPoint instances must have identical keys for subtraction.")
 
@@ -154,51 +201,55 @@ class DataPoint(DataCollection[DataType]):
             new_data[k] = np.subtract(self.data[k], other.data[k])
 
         return DataPoint(new_data, self.order)
-    
+
     @classmethod
     def from_vector(cls,
                     data_vector: np.ndarray,
                     order: List[DataVariable],
-                    shapes_dict: Dict[DataType, Tuple[int, ...]]) -> "DataTable[DataType]":
+                    shapes_dict: Dict[DataType, Tuple[int, ...]]) -> "DataPoint[DataType]":
+        """Construct a DataPoint instance from a flat vector."""
         data_dict = {}
-        col_index = 0
+        offset = 0
         for var in order:
             numel = np.prod(shapes_dict[var])
-            data_dict[var] = np.reshape(data_vector[col_index:(col_index + numel)], shape=shapes_dict[var])
+            data_dict[var] = np.reshape(data_vector[offset:(offset + numel)], shape=shapes_dict[var])
+            offset += numel
         return cls(data_dict, order)
+
 
 @dataclass(eq=False)
 class DataTable(DataCollection[DataType]):
-    def __len__(self):
-        first_key = self.order[0]
-        return self.data[first_key].shape[0]
+    """Represents a table of multiple data points (2D structure)."""
+
+    def __len__(self) -> int:
+        """Return the number of rows (data points) in the table."""
+        return self.data[self.order[0]].shape[0]
 
     def __iter__(self):
+        """Iterate over individual DataPoint instances."""
         for i in range(len(self)):
             yield self.get_point(i)
 
-    def shapes(self):
+    def shapes(self) -> Dict[DataType, Tuple[int, ...]]:
+        """Return shapes of the per-variable data arrays (excluding leading row dimension)."""
         return {k: v.shape[1:] for k, v in self.data.items()}
-    
+
     def to_matrix(self) -> np.ndarray:
+        """Flatten all variable arrays and combine into a single 2D matrix."""
         n_points = len(self)
         flattened = [self.data[k].reshape(n_points, -1) for k in self.order]
         return np.concatenate(flattened, axis=1)
-    
+
     def get_point(self, idx: int) -> DataPoint[DataType]:
-        return DataPoint({
-            k: self.data[k][idx] for k in self.order
-        }, self.order)
-        
+        """Extract a single DataPoint (row) by index."""
+        return DataPoint({k: self.data[k][idx] for k in self.order}, self.order)
+
     def get_points(self, ids: np.ndarray) -> "DataTable[DataType]":
-        return DataTable({
-            k: self.data[k][ids] for k in self.order
-        }, self.order)
-                    
-    def find_matching_point(self,
-                            data_point: DataPoint[DataType]) -> int:
-        
-        # Find correct support point
+        """Extract multiple rows by index array."""
+        return DataTable({k: self.data[k][ids] for k in self.order}, self.order)
+
+    def find_matching_point(self, data_point: DataPoint[DataType]) -> int:
+        """Find the row index corresponding to a given DataPoint."""
         mask = np.all(np.isclose(
             self.to_matrix(),
             data_point.to_vector(),
@@ -206,12 +257,11 @@ class DataTable(DataCollection[DataType]):
             axis=1)
         row_index = np.where(mask)[0]
         if not len(row_index):
-            raise ValueError("DataTable.find_point: Data point not found in data table.")
+            raise ValueError(f"Data point not found in DataTable '{self.__class__.__name__}'.")
         return row_index[0]
-    
-    def update_point_from_vector(self,
-                                 ind: int,
-                                 vector: np.ndarray):
+
+    def update_point_from_vector(self, ind: int, vector: np.ndarray):
+        """Overwrite a specific row of the table with new flattened data."""
         i = 0
         for k in self.order:
             n = self.data[k][ind].size
@@ -223,25 +273,31 @@ class DataTable(DataCollection[DataType]):
                     data_matrix: np.ndarray,
                     order: List[DataVariable],
                     shapes_dict: Dict[DataType, Tuple[int, ...]]) -> "DataTable[DataType]":
+        """Construct a DataTable from a flat 2D numpy matrix."""
         data_dict = {}
-        col_index = 0
-        num_points = data_matrix.shape[0]
+        offset = 0
+        n_rows = data_matrix.shape[0]
         for var in order:
             numel = np.prod(shapes_dict[var])
-            data_dict[var] = np.reshape(data_matrix[:, col_index:(col_index + numel)], shape=(num_points, *(shapes_dict[var])))
-            
+            data_dict[var] = np.reshape(
+                data_matrix[:, offset:(offset + numel)],
+                shape=(n_rows, *shapes_dict[var])
+            )
+            offset += numel
         return cls(data_dict, order)
 
     @classmethod
-    def from_data_points(cls,
-                         data_points: List[DataPoint]):
-        if len(data_points) == 0:
+    def from_data_points(cls, data_points: List[DataPoint]):
+        """Combine a list of DataPoint objects into a single DataTable."""
+        if not data_points:
             return cls({})
-        data_dict = {var: np.concatenate(list(data_point[var][np.newaxis, :] for \
-                                              data_point in data_points)) for \
-                                                var in data_points[0].order}
-            
-        return cls(data_dict)
+        order = data_points[0].order
+        data_dict = {
+            var: np.stack([dp[var] for dp in data_points])
+            for var in order
+        }
+        return cls(data_dict, order)
+
 
 class Interface:
     def __init__(self,
