@@ -27,21 +27,30 @@ class MetricsAccumulation(Component):
         return self._acc_metrics(aggregate=aggregate,
                                  duration=duration)
 
+    def expected_acc_metrics(self,
+                              aggregate_statistics: Statistics,
+                              duration: int):
+        
+        self.validate_input_shapes(input_shapes={
+            Aggregated: aggregate_statistics.output_interface.shapes(data_type=Aggregated)
+            })
+        
+        return self._expected_acc_metrics(aggregate_statistics=aggregate_statistics,
+                                          duration=duration)
+
     @abstractmethod
     def _acc_metrics(self,
                      aggregate: DataPoint[Aggregated],
                      duration: int) -> DataPoint[AccumulatedMetric]:
         pass
     
-    def expected_acc_metrics(self,
-                       aggregate_statistics: Statistics,
-                       duration: int):
-        aggregate_expectation = aggregate_statistics.expected_value()
-        
-        return self._acc_metrics(aggregate=aggregate_expectation,
-                                 duration=duration)
-        
-
+    @abstractmethod
+    def _expected_acc_metrics(self,
+                              aggregate_statistics: Statistics,
+                              duration: int) -> DataPoint[AccumulatedMetric]:
+        pass
+    
+    
 class MetricsAccumulationType(Enum):
     DISCOUNTED_INTEGRATION = "discounted_integration"
 
@@ -103,3 +112,10 @@ class DiscountedIntegration(MetricsAccumulation):
 
         return DataPoint(accumulated_metrics)
      
+    def _expected_acc_metrics(self,
+                              aggregate_statistics: Statistics,
+                              duration: int) -> DataPoint[AccumulatedMetric]:
+        aggregate_expectation = aggregate_statistics.expected_value()
+
+        return self._acc_metrics(aggregate=aggregate_expectation,
+                                 duration=duration)
