@@ -22,7 +22,7 @@ from twain_wifco.control_policy import (
 from twain_wifco.plant_model import PlantModel
 from twain_wifco.aggregation import Aggregation
 from twain_wifco.metrics_accumulation import MetricsAccumulation
-from twain_wifco.constraint import TwoSidedConstraint
+from twain_wifco.constraint import Constraint
 from twain_wifco.multi_metrics_reduction import MultiMetricsReduction
 
 class ControlEvaluationSystem:
@@ -30,9 +30,9 @@ class ControlEvaluationSystem:
                  name: str, 
                  plant_model: PlantModel,
                  aggregation: Aggregation,
-                 control_constraint: TwoSidedConstraint,
+                 control_constraint: Constraint,
                  metrics_accumulation: MetricsAccumulation,
-                 accumulated_constraint: TwoSidedConstraint,
+                 accumulated_constraint: Constraint,
                  multi_metrics_reduction: MultiMetricsReduction):
         
         # Parameters

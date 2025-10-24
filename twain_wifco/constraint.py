@@ -22,7 +22,7 @@ class UpperBoundConstraint:
         self.upper_bound = upper_bound
         self.constraint_fun = constraint_fun
 
-class TwoSidedConstraint(Component, Generic[DataType]):
+class Constraint(Component, Generic[DataType]):
     def __init__(self,
                  constraint_name: str,
                  constraint_params: ComponentParams):
@@ -31,6 +31,7 @@ class TwoSidedConstraint(Component, Generic[DataType]):
         
     def evaluate_satisfied(self,
                  constr_input_data: DataPoint[DataType]) -> bool:
+        # EValuate whether the constraint is satisfied for the given input 
 
         self.validate_inputs(input_data={constr_input_data.data_type: constr_input_data})
 
@@ -39,33 +40,35 @@ class TwoSidedConstraint(Component, Generic[DataType]):
     @abstractmethod
     def _evaluate_satisfied(self,
                   constr_input_data: DataPoint[DataVariable]) -> bool:
+        # specific implemetation
         pass
 
     @abstractmethod
     def scipy_constraint(self, eval_constraint_from_x):
+        # Return an scipy constraint object that can be used in optimization  
         pass
 
     @abstractmethod
     def upper_bound_constraints(self) -> List[UpperBoundConstraint]:
+        # Convert all constraints (upper- or lower-bound) into upper-bound constraints 
         pass
 
 
 class ConstraintType(Enum):
     SEPARATE_LINEAR_CONSTRAINTS = "separate_linear_constraints"
 
-class TwoSidedSeparateBounds:
+class TwoSidedBounds:
     def __init__(self,
                  upper_bound: DataPoint[ConstraintType],
                  lower_bound: DataPoint[ConstraintType]):
         self.data_type = upper_bound.data_type
-        self.variables = upper_bound.keys()
         self.upper_bound = upper_bound
         self.lower_bound = lower_bound
 
-class SeparateLinearConstraintsParams(ComponentParams):
+class SeparateConstraintsParams(ComponentParams):
     def __init__(self,
-                 bounds: TwoSidedSeparateBounds):
-        self.bounds = bounds
+                 two_sided_bounds: TwoSidedBounds):
+        self.bounds = two_sided_bounds
         
     def input_interface(self) -> Interface:
         return Interface(all_shapes={
@@ -75,7 +78,7 @@ class SeparateLinearConstraintsParams(ComponentParams):
     def output_interface(self):
         return Interface(all_shapes={})
 
-def separate_linear_constraints_params_from_dict(param_dict: Dict[str, Dict | Any]):
+def separate_constraints_params_from_dict(param_dict: Dict[str, Dict | Any]):
     
     if param_dict["data_type"] == "control":
         data_type = Control
@@ -99,27 +102,28 @@ def separate_linear_constraints_params_from_dict(param_dict: Dict[str, Dict | An
         upper_bound_data[data_type(constr_var)] = upper_bound
         lower_bound_data[data_type(constr_var)] = lower_bound
             
-    bounds = TwoSidedSeparateBounds(
+    two_sided_bounds = TwoSidedBounds(
         upper_bound=DataPoint(data=upper_bound_data),
         lower_bound=DataPoint(data=lower_bound_data)
     )
-    return SeparateLinearConstraintsParams(
-        bounds=bounds)
+    return SeparateConstraintsParams(
+        two_sided_bounds=two_sided_bounds)
 
-class SeparateLinearConstraints(TwoSidedConstraint):
+class SeparateConstraints(Constraint):
     def __init__(self,
                  constraint_name: str,
-                 constraint_params: SeparateLinearConstraintsParams):
+                 constraint_params: SeparateConstraintsParams):
         super().__init__(constraint_name=constraint_name,
                          constraint_params=constraint_params)
         self.bounds = constraint_params.bounds
         
     def _evaluate_satisfied(self,
                   constr_input_data: DataPoint[DataVariable]) -> bool:
+        variables = self.bounds.upper_bound.keys()
         relevant_constr_input_data = DataPoint(
             {constr_var: constr_data for \
              constr_var, constr_data in constr_input_data.data.items() \
-                if constr_var in self.bounds.variables})
+                if constr_var in variables})
 
         lower_diff = (relevant_constr_input_data - self.bounds.lower_bound).to_vector()
         upper_diff = (relevant_constr_input_data - self.bounds.upper_bound).to_vector()
@@ -127,11 +131,9 @@ class SeparateLinearConstraints(TwoSidedConstraint):
         return all(lower_diff >= - self.bounds.lower_bound.abs_tols_vec()) and \
             all(upper_diff <= self.bounds.upper_bound.abs_tols_vec())
 
-    # TODO: In the following functions, make sure that the order of the variables is safe!!
     def scipy_constraint(self, eval_constraint_from_x):
         
         def eval_nl_constraints(x):
-            # TODO: should eval_constraint_from_x be vector-to-vector? 
             constraints_eval = eval_constraint_from_x(x)
             result = np.concatenate(list(constraints_eval[constr_var] for \
                                     constr_var in self.bounds.upper_bound.order))

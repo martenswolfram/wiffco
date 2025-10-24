@@ -9,13 +9,12 @@ from twain_wifco.control_policy import DiscreteControlPolicy
 from twain_wifco.statistics import Statistics
 from twain_wifco.interface import (
     Control,
-    AccumulatedMetric,
     DataPoint)
 from twain_wifco.optimization import (
     ControlEvaluationSystem,
     GridSearch,
     SimultaneousOptimization)
-from twain_wifco.constraint import SeparateLinearConstraints
+from twain_wifco.constraint import SeparateConstraints
 
 test_data_folder = pathlib.Path(__file__).parent / "data"
     
