@@ -156,11 +156,17 @@ class DataCollection(Generic[DataType]):
         """Return the absolute tolerance for a single variable."""
         return self.abs_tols[key]
 
-    def to_vector(self, keys: List[DataType] | None = None) -> np.ndarray:
+    def to_vector(self,
+                  keys: List[DataType] | None = None,
+                  batch_multiply: int | None = None) -> np.ndarray:
         """Flatten and concatenate all variable arrays into a single vector."""
         if keys is None:
             keys = self.order
-        return np.concatenate([self.data[k].ravel() for k in self.order if k in keys])
+        if batch_multiply is None:
+            return np.concatenate([self.data[k].ravel() for k in self.order if k in keys])
+        else:
+            # For batch evaluation, tile the bounds for each variable
+            return np.concatenate([np.tile(self.data[k].ravel(), batch_multiply) for k in self.order if k in keys])
 
     def update_from_vector(self, vector: np.ndarray):
         """Update variable data from a flattened vector."""
@@ -270,6 +276,22 @@ class DataTable(DataCollection[DataType]):
             self.data[k][ind] = vector[i:i+n].reshape(self.data[k].shape[1:])
             i += n
 
+    @classmethod
+    def from_vector(cls,
+                    data_vector: np.ndarray,
+                    order: List[DataVariable],
+                    shapes_dict: Dict[DataType, Tuple[int, ...]],
+                    num_points: int) -> "DataTable[DataType]":
+        """Construct a DataTable instance from a flat vector."""
+        data_dict = {}
+        offset = 0
+        for var in order:
+            numel = np.prod(shapes_dict[var]) * num_points
+            data_dict[var] = np.reshape(data_vector[offset:(offset + numel)],
+                                        shape=(num_points,) + shapes_dict[var])
+            offset += numel
+        return cls(data_dict, order)
+    
     @classmethod
     def from_matrix(cls,
                     data_matrix: np.ndarray,

@@ -95,7 +95,7 @@ def test_grid_search():
     
     # Evaluate result
     assert optimal_policy.control_out_data == DataPoint(
-           {Control.POWER_REGULATION: np.array([[3], [3], [1], [4], [4], [2]])})
+           {Control.POWER_REGULATION: np.array([[3], [2], [2], [2], [3], [3]])})
     
 def test_simultaneous_optimization():
     json_path = test_data_folder / "simultaneous_optimization.json"

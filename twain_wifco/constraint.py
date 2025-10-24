@@ -1,4 +1,4 @@
-from typing import Dict, Any, List, Generic, Callable
+from typing import Dict, Any, List, Generic, Callable, Tuple
 from abc import abstractmethod
 import numpy as np
 from scipy.optimize import NonlinearConstraint, Bounds
@@ -10,6 +10,7 @@ from twain_wifco.interface import (
     DataVariable,
     DataType,
     DataPoint,
+    DataTable,
     Interface
 )
 
@@ -89,6 +90,14 @@ class Constraint(Component, Generic[DataType]):
         Returns:
             bool: True if satisfied.
         """
+        pass
+
+    @abstractmethod
+    def scipy_constraint_batch(self,
+                               x_order: List[DataType],
+                               x_shapes_dict: Dict[DataType, Tuple[int, ...]],
+                               num_points: int):
+        """ Creates a SciPy NonlinearConstraint object for batch constraint evaluation"""
         pass
 
     @abstractmethod
@@ -194,7 +203,8 @@ class SeparateConstraints(Constraint):
         Returns:
             TwoSidedBounds: Tow-sided bounds object.
         """
-        return self.bounds
+        # return self.bounds
+        return None
 
     def _evaluate_satisfied(self,
                             constr_input_data: DataPoint[DataVariable]) -> bool:
@@ -216,6 +226,24 @@ class SeparateConstraints(Constraint):
 
         return all(lower_diff >= -self.bounds.lower_bound.abs_tols_vec()) and \
                all(upper_diff <= self.bounds.upper_bound.abs_tols_vec())
+
+    def scipy_constraint_batch(self,
+                               x_order: List[DataType],
+                               x_shapes_dict: Dict[DataType, Tuple[int, ...]],
+                               num_points: int):
+        """ Creates a SciPy NonlinearConstraint object for batch constraint evaluation"""
+        def eval_constraints(x):
+            # need to convert to DataTable and back because the variable orders could be different
+            # Create data table 
+            input_table = DataTable.from_vector(data_vector=x,
+                                                order=x_order,
+                                                shapes_dict=x_shapes_dict,
+                                                num_points=num_points)
+            return np.concatenate([input_table[var].ravel() for var in self.bounds.upper_bound.order])            
+        lb = self.bounds.lower_bound.to_vector(batch_multiply=num_points)
+        ub = self.bounds.upper_bound.to_vector(batch_multiply=num_points)
+        
+        return NonlinearConstraint(fun=eval_constraints, lb=lb, ub=ub)
 
     def scipy_constraint(self, eval_constraint_from_x: Callable) -> NonlinearConstraint:
         """Convert to SciPy NonlinearConstraint for optimization.

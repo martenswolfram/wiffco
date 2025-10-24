@@ -366,20 +366,19 @@ class SimultaneousOptimization(ControlPolicyOptimization):
         two_sided_bounds = opt_mgr.control_eval_system.control_constraint.two_sided_bounds()
         bounds = None
         if two_sided_bounds is not None:
+            # Handle as decision variable bounds if possible
             lower_bound_tiled = np.tile(two_sided_bounds.lower_bound.to_vector(), num_ac)
             upper_bound_tiled = np.tile(two_sided_bounds.upper_bound.to_vector(), num_ac)
             bounds = Bounds(lb=lower_bound_tiled, ub=upper_bound_tiled)
         else:
+            # Handle as nonlinear constraint functions otherwise
             bounds = None
-            num_ctrl = np.prod(list(np.prod(shape) for \
-                                shape in opt_mgr.control_policy.control_out_data.shapes().values()))
-            for i_ac in np.arange(num_ac):
-                def get_ctrl_setpoints_for_ac(x, i_ac=i_ac):
-                    return DataPoint.from_vector(data_vector=x[i_ac * num_ctrl : (i_ac + 1) * num_ctrl],
-                                                 order=opt_mgr.control_policy.control_out_data.order,
-                                                 shapes_dict=opt_mgr.control_policy.control_out_data.shapes())
-                constraints.append(opt_mgr.control_eval_system.control_constraint.scipy_constraint(
-                    eval_constraint_from_x=get_ctrl_setpoints_for_ac))
+            batch_control_constraint = opt_mgr.control_eval_system.control_constraint.scipy_constraint_batch(
+                x_order=opt_mgr.control_policy.control_out_data.order,
+                x_shapes_dict=opt_mgr.control_policy.control_out_data.shapes(),
+                num_points=num_ac
+            )
+            constraints.append(batch_control_constraint)
 
         x0 = opt_mgr.control_policy.control_out_data.to_vector()
         res = minimize(cost_function,
