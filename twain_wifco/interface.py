@@ -400,6 +400,25 @@ class Component(ABC):
         self.input_interface = component_params.input_interface()
         self.output_interface = component_params.output_interface()
 
+    def validate_input_shapes(self,
+                              input_shapes: Dict[Type[DataVariable],
+                                                 Dict[DataVariable, Tuple[int, ...]]]):
+        """Validate that the input data shapes satisfy this component’s interface.
+
+        Args:
+            input_shapes: Mapping from data type (e.g. Ambient, Control)
+                to shapes for each data variable.
+
+        Raises:
+            ValueError: If input variables are missing or mismatched in shape.
+        """
+        # Validate shape consistency with the declared input interface
+        self.input_interface.validate_shapes(
+            external_shapes=input_shapes,
+            component_name=self.component_name
+        )
+
+
     def validate_inputs(self,
                         input_data: Dict[Type[DataVariable], DataCollection[DataVariable]]):
         """Validate that input data satisfies this component’s interface.
@@ -418,7 +437,6 @@ class Component(ABC):
         }
 
         # Validate consistency with the declared input interface
-        self.input_interface.validate_shapes(
-            external_shapes=external_shapes,
-            component_name=self.component_name
+        self.validate_input_shapes(
+            input_shapes=external_shapes
         )
