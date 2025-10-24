@@ -1,4 +1,9 @@
-from typing import Dict, Any, List, Generic, TypeVar, Type
+from typing import (
+    Dict,
+    Any,
+    Generic,
+    TypeVar,
+    Type)
 from enum import Enum
 import numpy as np
 from scipy.interpolate import (
@@ -70,16 +75,12 @@ class ScatteredInterpolator:
                     values=self.out_data.to_matrix()
                 )
         else:
-            raise NotImplementedError("ScatteredDataInterpolator: Only RBF type implemented.")
+            raise NotImplementedError("ScatteredDataInterpolator: Only RBF and LINEAR type implemented.")
         pass
-
-    def evaluate_to_vector(self,
-                           query: DataPoint[InDataType]) -> DataPoint[OutDataType]:
-        x = query.to_vector(keys=self.support_data.order)
-        return self.interpolator(x).flatten()
         
     def evaluate(self,
                  query: DataPoint[InDataType]) -> DataPoint[OutDataType]:
-        result = self.evaluate_to_vector(query=query)
+        x = query.to_vector(keys=self.support_data.order)
+        result =  self.interpolator(x).flatten()
         self.out_data_point.update_from_vector(result)
         return self.out_data_point
