@@ -1,6 +1,7 @@
 from typing import Dict, Any, Tuple, Sequence
 from abc import ABC, abstractmethod
 import numpy as np
+import logging
 from scipy.optimize import minimize, Bounds
 from functools import lru_cache
 import itertools
@@ -24,6 +25,8 @@ from twain_wifco.aggregation import Aggregation
 from twain_wifco.metrics_accumulation import MetricsAccumulation
 from twain_wifco.constraint import Constraint
 from twain_wifco.multi_metrics_reduction import MultiMetricsReduction
+
+logger = logging.getLogger(__name__)
 
 class ControlEvaluationSystem:
     def __init__(self,
@@ -175,7 +178,7 @@ class GridSearch(ControlPolicyOptimization):
                         ambient_condition_statistics: Statistics[Ambient],
                         duration: int):
         
-        print(f"GridSearch: Find optimal control policy")
+        logger.info(f"GridSearch: Find optimal control policy")
         ambient_condition_sample = ambient_condition_statistics.systematic_sample(N_max=self.max_num_amb_cond)
         num_ambient_conditions = ambient_condition_sample.N
         ctrl_variables_order = list(self.control_setpoint_vectors.keys())
@@ -189,10 +192,10 @@ class GridSearch(ControlPolicyOptimization):
             aggr_var: np.empty(shape=(num_ambient_conditions, num_ctrl_setpoint_combinations, *aggr_shape)) \
             for aggr_var, aggr_shape in control_eval_system.aggregation.output_interface.shapes(Aggregated).items()
             }
-        print(f"Number of ambient conditions: {num_ambient_conditions}.")
-        print(f"Number of ctrl settings: {num_ctrl_setpoint_combinations}.")
+        logger.info(f"Number of ambient conditions: {num_ambient_conditions}.")
+        logger.info(f"Number of ctrl settings: {num_ctrl_setpoint_combinations}.")
         num_eval = num_ctrl_setpoint_combinations * num_ambient_conditions
-        print(f"Performing {num_eval} system evaluations.")
+        logger.info(f"Performing {num_eval} system evaluations.")
         
         instantaneous_constr_satisfied_matrix = np.empty(
             shape=(num_ambient_conditions, num_ctrl_setpoint_combinations), dtype=bool)
@@ -214,7 +217,7 @@ class GridSearch(ControlPolicyOptimization):
 
 
         num_ctrl_policies = num_ambient_conditions**num_ctrl_setpoint_combinations
-        print(f"Evaluating {num_ctrl_policies} control policies.")
+        logger.info(f"Evaluating {num_ctrl_policies} control policies.")
                 
         multi_metrics_reduced = []
         constraints_satisfied = []
@@ -456,7 +459,7 @@ class LagrangianRelaxation(ControlPolicyOptimization):
         lagrangian_lambdas = list(np.zeros_like(ub.upper_bound, dtype=float) for ub in upper_bound_constraints)
         # outer-iteration counter
         for t in range(self.max_iter):
-            print(f"Iteration {t}")
+            logger.debug(f"Iteration {t}")
             expected_constraint_evaluations = list(np.zeros_like(ub.upper_bound, dtype=float) for ub in upper_bound_constraints)
             for i_ac, (prob_weight, ambient_condition) in enumerate(ambient_condition_sample.weighted_variables_iter()):
 
@@ -530,8 +533,8 @@ class LagrangianRelaxation(ControlPolicyOptimization):
                 lagrangian_lambdas[i_constr] = lagrangian_lambda
                 if np.linalg.norm(subgradient, ord=np.inf) > self.subgradient_tol:
                     converged = False
-                print(f"subgradient: {subgradient}")
-                print(f"lag lambdas: {lagrangian_lambda}")
+                logger.debug(f"subgradient: {subgradient}")
+                logger.debug(f"lag lambdas: {lagrangian_lambda}")
 
             t += 1
             

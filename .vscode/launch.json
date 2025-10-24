@@ -18,6 +18,9 @@
             "args": [
                 "-s",
                 "-v",
+                "-o",
+                "log_cli=true",
+                "--log-cli-level=INFO",
                 "tests",
                 // "--ignore=tests/test_optimization.py",
                 // "tests/test_optimization.py",

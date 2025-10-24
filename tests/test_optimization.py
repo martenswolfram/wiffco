@@ -1,5 +1,6 @@
 import pathlib
 import numpy as np
+import logging
 from twain_wifco.config import (
     control_evaluation_system_from_json,
     control_optimization_from_json,
@@ -13,6 +14,8 @@ from twain_wifco.optimization import (
     ControlEvaluationSystem,
     GridSearch,
     SimultaneousOptimization)
+
+logger = logging.getLogger(__name__)
 
 test_data_folder = pathlib.Path(__file__).parent / "data"
     
