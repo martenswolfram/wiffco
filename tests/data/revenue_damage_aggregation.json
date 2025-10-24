@@ -1,7 +1,7 @@
 {
     "name": "revenue_damage_aggregation",
     "aggregation_type": "simple_product",
-    "aggregation_params": {
+    "params": {
         "aggregate_mappings":{
             "revenue_rate": {
                 "from_model":   ["electrical_power"],

@@ -10,8 +10,7 @@ from twain_wifco.interface import (
     Aggregated,
     DataTable,
     DataPoint,
-    Interface,
-    retrieve_single_key_str)
+    Interface)
 
 class SystematicSample:
     def __init__(self,

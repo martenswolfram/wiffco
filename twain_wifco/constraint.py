@@ -13,9 +13,7 @@ from twain_wifco.interface import (
     DataVariable,
     DataType,
     DataPoint,
-    DataTable,
-    Interface,
-    get_abs_tol)
+    Interface)
 
 class UpperBoundConstraint:
     def __init__(self,
@@ -126,8 +124,8 @@ class SeparateLinearConstraints(TwoSidedConstraint):
         lower_diff = (relevant_constr_input_data - self.bounds.lower_bound).to_vector()
         upper_diff = (relevant_constr_input_data - self.bounds.upper_bound).to_vector()
         
-        return all(lower_diff >= - self.bounds.lower_bound.abs_tols) and \
-            all(upper_diff <= self.bounds.upper_bound.abs_tols)
+        return all(lower_diff >= - self.bounds.lower_bound.abs_tols_vec()) and \
+            all(upper_diff <= self.bounds.upper_bound.abs_tols_vec())
 
     # TODO: In the following functions, make sure that the order of the variables is safe!!
     def scipy_constraint(self, eval_constraint_from_x):

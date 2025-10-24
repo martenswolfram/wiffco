@@ -83,12 +83,12 @@ def control_policy_from_json(json_path: pathlib.Path):
     
 def aggregation_from_json(json_path: pathlib.Path):
     param_dict = parse_json_file(path=json_path)
-    aggregation_name = param_dict["name"]
+    name = param_dict["name"]
     aggregation_type = AggregationType(param_dict["aggregation_type"])
     if aggregation_type == AggregationType.SIMPLE_PRODUCT:
-        params = simple_product_params_from_dict(param_dict=param_dict["aggregation_params"])
-        return SimpleProduct(aggregation_name=aggregation_name,
-                             aggregation_params=params)
+        params = simple_product_params_from_dict(param_dict=param_dict["params"])
+        return SimpleProduct(name=name,
+                             params=params)
     else:
         raise NotImplementedError("Only simple_product aggregation implemented.")
 

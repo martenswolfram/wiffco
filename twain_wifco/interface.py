@@ -57,7 +57,6 @@ ConstraintType = TypeVar("ConstraintType",
 
 def get_default_value(data_var: DataVariable,
                       shape: Tuple[int]) -> np.ndarray:
-    # TODO: implement in DataVariable class 
     if data_var == Control.POWER_REGULATION:
         return np.ones(shape=shape)
     elif data_var == Control.YAW_STEERING:
@@ -66,7 +65,6 @@ def get_default_value(data_var: DataVariable,
         raise ValueError(f"No default value for data variable '{data_var}'.") 
 
 def get_abs_tol(data_var: DataVariable) -> float:
-    # TODO: implement in DataVariable class 
     if data_var == Ambient.WIND_DIRECTION:
         return 0.001
     elif data_var == Ambient.WIND_SPEED:
@@ -81,11 +79,11 @@ def get_abs_tol(data_var: DataVariable) -> float:
         return 0.0
 
 @dataclass
-class DataCollection(Generic[DataType]):
+class DataCollection(Generic[DataType], ABC):
     data: dict[DataType, np.ndarray]
-    data_type: Type[DataType] | None = None # TODO: Fix data type handling
+    data_type: Type[DataType] | None = None
     order: list[DataType] | None = None
-    abs_tols: np.ndarray | None = None
+    abs_tols: dict[DataType, float] | None = None
 
     def __post_init__(self):
         if self.order is None:
@@ -93,9 +91,12 @@ class DataCollection(Generic[DataType]):
         if len(self.order) > 0:
             self.data_type = type(self.order[0])
             if self.abs_tols is None:
-                self.abs_tols = np.concatenate([get_abs_tol(data_var) * np.ones(np.prod(shape)) for \
-                                                data_var, shape in self.shapes().items()])
+                self.abs_tols = {data_var: get_abs_tol(data_var) for data_var in self.order}
     
+    @abstractmethod
+    def shapes(self):
+        ...
+        
     def keys(self):
         return self.data.keys()
     
@@ -104,6 +105,14 @@ class DataCollection(Generic[DataType]):
     
     def __getitem__(self, key: DataType) -> np.ndarray:
         return self.data[key]
+    
+    def abs_tols_vec(self):
+        return np.concatenate(
+            [self.abs_tols[data_var] * np.ones(np.prod(self.shapes()[data_var])) for \
+             data_var in self.order])
+    
+    def abs_tol(self, key: DataType):
+        return self.abs_tols[key]
     
     def to_vector(self, keys: List[DataType] = None) -> np.ndarray:
         if keys is None:
@@ -116,9 +125,6 @@ class DataCollection(Generic[DataType]):
             n = self.data[k].size
             self.data[k] = vector[i:i+n].reshape(self.data[k].shape)
             i += n
-
-    def shapes(self):
-        return {k: v.shape for k, v in self.data.items()}
      
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, DataCollection):
@@ -129,6 +135,7 @@ class DataCollection(Generic[DataType]):
             if not np.array_equal(self.data[k], other.data[k]):
                 return False
         return True
+
 
 @dataclass(eq=False)
 class DataPoint(DataCollection[DataType]):
@@ -195,7 +202,7 @@ class DataTable(DataCollection[DataType]):
         mask = np.all(np.isclose(
             self.to_matrix(),
             data_point.to_vector(),
-            atol=self.abs_tols),
+            atol=self.abs_tols_vec()),
             axis=1)
         row_index = np.where(mask)[0]
         if not len(row_index):
@@ -292,21 +299,3 @@ class Component(ABC):
             external_shapes={data_type: data_collection.shapes() for \
                              data_type, data_collection in input_data.items()},
                              component_name=self.component_name)
-            
-def validate_data_flow(components: List[Component]):
-    current_out = {}
-    while len(components):
-        current_component = components.pop(0)
-        current_in = current_component.input_shape
-        if not (current_in <= current_out):
-            msg = (f"Insufficient input variables for component "
-                   f"'{current_component.component_name}'. "
-                   f"Missing variable(s): {current_in - current_out}")
-            raise ValueError(msg)
-        current_out = current_component.output_shape
-
-def retrieve_single_key_str(input_dict: Dict[str, Any], key_strs: Set[str]):
-    single_key = key_strs.intersection(input_dict.keys())
-    if not len(single_key) == 1:
-        raise ValueError(f"Exactly one element of {key_strs} must appear as key in {input_dict}.")
-    return list(single_key)[0]

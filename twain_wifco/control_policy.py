@@ -7,7 +7,6 @@ from twain_wifco.interface import (
     ComponentParams,
     Ambient,
     Control,
-    get_abs_tol,
     Interface)
 
 class DiscreteControlPolicyParams(ComponentParams):
@@ -66,7 +65,7 @@ class DiscreteControlPolicy(Component):
                             scale: float = 1):
         perturbed_ctrl_out_data = {}
         for ctrl_var, data in self.control_out_data.items():
-            magnitude = scale * get_abs_tol(ctrl_var)
+            magnitude = scale * self.control_out_data.abs_tol(ctrl_var)
             perturbed_ctrl_out_data[ctrl_var] = data + np.random.uniform(
                 low=-magnitude, high=magnitude, size=data.shape)
         perturbed_params = DiscreteControlPolicyParams(
