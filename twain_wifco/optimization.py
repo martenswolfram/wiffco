@@ -33,24 +33,32 @@ class ControlEvaluationSystem:
                  name: str, 
                  plant_model: PlantModel,
                  aggregation: Aggregation,
-                 control_constraint: Constraint,
+                 constraint_control: Constraint,
+                 constraint_aggregated: Constraint,
+                 constraint_accumulated: Constraint,
                  metrics_accumulation: MetricsAccumulation,
-                 accumulated_constraint: Constraint,
                  multi_metrics_reduction: MultiMetricsReduction):
         
         # Parameters
         self.name = name
         self.plant_model = plant_model
         self.aggregation = aggregation
-        self.control_constraint = control_constraint
+        self.constraint_control = constraint_control
+        self.constraint_aggregated = constraint_aggregated
+        self.constraint_accumulated = constraint_accumulated
         self.metrics_accumulation = metrics_accumulation
-        self.accumulated_constraint = accumulated_constraint
         self.multi_metrics_reduction = multi_metrics_reduction
 
     def aggregate_from_ambient_cond(self,
                                     ambient_condition: DataPoint[Ambient],
                                     control_setpoints: DataPoint[Control],
                                     eval_constraints: bool = True):
+        
+        if not eval_constraints:
+            constraint_satisfied = True
+        else:
+            constraint_satisfied = self.constraint_control.evaluate_satisfied(
+                constr_input_data=control_setpoints)
         
         model_output = self.plant_model.evaluate(
              meteorological_condition=ambient_condition,
@@ -59,11 +67,10 @@ class ControlEvaluationSystem:
                                                        ambient_condition=ambient_condition,
                                                        control_setpoints=control_setpoints)
         
-        if not eval_constraints:
-            constraint_satisfied = True
-        else:
-            constraint_satisfied = self.control_constraint.evaluate_satisfied(
-                constr_input_data=control_setpoints)
+        if eval_constraints:
+            constraint_satisfied &= self.constraint_aggregated.evaluate_satisfied(
+                constr_input_data=aggregate)
+        
         return aggregate, constraint_satisfied
 
     def acc_metrics_from_ambient_cond(self,
@@ -81,7 +88,7 @@ class ControlEvaluationSystem:
                                                             duration=duration)
         
         if eval_constraints:
-            constraints_satisfied &= self.accumulated_constraint.evaluate_satisfied(
+            constraints_satisfied &= self.constraint_accumulated.evaluate_satisfied(
                 constr_input_data=acc_metrics)
             
         return acc_metrics, constraints_satisfied
@@ -118,7 +125,7 @@ class ControlEvaluationSystem:
             aggregate_statistics=discrete_aggregate_statistics,
             duration=duration)
         if eval_constraints:
-            constraints_satisfied &= self.accumulated_constraint.evaluate_satisfied(constr_input_data=expected_acc_metrics)
+            constraints_satisfied &= self.constraint_accumulated.evaluate_satisfied(constr_input_data=expected_acc_metrics)
         
         return expected_acc_metrics, constraints_satisfied
     
@@ -246,7 +253,7 @@ class GridSearch(ControlPolicyOptimization):
                     duration=duration)
                 multi_metrics_reduced.append(control_eval_system.multi_metrics_reduction.evaluate(
                     acc_metrics=expected_acc_metrics))
-                acc_metrics_constraint_satisfied = control_eval_system.accumulated_constraint.evaluate_satisfied(
+                acc_metrics_constraint_satisfied = control_eval_system.constraint_accumulated.evaluate_satisfied(
                     constr_input_data=expected_acc_metrics)
                 constraints_satisfied.append(acc_metrics_constraint_satisfied)
             
@@ -368,7 +375,7 @@ class SimultaneousOptimization(ControlPolicyOptimization):
         x_shapes_dict=opt_mgr.control_policy.control_out_data.shapes()
         # define constraint based on accumulated metrics
         acc_metrics_constraint = \
-            opt_mgr.control_eval_system.accumulated_constraint.scipy_object(
+            opt_mgr.control_eval_system.constraint_accumulated.scipy_object(
                 x_order=x_order,
                 x_shapes_dict=x_shapes_dict,                     
                 x_constraint_evaluation=expected_acc_metrics_w_cache)
@@ -376,7 +383,7 @@ class SimultaneousOptimization(ControlPolicyOptimization):
 
         # define control-constraints
         num_ac = len(opt_mgr.control_policy.control_out_data)
-        control_constraint_object = opt_mgr.control_eval_system.control_constraint.scipy_object(
+        control_constraint_object = opt_mgr.control_eval_system.constraint_control.scipy_object(
             x_order=x_order,
             x_shapes_dict=x_shapes_dict,
             num_points=num_ac,
@@ -455,7 +462,7 @@ class LagrangianRelaxation(ControlPolicyOptimization):
                 
         ambient_condition_sample = ambient_condition_statistics.systematic_sample(N_max=self.max_num_amb_cond)
 
-        upper_bound_constraints = control_eval_system.accumulated_constraint.upper_bound_constraints()
+        upper_bound_constraints = control_eval_system.constraint_accumulated.upper_bound_constraints()
         lagrangian_lambdas = list(np.zeros_like(ub.upper_bound, dtype=float) for ub in upper_bound_constraints)
         # outer-iteration counter
         for t in range(self.max_iter):
@@ -489,7 +496,7 @@ class LagrangianRelaxation(ControlPolicyOptimization):
                 x_shapes_dict=opt_mgr.control_policy.control_out_data.shapes()
                 
                 # control constraints
-                control_constraint_object = opt_mgr.control_eval_system.control_constraint.scipy_object(
+                control_constraint_object = opt_mgr.control_eval_system.constraint_control.scipy_object(
                     x_order=x_order,
                     x_shapes_dict=x_shapes_dict
                 )

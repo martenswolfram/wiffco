@@ -3,8 +3,9 @@
     "relative_directory": "./",
     "plant_model_file": "model_symbolic.json",
     "aggregation_file": "aggregation_revenue_damage.json",
-    "control_constraint_file": "constraint_control.json",
+    "constraint_control_file": "constraint_control.json",
+    "constraint_aggregated_file": "constraint_aggregated.json",
+    "constraint_accumulated_file": "constraint_accumulated.json",
     "metrics_accumulation_file": "accumulation_revenue_damage.json",
-    "accumulated_constraint_file": "constraint_accumulated.json",
-    "multi_metrics_reduction_file": "metrics_reduction_scalar_weighting.json"
+    "metrics_reduction_file": "metrics_reduction_scalar_weighting.json"
 }

@@ -143,27 +143,32 @@ def control_evaluation_system_from_json(json_path: pathlib.Path):
 
     # Control constraint
     control_constraint = constraint_from_json(
-        json_path=(config_folder / param_dict["control_constraint_file"]))
-       
+        json_path=(config_folder / param_dict["constraint_control_file"]))
+    
+    # Aggregated constraint
+    aggregated_constraint = constraint_from_json(
+        json_path=(config_folder / param_dict["constraint_aggregated_file"]))
+
+    # Accumulated constraint
+    accumulated_constraint = constraint_from_json(
+        json_path=(config_folder / param_dict["constraint_accumulated_file"]))
+
     # Metrics accumulation
     metrics_accumulation = metrics_accumulation_from_json(
         json_path=(config_folder / param_dict["metrics_accumulation_file"]))
 
-    # Accumulated constraint
-    accumulated_constraint = constraint_from_json(
-        json_path=(config_folder / param_dict["accumulated_constraint_file"]))
-
     # Multi-metrics reduction
     multi_metrics_reduction = multi_metrics_reduction_from_json(
-        json_path=(config_folder / param_dict["multi_metrics_reduction_file"]))
+        json_path=(config_folder / param_dict["metrics_reduction_file"]))
     
     return ControlEvaluationSystem(
         name=eval_system_name,
         plant_model=plant_model,
         aggregation=aggregation,
-        control_constraint=control_constraint,
+        constraint_control=control_constraint,
+        constraint_aggregated=aggregated_constraint,
+        constraint_accumulated=accumulated_constraint,
         metrics_accumulation=metrics_accumulation,
-        accumulated_constraint=accumulated_constraint,
         multi_metrics_reduction=multi_metrics_reduction)
 
 def control_optimization_from_json(json_path: pathlib.Path):
