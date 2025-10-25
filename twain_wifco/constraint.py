@@ -241,17 +241,16 @@ class SeparateConstraints(Constraint):
             else:
                 # Batch-constraint evaluation
                 def eval_constraints(x):
-                    input_table = DataTable.from_vector(data_vector=x,
-                                                        order=x_order,
-                                                        shapes_dict=x_shapes_dict,
-                                                        num_points=num_points)
-                    constr_evaluations = []
-                    for input_point in input_table:
-                        constr_evaluations.append(x_constraint_evaluation(input_point.to_vector()))
-                    tiled_evaluations = DataTable.from_data_points(constr_evaluations)
-                    return np.concatenate([tiled_evaluations[var].ravel() for var in self.bounds.order])    
-                lb = self.bounds.lower_bound.to_vector(order=self.bounds.order, batch_multiply=num_points)
-                ub = self.bounds.upper_bound.to_vector(order=self.bounds.order, batch_multiply=num_points)
+                    # Note: The constraint-evaluation function is interpreted such that 
+                    # both input data and output data represents a flat concatenation over 
+                    # all points.
+                    constr_evaluation: DataTable = x_constraint_evaluation(x)
+                    return constr_evaluation.to_vector(order=self.bounds.order) 
+                # The bounds are defined for each point, hence need to be tiled/extruded.
+                lb = self.bounds.lower_bound.to_vector(order=self.bounds.order,
+                                                       batch_multiply=num_points)
+                ub = self.bounds.upper_bound.to_vector(order=self.bounds.order,
+                                                       batch_multiply=num_points)
                 return NonlinearConstraint(fun=eval_constraints, lb=lb, ub=ub)
     
     def upper_bound_constraints(self) -> List[UpperBoundConstraint]:

@@ -1,5 +1,6 @@
 import pathlib
 import numpy as np
+from typing import Dict
 import logging
 from twain_wifco.config import (
     control_evaluation_system_from_json,
@@ -40,34 +41,33 @@ def perturbed_control_policy_test(
         ambient_condition_statistics: Statistics,
         duration: int,
         optimal_policy: DiscreteControlPolicy,
-        perturbation_scale: float,
-        perturbation_num: int):
+        perturbation_num: int,
+        perturbation_scale: float = 1,
+        discrete_steps: Dict[Control, float] | None = None):
     
     # Compute optimal results
-    expected_accumulated_metrics, constraints_satisfied = control_evaluation_system.expected_acc_metrics(
+    expected_accumulated_metrics, constraints_satisfied = control_evaluation_system.expected_acc_metrics_constr_eval(
                 ambient_condition_statistics=ambient_condition_statistics,
                 control_policy=optimal_policy,
-                duration=duration,
-                eval_constraints=True)
+                duration=duration)
     assert constraints_satisfied is True
     optimal_reduced_metric = control_evaluation_system.multi_metrics_reduction.evaluate(acc_metrics=expected_accumulated_metrics)
     
 
     for _ in np.arange(perturbation_num):
-        perturbed_policy = optimal_policy.random_perturbation(scale=perturbation_scale)
+        perturbed_policy = optimal_policy.random_perturbation(scale=perturbation_scale, discrete_steps=discrete_steps)
         expected_accumulated_metrics, constraints_satisfied = \
-            control_evaluation_system.expected_acc_metrics(ambient_condition_statistics=ambient_condition_statistics,
-                                                            control_policy=perturbed_policy,
-                                                            duration=duration,
-                                                            eval_constraints=True)
-        reduced_metric = control_evaluation_system.multi_metrics_reduction.evaluate(
-            acc_metrics=expected_accumulated_metrics)
-        perturbed_is_suboptimal = (
-            optimal_reduced_metric > reduced_metric if \
-            control_evaluation_system.multi_metrics_reduction.maximize else \
-            optimal_reduced_metric < reduced_metric)
-                        
+            control_evaluation_system.expected_acc_metrics_constr_eval(
+                ambient_condition_statistics=ambient_condition_statistics,
+                control_policy=perturbed_policy,
+                duration=duration)
         if constraints_satisfied:
+            reduced_metric = control_evaluation_system.multi_metrics_reduction.evaluate(
+                acc_metrics=expected_accumulated_metrics)
+            perturbed_is_suboptimal = (
+                optimal_reduced_metric >= reduced_metric if \
+                control_evaluation_system.multi_metrics_reduction.maximize else \
+                optimal_reduced_metric <= reduced_metric)                        
             assert perturbed_is_suboptimal
 
 def test_grid_search():
@@ -86,18 +86,15 @@ def test_grid_search():
     optimal_policy = grid_search.optimize_policy(control_eval_system=control_evaluation_system,
                                                  ambient_condition_statistics=ambient_statistics,
                                                  duration=duration)
-    # Compute optimal results
-    _, constraints_satisfied = control_evaluation_system.expected_acc_metrics(
-                ambient_condition_statistics=ambient_statistics,
-                control_policy=optimal_policy,
-                duration=duration,
-                eval_constraints=True)
-    assert constraints_satisfied is True
     
     # Evaluate result
-    assert optimal_policy.control_out_data == DataPoint(
-           {Control.POWER_REGULATION: np.array([[3], [2], [2], [2], [3], [3]])})
-    
+    perturbed_control_policy_test(control_evaluation_system=control_evaluation_system,
+                                  ambient_condition_statistics=ambient_statistics,
+                                  duration=duration,
+                                  optimal_policy=optimal_policy,
+                                  perturbation_num=100,
+                                  discrete_steps={Control.POWER_REGULATION: 1})
+
 def test_simultaneous_optimization():
     json_path = test_data_folder / "optimization_simultaneous.json"
     simultaneous_optimization: SimultaneousOptimization = control_optimization_from_json(json_path=json_path)

@@ -142,16 +142,28 @@ def control_evaluation_system_from_json(json_path: pathlib.Path):
         json_path=(config_folder / param_dict["aggregation_file"]))
 
     # Control constraint
-    control_constraint = constraint_from_json(
-        json_path=(config_folder / param_dict["constraint_control_file"]))
+    control_constraint_file = param_dict.get("constraint_control_file", None)
+    if control_constraint_file is not None:
+        control_constraint = constraint_from_json(
+        json_path=(config_folder / control_constraint_file))
+    else:
+        control_constraint = None
     
     # Aggregated constraint
-    aggregated_constraint = constraint_from_json(
-        json_path=(config_folder / param_dict["constraint_aggregated_file"]))
+    aggregated_constraint_file = param_dict.get("constraint_aggregated_file", None)
+    if aggregated_constraint_file is not None:
+        aggregated_constraint = constraint_from_json(
+        json_path=(config_folder / aggregated_constraint_file))
+    else:
+        aggregated_constraint = None
 
     # Accumulated constraint
-    accumulated_constraint = constraint_from_json(
-        json_path=(config_folder / param_dict["constraint_accumulated_file"]))
+    accumulated_constraint_file = param_dict.get("constraint_accumulated_file", None)
+    if accumulated_constraint_file is not None:
+        accumulated_constraint = constraint_from_json(
+        json_path=(config_folder / accumulated_constraint_file))
+    else:
+        accumulated_constraint = None
 
     # Metrics accumulation
     metrics_accumulation = metrics_accumulation_from_json(

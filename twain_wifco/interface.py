@@ -203,7 +203,7 @@ class DataCollection(Generic[DataType]):
         )
     
     def __repr__(self):
-        data_dict = {var.value: str(data) for var, data in self.data.items()}
+        data_dict = {var.value: data for var, data in self.data.items()}
         return f"{self.__class__.__name__}: {data_dict}"
 
 @dataclass(eq=False, repr=False)
@@ -243,7 +243,7 @@ class DataPoint(DataCollection[DataType]):
         return cls(data_dict, order)
 
 
-@dataclass(eq=False)
+@dataclass(eq=False, repr=False)
 class DataTable(DataCollection[DataType]):
     """Represents a table of multiple data points (2D structure)."""
 

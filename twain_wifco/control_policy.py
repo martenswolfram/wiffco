@@ -124,7 +124,9 @@ class DiscreteControlPolicy(Component):
         """
         self.control_out_data.update_from_vector(control_data_vector)
 
-    def random_perturbation(self, scale: float = 1.0) -> "DiscreteControlPolicy":
+    def random_perturbation(self,
+                            scale: float = 1.0,
+                            discrete_steps: Dict[Control, float] = None) -> "DiscreteControlPolicy":
         """Create a perturbed copy of this control policy.
 
         Adds uniform random perturbations scaled by each variable's absolute tolerance.
@@ -137,10 +139,17 @@ class DiscreteControlPolicy(Component):
         """
         perturbed_ctrl_out_data = {}
         for ctrl_var, data in self.control_out_data.items():
-            magnitude = scale * self.control_out_data.abs_tol(ctrl_var)
-            perturbed_ctrl_out_data[ctrl_var] = data + np.random.uniform(
-                low=-magnitude, high=magnitude, size=data.shape
-            )
+            if discrete_steps is None:
+                magnitude = scale * self.control_out_data.abs_tol(ctrl_var)
+                perturbed_ctrl_out_data[ctrl_var] = data + np.random.uniform(
+                    low=-magnitude, high=magnitude, size=data.shape
+                )
+            else:
+                perturbed_ctrl_out_data[ctrl_var] = data + np.random.choice(
+                    a=[-discrete_steps[ctrl_var], 0, discrete_steps[ctrl_var]],
+                    p=[1/3, 1/3, 1/3],
+                    size=data.shape
+                )
 
         perturbed_params = DiscreteControlPolicyParams(
             ambient_support_data=self.ambient_support_data,

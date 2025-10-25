@@ -4,7 +4,7 @@
     "constraint_params":{
         "data_type": "aggregate",
         "upper_bound": {
-            "damage_rate": [10]
+            "damage_rate": [20]
         },
         "lower_bound": {
             "damage_rate": [null]
