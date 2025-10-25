@@ -89,8 +89,17 @@ class Constraint(Component, Generic[DataType]):
                      x_shapes_dict: Dict[DataType, Tuple[int, ...]],
                      num_points: int | None = None,
                      x_constraint_evaluation: Callable | None = None):
-        """ Creates SciPy objects for constraint evaluation"""
+        """ Creates SciPy objects for constraint evaluation.
+
+        Args:
+            x_order (List[DataType]) : 
+            x_shapes_dict (Dict[DataType, Tuple[int, ...]]): 
+            num_points (int | None): 
+            x_constraint_evaluation (Callable | None): Function to be evaluated on input (decision) variables
+
+        """
         pass
+    
     
     @abstractmethod
     def upper_bound_constraints(self) -> List[UpperBoundConstraint]:
@@ -187,14 +196,17 @@ class SeparateConstraints(Constraint):
         Returns:
             bool: True if all constraints are satisfied.
         """
-        variables = self.bounds.upper_bound.keys()
-        relevant_data = DataPoint(
-            {var: constr_input_data[var] for var in constr_input_data.keys() if var in variables}
-        )
-
-        lower_diff = (relevant_data - self.bounds.lower_bound).to_vector(order=self.bounds.order)
-        upper_diff = (relevant_data - self.bounds.upper_bound).to_vector(order=self.bounds.order)
-
+        # Bounds for unconstrained variables are filled with corresponding (pos/neg) infinite bounds 
+        lb = self.bounds.lower_bound.to_vector(order=constr_input_data.order,
+                                               fill_shapes=constr_input_data.shapes(),
+                                               fill_value=-np.inf)
+        ub = self.bounds.upper_bound.to_vector(order=constr_input_data.order,
+                                               fill_shapes=constr_input_data.shapes(),
+                                               fill_value=np.inf)
+        
+        lower_diff = constr_input_data.to_vector() - lb
+        upper_diff = constr_input_data.to_vector() - ub
+        
         return all(lower_diff >= -self.bounds.lower_bound.abs_tols_vec()) and \
                all(upper_diff <= self.bounds.upper_bound.abs_tols_vec())
 
@@ -206,8 +218,15 @@ class SeparateConstraints(Constraint):
         """ Creates SciPy objects for constraint evaluation"""
         if x_constraint_evaluation is None:
             # If x is only passed through, create a SciPy-Bounds object, based on the external variable order
-            lb = self.bounds.lower_bound.to_vector(order=x_order, batch_multiply=num_points)
-            ub = self.bounds.upper_bound.to_vector(order=x_order, batch_multiply=num_points)
+            # Bounds for unconstrained variables are filled with corresponding (pos/neg) infinite bounds 
+            lb = self.bounds.lower_bound.to_vector(order=x_order,
+                                                   fill_shapes=x_shapes_dict,
+                                                   fill_value=-np.inf,
+                                                   batch_multiply=num_points)
+            ub = self.bounds.upper_bound.to_vector(order=x_order,
+                                                   fill_shapes=x_shapes_dict,
+                                                   fill_value=np.inf,
+                                                   batch_multiply=num_points)
             return Bounds(lb=lb, ub=ub)
         else:
             # Otherwise create a SciPy-NonlinearConstraint object

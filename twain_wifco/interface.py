@@ -158,15 +158,23 @@ class DataCollection(Generic[DataType]):
 
     def to_vector(self,
                   order: List[DataType] | None = None,
+                  fill_shapes: Dict[DataType, Tuple[int, ...]] | None = None,
+                  fill_value: float | None = None,
                   batch_multiply: int | None = None) -> np.ndarray:
         """
         Flatten and concatenate all variable arrays into a single vector.
-        Note that the order can be specified differently.
+        Note that the order can be specified different from own order.
+        Elements for missing variables are filled with fill_value.
         """
+        def fill_vec(shape: Tuple[int, ...]):
+            return np.full(shape=np.prod(shape), fill_value=fill_value)
+
         if order is None:
             order = self.order
         if batch_multiply is None:
-            return np.concatenate([self.data[k].ravel() for k in order])
+            return np.concatenate([self.data[k].ravel() \
+                                   if k in self.keys() else fill_vec(fill_shapes[k]) \
+                                    for k in order])
         else:
             # For batch evaluation, tile the bounds for each variable
             return np.concatenate([np.tile(self.data[k].ravel(), batch_multiply) for k in order])
