@@ -97,6 +97,7 @@ def get_abs_tol(data_var: DataVariable) -> float:
         Ambient.WIND_SPEED: 0.001,
         Ambient.ELECTRICITY_PRICE: 0.001,
         Control.POWER_REGULATION: 0.1,
+        Aggregated.DAMAGE_RATE: 0.1,
         AccumulatedMetric.ACCRUED_DAMAGE: 0.1
     }
     return mapping.get(data_var, 0.0)
@@ -176,7 +177,7 @@ class DataCollection(Generic[DataType]):
                                    if k in self.keys() else fill_vec(fill_shapes[k]) \
                                     for k in order])
         else:
-            # For batch evaluation, tile the bounds for each variable
+            # For batch evaluation, tile the data for each variable
             return np.concatenate([np.tile(self.data[k].ravel(), batch_multiply) for k in order])
 
     def update_from_vector(self, vector: np.ndarray):
@@ -200,9 +201,12 @@ class DataCollection(Generic[DataType]):
             np.allclose(self.data[k], other.data[k], atol=self.abs_tol(k))
             for k in self.data.keys()
         )
+    
+    def __repr__(self):
+        data_dict = {var.value: str(data) for var, data in self.data.items()}
+        return f"{self.__class__.__name__}: {data_dict}"
 
-
-@dataclass(eq=False)
+@dataclass(eq=False, repr=False)
 class DataPoint(DataCollection[DataType]):
     """Represents a single data point (non-tabular)."""
 
