@@ -325,8 +325,14 @@ class GridSearch(ControlPolicyOptimization):
             name="optimized_discrete_control_policy",
             params=discrete_control_policy_params)
     
+        final_acc_metrics = control_eval_system.expected_acc_metrics(
+            ambient_condition_statistics=ambient_condition_statistics,
+            control_policy=optimal_policy,
+            duration=duration)
         logger.info(f"Grid-search optimization final control setpoints:\n"
-                    f"{optimal_policy.control_out_data}")
+                    f"{optimal_policy.control_out_data}"
+                    f"Final accumulated metrics:\n"
+                    f"{final_acc_metrics}")
 
         return optimal_policy
 
@@ -360,8 +366,34 @@ class ContinuousOptimizationManager:
         self.duration = duration        
         self.control_policy = self.default_discrete_policy()
 
+    # TODO: Make sure that caching works.
     @lru_cache(maxsize=None)
-    def aggregates_w_cache(self,
+    def single_aggregate_w_cache(self,
+                                 i_ac: int,
+                                 ctrl_as_tuple: Tuple[float, ...]):
+        control_setpoints = DataPoint.from_vector(
+            data_vector=np.array(ctrl_as_tuple),
+            order=self.control_policy.control_out_data.order,
+            shapes_dict=self.control_policy.control_out_data.shapes())
+
+        return self.control_eval_system.aggregate_from_amb(
+            ambient_condition=self.ambient_condition_sample.support_data.get_point(i_ac),
+            control_setpoints=control_setpoints)
+        
+    @lru_cache(maxsize=None)
+    def single_acc_metric_w_cache(self,
+                                  i_ac: int,
+                                  ctrl_as_tuple: Tuple[float, ...]):
+        aggregate = self.single_aggregate_w_cache(
+            i_ac=i_ac,
+            ctrl_as_tuple=ctrl_as_tuple)
+        
+        return self.control_eval_system.metrics_accumulation.acc_metrics(
+            aggregate=aggregate,
+            duration=self.duration)
+
+    @lru_cache(maxsize=None)
+    def all_aggregates_w_cache(self,
                            ctrl_as_tuple: Tuple[float, ...]):
         control_setpoints_data = DataTable.from_vector(
             data_vector=np.array(ctrl_as_tuple),
@@ -381,7 +413,7 @@ class ContinuousOptimizationManager:
     @lru_cache(maxsize=None)
     def expected_acc_metrics_w_cache(self,
                                      ctrl_as_tuple: Tuple[float, ...]):
-        aggregate_support = self.aggregates_w_cache(ctrl_as_tuple=ctrl_as_tuple)
+        aggregate_support = self.all_aggregates_w_cache(ctrl_as_tuple=ctrl_as_tuple)
         discrete_statistics_params = DiscreteStatisticsParams(
             support_data=aggregate_support,
             prevalence=self.ambient_condition_sample.normalized_weights)        
@@ -431,8 +463,8 @@ class SimultaneousOptimization(ControlPolicyOptimization):
             duration=duration,
             max_num_amb_cond=self.max_num_amb_cond)
         
-        # Optimization function with cache
-        aggregates_w_cache = lambda x : opt_mgr.aggregates_w_cache(tuple(x))        
+        # Optimization functions with cache
+        all_aggregates_w_cache = lambda x : opt_mgr.all_aggregates_w_cache(tuple(x))        
         expected_acc_metrics_w_cache = lambda x : opt_mgr.expected_acc_metrics_w_cache(tuple(x))        
         
         # COST FUNCTION
@@ -443,6 +475,7 @@ class SimultaneousOptimization(ControlPolicyOptimization):
 
         # CONSTRAINTS
         constraints = []
+        bounds = None
         # Order and shapes of control variables
         x_order = opt_mgr.control_policy.control_out_data.order
         x_shapes_dict=opt_mgr.control_policy.control_out_data.shapes()
@@ -466,7 +499,7 @@ class SimultaneousOptimization(ControlPolicyOptimization):
                 x_order=x_order,
                 x_shapes_dict=x_shapes_dict,
                 num_points=num_ac,
-                x_constraint_evaluation=aggregates_w_cache
+                x_constraint_evaluation=all_aggregates_w_cache
             )
             constraints.append(aggregate_constraint)
 
@@ -489,7 +522,14 @@ class SimultaneousOptimization(ControlPolicyOptimization):
                        options=self.scipy_options)
         opt_mgr.control_policy.set_control_data(control_data_vector=res.x)
         
-        logger.info(f"Simultaneous optimization final control setpoints:\n{opt_mgr.control_policy.control_out_data}")
+        final_acc_metrics = opt_mgr.control_eval_system.expected_acc_metrics(
+                        ambient_condition_statistics=ambient_condition_statistics,
+                        control_policy=opt_mgr.control_policy,
+                        duration=opt_mgr.duration)
+        logger.info(f"Simultaneous optimization final control setpoints:\n"
+                    f"{opt_mgr.control_policy.control_out_data}"
+                    f"Final accumulated metrics:\n"
+                    f"{final_acc_metrics}")
         return opt_mgr.control_policy
      
 
@@ -555,19 +595,16 @@ class LagrangianRelaxation(ControlPolicyOptimization):
         lagrangian_lambdas = list(np.zeros_like(ub.upper_bound, dtype=float) for ub in upper_bound_constraints)
         # outer-iteration counter
         for t in range(self.max_iter):
-            logger.debug(f"Iteration {t}")
-            expected_constraint_evaluations = list(np.zeros_like(ub.upper_bound, dtype=float) for ub in upper_bound_constraints)
+            expected_constr_evals = list(np.zeros_like(ub.upper_bound, dtype=float) for ub in upper_bound_constraints)
             for i_ac, (prob_weight, ambient_condition) in enumerate(ambient_condition_sample.weighted_variables_iter()):
 
+                # Optimization functions with cache
+                aggregate_w_cache = lambda x, i_ac=i_ac : opt_mgr.single_aggregate_w_cache(i_ac, tuple(x))        
+                acc_metrics_w_cache = lambda x, i_ac=i_ac : opt_mgr.single_acc_metric_w_cache(i_ac, tuple(x))  
                 # Separate optimization for each ambient condition
-                # Cost function
+                # COST FUNCTION
                 def cost_function(ctrl_setpoints_vec, i_ac=i_ac):
-                    control_setpoints.update_point_from_vector(ind=i_ac,
-                                                               vector=ctrl_setpoints_vec)
-                    acc_metrics = opt_mgr.control_eval_system.acc_metrics_from_amb(
-                        ambient_condition=ambient_condition,
-                        control_setpoints=control_setpoints.get_point(i_ac),
-                        duration=opt_mgr.duration)
+                    acc_metrics = acc_metrics_w_cache(ctrl_setpoints_vec)
                     scalar_objective = opt_mgr.control_eval_system.multi_metrics_reduction.evaluate(
                         acc_metrics=acc_metrics)
                     # First assume that we have an objective function (which we want to maximise),
@@ -579,22 +616,32 @@ class LagrangianRelaxation(ControlPolicyOptimization):
                     # Scipy will minimize a cost function, hence take the negative value
                     return - scalar_objective
                 
+                # CONSTRAINTS
+                instant_constraints = []
+                bounds = None
                 # Order and shapes of control variables
                 x_order = opt_mgr.control_policy.control_out_data.order
                 x_shapes_dict=opt_mgr.control_policy.control_out_data.shapes()
                 
-                # control constraints
-                control_constraint_object = opt_mgr.control_eval_system.constraint_control.scipy_object(
-                    x_order=x_order,
-                    x_shapes_dict=x_shapes_dict
-                )
-                if isinstance(control_constraint_object, Bounds):
-                    bounds = control_constraint_object
-                    control_constraint = None
-                else:
-                    bounds = None
-                    control_constraint = control_constraint_object
+                # CONTROL CONSTRAINTS
+                if opt_mgr.control_eval_system.constraint_control is not None:
+                    control_constraint_object = opt_mgr.control_eval_system.constraint_control.scipy_object(
+                        x_order=x_order,
+                        x_shapes_dict=x_shapes_dict
+                    )
+                    if isinstance(control_constraint_object, Bounds):
+                        bounds = control_constraint_object
+                    else:
+                        instant_constraints.append(control_constraint_object)
 
+                # AGGREGATE CONSTRAINT
+                if opt_mgr.control_eval_system.constraint_aggregated is not None:
+                    aggregate_constraint = opt_mgr.control_eval_system.constraint_aggregated.scipy_object(
+                        x_order=x_order,
+                        x_shapes_dict=x_shapes_dict,
+                        x_constraint_evaluation=aggregate_w_cache
+                    )
+                    instant_constraints.append(aggregate_constraint)
                 # Minimize Lagrangian
                 # Initial value
                 x0 = control_setpoints.get_point(i_ac).to_vector()
@@ -602,7 +649,7 @@ class LagrangianRelaxation(ControlPolicyOptimization):
                                x0,
                                method=self.scipy_method,
                                bounds=bounds,
-                               constraints=control_constraint,
+                               constraints=instant_constraints,
                                options=self.scipy_options)
                 control_setpoints.update_point_from_vector(ind=i_ac,
                                                            vector=res.x)
@@ -614,27 +661,31 @@ class LagrangianRelaxation(ControlPolicyOptimization):
                     duration=opt_mgr.duration)
                 # Constraint evaluation
                 for i_constraint, ub_constraint in enumerate(upper_bound_constraints):
-                    expected_constraint_evaluations[i_constraint] += prob_weight * ub_constraint.constraint_fun(acc_metrics)
+                    expected_constr_evals[i_constraint] += prob_weight * ub_constraint.constraint_fun(acc_metrics)
             
-            converged = True
-            # update lagrangian multipliers
-            for i_constr, (ub_constraint, expected_constr_eval) in \
-                enumerate(zip(upper_bound_constraints, expected_constraint_evaluations)):
-                subgradient = ub_constraint.upper_bound - expected_constr_eval
-                step = subgradient * self.alpha_0 / np.sqrt(t + 1)
-                lagrangian_lambda = lagrangian_lambdas[i_constr] - step
-                lagrangian_lambda[lagrangian_lambda < 0] = 0
-                lagrangian_lambdas[i_constr] = lagrangian_lambda
-                if np.linalg.norm(subgradient, ord=np.inf) > self.subgradient_tol:
-                    converged = False
-                logger.debug(f"subgradient: {subgradient}")
-                logger.debug(f"lag lambdas: {lagrangian_lambda}")
+            subgradient = np.array([ub.upper_bound - val for \
+                                    ub, val in zip(upper_bound_constraints, expected_constr_evals)])
+            subgradient = np.atleast_1d(subgradient)
+            norm_s = np.linalg.norm(subgradient, ord=np.inf)
+            step_size = self.alpha_0 / np.sqrt(t + 1)
+            step_vec = step_size * subgradient / norm_s
+            lagrangian_lambdas = lagrangian_lambdas - step_vec
+            logger.debug(f"Iteration {t}: lambda = {lagrangian_lambdas},  constraint_eval = {expected_constr_evals}")
 
-            t += 1
-            
-            if converged:
+            if np.all((subgradient >= -self.subgradient_tol)) and \
+                np.all(lagrangian_lambdas * subgradient <= self.subgradient_tol):
+                logger.info("Converged: constraints satisfied and multipliers consistent.")
                 break
-
+        
+        final_acc_metrics = opt_mgr.control_eval_system.expected_acc_metrics(
+                        ambient_condition_statistics=ambient_condition_statistics,
+                        control_policy=opt_mgr.control_policy,
+                        duration=opt_mgr.duration)
+        logger.info(f"Lagrangian relaxation optimization finished after {t + 1} external iterations."
+                    f"Final control setpoints:\n"
+                    f"{opt_mgr.control_policy.control_out_data}"
+                    f"Final accumulated metrics:\n"
+                    f"{final_acc_metrics}")
         return opt_mgr.control_policy
         
      

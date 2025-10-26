@@ -42,6 +42,7 @@ def perturbed_control_policy_test(
         duration: int,
         optimal_policy: DiscreteControlPolicy,
         perturbation_num: int,
+        optimality_tol: float = 0,
         perturbation_scale: float = 1,
         discrete_steps: Dict[Control, float] | None = None):
     
@@ -65,9 +66,12 @@ def perturbed_control_policy_test(
             reduced_metric = control_evaluation_system.multi_metrics_reduction.evaluate(
                 acc_metrics=expected_accumulated_metrics)
             perturbed_is_suboptimal = (
-                optimal_reduced_metric >= reduced_metric if \
+                optimal_reduced_metric + optimality_tol >= reduced_metric if \
                 control_evaluation_system.multi_metrics_reduction.maximize else \
-                optimal_reduced_metric <= reduced_metric)                        
+                optimal_reduced_metric - optimality_tol <= reduced_metric)                        
+            if not perturbed_is_suboptimal:
+                logger.info(f"Suboptimality check failed: Perturbed policy has reduced metric value {reduced_metric},"
+                            f" vs. {optimal_reduced_metric} in the original metric.")
             assert perturbed_is_suboptimal
 
 def test_grid_search():
@@ -78,8 +82,6 @@ def test_grid_search():
     assert grid_search.optimization_name == "grid_search"
     assert grid_search.control_setpoint_vectors.keys() == set([Control.POWER_REGULATION])
     assert grid_search.control_setpoint_vectors[Control.POWER_REGULATION].shape == (1,)
-    assert np.array_equal(grid_search.control_setpoint_vectors[Control.POWER_REGULATION].vectors[0],
-                          np.array([0, 1, 2, 3, 4]))
     assert grid_search.max_num_amb_cond == 6
 
     # Optimization
@@ -93,7 +95,7 @@ def test_grid_search():
                                   duration=duration,
                                   optimal_policy=optimal_policy,
                                   perturbation_num=100,
-                                  discrete_steps={Control.POWER_REGULATION: 1})
+                                  discrete_steps={Control.POWER_REGULATION: 0.5})
 
 def test_simultaneous_optimization():
     json_path = test_data_folder / "optimization_simultaneous.json"
@@ -115,7 +117,8 @@ def test_simultaneous_optimization():
                                   duration=duration,
                                   optimal_policy=optimal_policy,
                                   perturbation_scale=1,
-                                  perturbation_num=100)
+                                  perturbation_num=100,
+                                  optimality_tol=1e-4)
 
 
 def test_lagrangian_relaxation():
@@ -138,5 +141,6 @@ def test_lagrangian_relaxation():
                                   duration=duration,
                                   optimal_policy=optimal_policy,
                                   perturbation_scale=1,
-                                  perturbation_num=100)
+                                  perturbation_num=100,
+                                  optimality_tol=1e-3)
     

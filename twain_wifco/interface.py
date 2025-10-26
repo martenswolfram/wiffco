@@ -203,8 +203,10 @@ class DataCollection(Generic[DataType]):
         )
     
     def __repr__(self):
-        data_dict = {var.value: data for var, data in self.data.items()}
-        return f"{self.__class__.__name__}: {data_dict}"
+        out = ""
+        for var, data in self.data.items():
+            out += f"{var.value}:\n{data}\n"
+        return out
 
 @dataclass(eq=False, repr=False)
 class DataPoint(DataCollection[DataType]):
