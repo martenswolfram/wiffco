@@ -1,6 +1,6 @@
 {
     "name": "power_damage_symbolic",
-    "model_type": "symbolic",
+    "model_type": "symbolic_product",
     "model_params": {
         "symbol_mappings": {
             "control": {

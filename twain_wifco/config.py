@@ -66,13 +66,14 @@ def plant_model_from_json(json_path: pathlib.Path):
             param_dict=param_dict["model_params"])
         return FactorizedScatteredInterp(name=plant_name,
                                          params=params)
-    elif model_type == ModelType.SYMBOLIC:
+    elif model_type == ModelType.SYMBOLIC_PRODUCT:
         params = symbolic_model_params_from_dict(
             param_dict=param_dict["model_params"])
         return SymbolicModel(name=plant_name,
                              params=params)
     else:
-        raise NotImplementedError("Only factorized_rbf_interpolation model implemented.")
+        raise NotImplementedError(f"Only factorized_scattered_interpolator and symbolic_product"
+                                  f" models implemented.")
 
 def control_policy_from_json(json_path: pathlib.Path):
     param_dict = parse_json_file(path=json_path)
