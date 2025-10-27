@@ -10,7 +10,7 @@ import numpy as np
 from dataclasses import dataclass
 from abc import ABC, abstractmethod
 from enum import Enum
-
+from twain_wifco.utils import print_table
 
 # ======================================================================
 # ENUMERATIONS
@@ -210,7 +210,7 @@ class DataCollection(Generic[DataType]):
 
 @dataclass(eq=False, repr=False)
 class DataPoint(DataCollection[DataType]):
-    """Represents a single data point (non-tabular)."""
+    """Represents a single data point."""
 
     def shapes(self):
         """Return the shape of each variable array."""
@@ -243,6 +243,39 @@ class DataPoint(DataCollection[DataType]):
             data_dict[var] = np.reshape(data_vector[offset:(offset + numel)], shape=shapes_dict[var])
             offset += numel
         return cls(data_dict, order)
+    
+    def __repr__(self):
+        
+        # Get maximum number of rows to display per key
+        max_lines = max(shape[0] if len(shape) == 2 else 1 for shape in self.shapes().values())
+        
+        key_lines = {}
+        for k in self.order:
+            shape = self.shapes()[k]
+            if len(shape) > 2:
+                # Do not show data, use placeholder
+                lines = [f"<np.ndarray{shape}>"]
+            else:
+                # Get numpy string repr
+                s = np.array2string(
+                    a=self.data[k],
+                    precision=3)
+                lines = s.splitlines()
+            # linewidth
+            width = max(len(k.value), max(len(line) for line in lines)) + 2
+            key_lines[k] = \
+                [k.value.center(width)] + \
+                ["-" * width] + \
+                [line.center(width) for line in lines]
+            # Add missing lines
+            num_lines_diff = max_lines - len(key_lines[k]) + 2
+            key_lines[k].extend([" " * width] * num_lines_diff)
+        
+        rows = []
+        for l in np.arange(max_lines + 2):
+            row_str = "|".join(f"{key_lines[k][l]}" for k in self.order)
+            rows.append(row_str)
+        return "\n" + "\n".join(rows) + "\n"
 
 
 @dataclass(eq=False, repr=False)
@@ -341,6 +374,47 @@ class DataTable(DataCollection[DataType]):
             for var in order
         }
         return cls(data_dict, order)
+    
+    def __repr__(self):
+        
+        # Get maximum number of rows to display per key
+        max_lines_per_point = max(shape[0] if len(shape) == 2 else 1 for shape in self.shapes().values())
+        
+        key_lines = {}
+        for k in self.order:
+            point_lines = []
+            for point in self.data[k]:
+                shape = self.shapes()[k]
+                if len(shape) > 2:
+                    # Do not show data, use placeholder
+                    point_lines.append([f"<np.ndarray{shape}>"])
+                else:
+                    # Get numpy string repr per point
+                    s = np.array2string(
+                        a=point,
+                        precision=3)
+                    point_lines.append(s.splitlines())
+
+            # linewidth
+            width = max(len(k.value), max(len(line) for lines in point_lines for line in lines)) + 2
+            key_lines[k] = \
+                [k.value.center(width)]
+            for lines in point_lines:
+                key_lines[k].append("-" * width)
+                key_lines[k].extend(
+                    line.center(width) for line in lines
+                )
+                # Add missing lines
+                num_lines_diff = max_lines_per_point - len(lines)
+                key_lines[k].extend([" " * width] * num_lines_diff)
+        
+        rows = []
+        for l in np.arange((max_lines_per_point + 1) * self.__len__() + 1):
+            row_str = "|".join(f"{key_lines[k][l]}" for k in self.order)
+            rows.append(row_str)
+        return "\n" + "\n".join(rows) + "\n"
+
+
 
 # ======================================================================
 # INTERFACE AND COMPONENT CLASSES
@@ -482,3 +556,7 @@ class Component(ABC):
         self.validate_input_shapes(
             input_shapes=external_shapes
         )
+
+    def __repr__(self):
+        return f"{self.__class__.__name__} '{self.component_name}'."
+         
