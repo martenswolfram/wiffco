@@ -159,3 +159,8 @@ class DiscreteControlPolicy(Component):
         return DiscreteControlPolicy(
             name=f"{self.component_name}_perturbed", params=perturbed_params
         )
+
+    def repr_details(self):
+        out = (f"Ambient support:\n{self.ambient_support_data}"
+               f"Control setpoints:\n{self.control_out_data}")
+        return out

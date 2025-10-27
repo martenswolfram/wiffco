@@ -329,8 +329,8 @@ class GridSearch(ControlPolicyOptimization):
             ambient_condition_statistics=ambient_condition_statistics,
             control_policy=optimal_policy,
             duration=duration)
-        logger.info(f"Grid-search optimization final control setpoints:\n"
-                    f"{optimal_policy.control_out_data}"
+        logger.info(f"Grid-search optimization final control policy:\n"
+                    f"{optimal_policy}"
                     f"Final accumulated metrics:\n"
                     f"{final_acc_metrics}")
 
@@ -526,8 +526,8 @@ class SimultaneousOptimization(ControlPolicyOptimization):
                         ambient_condition_statistics=ambient_condition_statistics,
                         control_policy=opt_mgr.control_policy,
                         duration=opt_mgr.duration)
-        logger.info(f"Simultaneous optimization final control setpoints:\n"
-                    f"{opt_mgr.control_policy.control_out_data}"
+        logger.info(f"Simultaneous optimization final control policy:\n"
+                    f"{opt_mgr.control_policy}"
                     f"Final accumulated metrics:\n"
                     f"{final_acc_metrics}")
         return opt_mgr.control_policy
@@ -682,8 +682,8 @@ class LagrangianRelaxation(ControlPolicyOptimization):
                         control_policy=opt_mgr.control_policy,
                         duration=opt_mgr.duration)
         logger.info(f"Lagrangian relaxation optimization finished after {t + 1} external iterations."
-                    f"Final control setpoints:\n"
-                    f"{opt_mgr.control_policy.control_out_data}"
+                    f"Final control policy:\n"
+                    f"{opt_mgr.control_policy}"
                     f"Final accumulated metrics:\n"
                     f"{final_acc_metrics}")
         return opt_mgr.control_policy
