@@ -591,11 +591,16 @@ class LagrangianRelaxation(ControlPolicyOptimization):
                 
         ambient_condition_sample = ambient_condition_statistics.systematic_sample(N_max=self.max_num_amb_cond)
 
-        upper_bound_constraints = control_eval_system.constraint_accumulated.upper_bound_constraints()
-        lagrangian_lambdas = list(np.zeros_like(ub.upper_bound, dtype=float) for ub in upper_bound_constraints)
+        if control_eval_system.constraint_accumulated is not None:
+            upper_bound_constraints = control_eval_system.constraint_accumulated.upper_bound_constraints()
+            if len(upper_bound_constraints) > 1:
+                # TODO: Check this
+                raise NotImplementedError("Currently only one set of accumulated metrics bounds implemented.")
+            ub_constraint = upper_bound_constraints[0]
+            lagrangian_lambdas = np.zeros_like(ub_constraint.upper_bound, dtype=float)
         # outer-iteration counter
         for t in range(self.max_iter):
-            expected_constr_evals = list(np.zeros_like(ub.upper_bound, dtype=float) for ub in upper_bound_constraints)
+            expected_constr_eval = np.zeros_like(lagrangian_lambdas)
             for i_ac, (prob_weight, ambient_condition) in enumerate(ambient_condition_sample.weighted_variables_iter()):
 
                 # Optimization functions with cache
@@ -610,9 +615,8 @@ class LagrangianRelaxation(ControlPolicyOptimization):
                     # First assume that we have an objective function (which we want to maximise),
                     # and upper-bound constraints which must not be exceded.
                     if not opt_mgr.control_eval_system.multi_metrics_reduction.maximize:
-                        scalar_objective *= -1                
-                    for lagrangian_lambda, ub_constraint in zip(lagrangian_lambdas, upper_bound_constraints):
-                        scalar_objective -= lagrangian_lambda.dot(ub_constraint.constraint_fun(acc_metrics))
+                        scalar_objective *= -1   
+                    scalar_objective -= lagrangian_lambdas.dot(ub_constraint.constraint_fun(acc_metrics))
                     # Scipy will minimize a cost function, hence take the negative value
                     return - scalar_objective
                 
@@ -660,20 +664,17 @@ class LagrangianRelaxation(ControlPolicyOptimization):
                     control_setpoints=control_setpoints.get_point(i_ac),
                     duration=opt_mgr.duration)
                 # Constraint evaluation
-                for i_constraint, ub_constraint in enumerate(upper_bound_constraints):
-                    expected_constr_evals[i_constraint] += prob_weight * ub_constraint.constraint_fun(acc_metrics)
+                expected_constr_eval += prob_weight * ub_constraint.constraint_fun(acc_metrics)
             
-            subgradient = np.array([ub.upper_bound - val for \
-                                    ub, val in zip(upper_bound_constraints, expected_constr_evals)])
-            subgradient = np.atleast_1d(subgradient)
-            norm_s = np.linalg.norm(subgradient, ord=np.inf)
+            subgradient = ub_constraint.upper_bound - expected_constr_eval
+            norm_s = np.max(np.abs(subgradient))
             step_size = self.alpha_0 / np.sqrt(t + 1)
             step_vec = step_size * subgradient / norm_s
-            lagrangian_lambdas = lagrangian_lambdas - step_vec
-            logger.debug(f"Iteration {t}: lambda = {lagrangian_lambdas},  constraint_eval = {expected_constr_evals}")
+            lagrangian_lambdas = np.array(lagrangian_lambdas - step_vec)
+            logger.debug(f"Iteration {t}: lambda = {lagrangian_lambdas},  constraint_eval = {expected_constr_eval}")
 
-            if np.all((subgradient >= -self.subgradient_tol)) and \
-                np.all(lagrangian_lambdas * subgradient <= self.subgradient_tol):
+            if np.all(np.atleast_1d((subgradient >= -self.subgradient_tol))) and \
+                np.all(np.atleast_1d(lagrangian_lambdas * subgradient <= self.subgradient_tol)):
                 logger.info("Converged: constraints satisfied and multipliers consistent.")
                 break
         

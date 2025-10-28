@@ -11,24 +11,24 @@ def test_statistics():
     
     ordered_prevalence = np.array([0.4, 0.25, 0.19, 0.1, 0.05, 0.01])
     ordered_support_data = DataTable({
-            Ambient.WIND_SPEED: np.array([[ 20], 
-                                          [ 10], 
-                                          [ 30], 
-                                          [ 20], 
-                                          [  5], 
-                                          [ 10]]),
-            Ambient.WIND_DIRECTION: np.array([[180], 
-                                              [240], 
-                                              [120], 
-                                              [ 60], 
-                                              [300], 
-                                              [  0]]),
-            Ambient.ELECTRICITY_PRICE: np.array([[ 5],
-                                                 [ 5],
-                                                 [ 2],
-                                                 [ 5],
-                                                 [ 7],
-                                                 [ 7]])})
+            Ambient.WIND_SPEED: np.array([ 20, 
+                                           10, 
+                                           30, 
+                                           20, 
+                                            5, 
+                                           10]),
+            Ambient.WIND_DIRECTION: np.array([180, 
+                                              240, 
+                                              120, 
+                                               60, 
+                                              300, 
+                                                0]),
+            Ambient.ELECTRICITY_PRICE: np.array([ 5,
+                                                  5,
+                                                  2,
+                                                  5,
+                                                  7,
+                                                  7])})
     
     # Initialization
     assert discrete_ambient_statistics.component_name == \
@@ -67,7 +67,7 @@ def test_statistics():
     sys_sample_smaller = discrete_ambient_statistics.systematic_sample(N_max=N)
     probability_covered = np.sum(ordered_prevalence[:N])
     assert sys_sample_smaller.normalized_weights == pytest.approx(ordered_prevalence[:N] / probability_covered)
-    small_support_data = DataTable({var: supp[:N, :] for \
+    small_support_data = DataTable({var: supp[:N, ...] for \
                                     var, supp in ordered_support_data.data.items()})
     assert small_support_data == sys_sample_smaller.support_data
     assert small_support_data

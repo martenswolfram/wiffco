@@ -81,7 +81,7 @@ def test_grid_search():
     # Initialization
     assert grid_search.optimization_name == "grid_search"
     assert grid_search.control_setpoint_vectors.keys() == set([Control.POWER_REGULATION])
-    assert grid_search.control_setpoint_vectors[Control.POWER_REGULATION].shape == (1,)
+    assert grid_search.control_setpoint_vectors[Control.POWER_REGULATION].shape == ()
     assert grid_search.max_num_amb_cond == 6
 
     # Optimization

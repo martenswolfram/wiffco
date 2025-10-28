@@ -1,18 +1,24 @@
 {
     "name": "power_damage_symbolic",
-    "model_type": "symbolic_product",
+    "model_type": "symbolic",
     "model_params": {
         "symbol_mappings": {
             "control": {
-                "power_regulation": "pr"
+                "power_regulation": {
+                    "name": "pr",
+                    "shape": []
+                }
             },
             "ambient": {
-                "wind_speed":     "ws"
+                "wind_speed": {
+                    "name":  "ws",
+                    "shape": []
+                }   
             }
         },
         "output_functions": {
-            "electrical_power": "(ws / 10)**2 * pr**0.5",
-            "damage_rate": "(ws / 10)**2 * pr**2"
+            "electrical_power": "pr**0.5 * (ws / 10)**2",
+            "damage_rate": "pr**2 * (ws / 10)**2"
         }
     }
 }

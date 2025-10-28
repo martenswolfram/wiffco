@@ -18,7 +18,7 @@ def test_discrete_control_policy():
     
     # retrieve control setpoints for dicrete ambient conditions
     # Invalid ambient condition keys
-    invalid_amb_condition = DataPoint({Ambient.WIND_SPEED: np.array([20])})
+    invalid_amb_condition = DataPoint({Ambient.WIND_SPEED: np.array(20)})
     
     with pytest.raises(ValueError) as excinfo:
         simple_control_policy.get_control_setpoints(invalid_amb_condition)
@@ -26,11 +26,11 @@ def test_discrete_control_policy():
 
     # Valid ambient condition
     valid_ambient_condition = DataPoint(
-        {Ambient.WIND_SPEED: np.array([20]),
-         Ambient.WIND_DIRECTION: np.array([180]),
-         Ambient.ELECTRICITY_PRICE: np.array([5])})
-    expected_output =  DataPoint({Control.POWER_REGULATION: np.array([4]),
-                                  Control.YAW_STEERING: np.array([8])})
+        {Ambient.WIND_SPEED: np.array(20),
+         Ambient.WIND_DIRECTION: np.array(180),
+         Ambient.ELECTRICITY_PRICE: np.array(5)})
+    expected_output =  DataPoint({Control.POWER_REGULATION: np.array(4),
+                                  Control.YAW_STEERING: np.array(8)})
 
     control_setpoints = simple_control_policy.get_control_setpoints(valid_ambient_condition)
     assert control_setpoints == expected_output

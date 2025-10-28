@@ -148,7 +148,7 @@ class DiscreteStatistics(Statistics):
         prevalence_index = np.argsort(statistics_params.prevalence)[::-1]
         self.ordered_support_data = statistics_params.support_data
         for var, data in self.ordered_support_data.data.items():
-            self.ordered_support_data.data[var] = data[prevalence_index, :]
+            self.ordered_support_data.data[var] = data[prevalence_index, ...]
         self.ordered_prevalence = statistics_params.prevalence[prevalence_index]
 
     def systematic_sample(self, N_max: int = None) -> SystematicSample:
@@ -173,7 +173,7 @@ class DiscreteStatistics(Statistics):
         if 1 <= N_max < total_points:
             weights = self.ordered_prevalence[:N_max]
             probability_covered = np.sum(weights)
-            support_data_subset = {var: supp[:N_max, :] for var, supp in self.ordered_support_data.data.items()}
+            support_data_subset = {var: supp[:N_max, ...] for var, supp in self.ordered_support_data.data.items()}
             return SystematicSample(
                 support_data=DataPoint(support_data_subset),
                 normalized_weights=weights / probability_covered,

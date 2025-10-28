@@ -17,8 +17,8 @@ def test_linear_control_constraint():
     constraint_satisfied = linear_control_constraint.evaluate_satisfied(
         constr_input_data=DataPoint(
             {
-                Control.YAW_STEERING: np.array([0]),
-                Control.POWER_REGULATION: np.array([0])
+                Control.YAW_STEERING: np.array(0),
+                Control.POWER_REGULATION: np.array(0)
             }
         ))
     assert constraint_satisfied is not True
@@ -26,8 +26,8 @@ def test_linear_control_constraint():
     constraint_satisfied = linear_control_constraint.evaluate_satisfied(
         constr_input_data=DataPoint(
             {
-                Control.YAW_STEERING: np.array([0]),
-                Control.POWER_REGULATION: np.array([2])
+                Control.YAW_STEERING: np.array(0),
+                Control.POWER_REGULATION: np.array(2)
             }
         ))
     assert constraint_satisfied is True
@@ -45,15 +45,15 @@ def test_acc_metrics_constraint():
     
     assert np.array_equal(linear_accumulated_constraint.bounds.
                           lower_bound.data[AccumulatedMetric.ACCRUED_DAMAGE],
-                          np.array([-np.inf]))
+                          np.array(-np.inf))
     
     # Constraint evaluation
     constraint_satisfied = linear_accumulated_constraint.evaluate_satisfied(
-        constr_input_data=DataPoint({AccumulatedMetric.ACCRUED_DAMAGE: np.array([700]),
-                                     AccumulatedMetric.REVENUE: np.array([0])}))
+        constr_input_data=DataPoint({AccumulatedMetric.ACCRUED_DAMAGE: np.array(700),
+                                     AccumulatedMetric.REVENUE: np.array(0)}))
     assert constraint_satisfied is False
     
     constraint_satisfied = linear_accumulated_constraint.evaluate_satisfied(
-        constr_input_data=DataPoint({AccumulatedMetric.ACCRUED_DAMAGE: np.array([300]),
-                                     AccumulatedMetric.REVENUE: np.array([0])}))
+        constr_input_data=DataPoint({AccumulatedMetric.ACCRUED_DAMAGE: np.array(300),
+                                     AccumulatedMetric.REVENUE: np.array(0)}))
     assert constraint_satisfied is True

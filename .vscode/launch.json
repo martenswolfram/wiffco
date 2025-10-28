@@ -23,7 +23,7 @@
                 "--log-cli-level=INFO",
                 "tests",
                 // "--ignore=tests/test_optimization.py",
-                // "tests/test_statistics.py",
+                // "tests/test_optimization.py",
             ],
             "justMyCode": true,
         },

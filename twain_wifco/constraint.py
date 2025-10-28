@@ -158,13 +158,19 @@ def separate_constraints_params_from_dict(param_dict: Dict[str, Any]) -> Separat
     lower_bound_params = param_dict["lower_bound"]
 
     for constr_var in upper_bound_params.keys():
-        upper_bound = np.array([u if u is not None else np.inf for u in upper_bound_params[constr_var]])
-        lower_bound = np.array([l if l is not None else -np.inf for l in lower_bound_params[constr_var]])
+        upper_bound = np.array(upper_bound_params[constr_var])
+        upper_bound = np.where(upper_bound == None, np.inf, upper_bound)
+        upper_bound = np.array(upper_bound, dtype=float)
+        lower_bound = np.array(lower_bound_params[constr_var])
+        lower_bound = np.where(lower_bound == None, -np.inf, lower_bound)
+        lower_bound = np.array(lower_bound, dtype=float)
+        
 
         # ignore null constraints
-        if all(np.isposinf(upper_bound)) and all(np.isneginf(lower_bound)):
+        if all(np.atleast_1d(np.isposinf(upper_bound))) and \
+            all(np.atleast_1d(np.isneginf(lower_bound))):
             continue
-
+        
         upper_bound_data[data_type(constr_var)] = upper_bound
         lower_bound_data[data_type(constr_var)] = lower_bound
 

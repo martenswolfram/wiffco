@@ -257,6 +257,6 @@ class SimpleProduct(Aggregation):
                 * self._prod_values(ambient_condition, mapping.ambient_inputs)
                 * self._prod_values(control_setpoints, mapping.control_inputs)
             )
-            aggregated_output[out_var] = np.array([res])
+            aggregated_output[out_var] = np.array(res)
 
         return DataPoint(data=aggregated_output)

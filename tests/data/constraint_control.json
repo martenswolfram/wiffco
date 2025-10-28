@@ -4,12 +4,12 @@
     "constraint_params":{
         "data_type": "control",
         "upper_bound": {
-            "power_regulation": [3.5],
-            "yaw_steering": [null]
+            "power_regulation": 3.5,
+            "yaw_steering": null
         },
         "lower_bound": {
-            "power_regulation": [1],
-            "yaw_steering": [null]
+            "power_regulation": 1,
+            "yaw_steering": null
         }
     }
 }

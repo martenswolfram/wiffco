@@ -4,18 +4,18 @@
     "statistics_params":{
         "data_type": "aggregate",
         "support_data": {
-            "damage_rate": [[100],
-                            [200],
-                            [ 50],
-                            [ 30],
-                            [ 10],
-                            [ 15]],
-            "revenue_rate": [[ 40],
-                             [ 11],
-                             [ 12],
-                             [ 28],
-                             [240],
-                             [300]]
+            "damage_rate": [100,
+                            200,
+                             50,
+                             30,
+                             10,
+                             15],
+            "revenue_rate": [ 40,
+                              11,
+                              12,
+                              28,
+                             240,
+                             300]
         },
         "prevalence": [0.01, 0.1, 0.19,  0.4, 0.25, 0.05]
     }

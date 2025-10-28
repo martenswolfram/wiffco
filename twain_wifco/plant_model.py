@@ -1,4 +1,4 @@
-from typing import Dict, Any, Callable
+from typing import Dict, Any, Callable, Tuple, List
 from abc import ABC, abstractmethod
 from enum import Enum
 import numpy as np
@@ -12,6 +12,8 @@ from twain_wifco.interface import (
     Control,
     ModelOutput,
     Interface,
+    DataVariable,
+    get_default_value,
 )
 from twain_wifco.scattered_interpolation import (
     ScatteredInterpolatorParams,
@@ -79,7 +81,7 @@ class PlantModel(Component, ABC):
 class ModelType(Enum):
     """Enumeration of available plant model types."""
     FACTORIZED_SCATTERED_INTERPOLATOR = "factorized_scattered_interpolator"
-    SYMBOLIC_PRODUCT = "symbolic_product"
+    SYMBOLIC = "symbolic"
 
 
 # ======================================================================
@@ -182,35 +184,56 @@ class FactorizedScatteredInterp(PlantModel):
 # Symbolic Model
 # ======================================================================
 
+class SymbolicMapping:
+    def __init__(self,
+                 name: str,
+                 shape: Tuple[int, ...]):
+        self.name = name
+        self.shape = shape
+
+
 class SymbolicModelParams(ComponentParams):
     """Parameters for a symbolic model defined by symbolic expressions."""
 
     def __init__(
         self,
-        symbols: Dict[str, sp.Symbol],
-        control_mappings: Dict[Control, str],
-        ambient_mappings: Dict[Ambient, str],
-        output_functions: Dict[ModelOutput, Callable[..., np.ndarray]],
+        ambient_list: List[Ambient],
+        control_list: List[Control],
+        ambient_shapes: Dict[Ambient, Tuple[int, ...]],
+        control_shapes: Dict[Control, Tuple[int, ...]],
+        output_functions: Dict[ModelOutput, Callable[..., np.ndarray]]
     ):
         """Initialize symbolic model parameters.
 
         Args:
-            symbols: Mapping from symbol names to SymPy symbols.
-            control_mappings: Mapping from control variables to symbol names.
-            ambient_mappings: Mapping from ambient variables to symbol names.
-            output_functions: Mapping from output variables to numerical functions.
+            TODO
         """
-        self.symbols = symbols
-        self.control_mappings = control_mappings
-        self.ambient_mappings = ambient_mappings
+        self.ambient_list = ambient_list
+        self.control_list = control_list
+        self.ambient_shapes = ambient_shapes
+        self.control_shapes = control_shapes
         self.output_functions = output_functions
+        
+        # Determine output shapes via default computation
+        default_ambient = list(
+            get_default_value(data_var=amb_var, shape=shape) for \
+            amb_var, shape in ambient_shapes.items())
+        default_control = list(
+            get_default_value(data_var=ctrl_var, shape=shape) for \
+            ctrl_var, shape in control_shapes.items())
+        default_result = {
+            model_output: func(*(default_ambient + default_control))
+            for model_output, func in self.output_functions.items()
+        }
+
+        self.output_shapes = {output: res.shape for output, res in default_result.items()}
 
     def input_interface(self) -> Interface:
         """Define required input interface for symbolic model."""
         return Interface(
             all_shapes={
-                Ambient: {amb: (1,) for amb in self.ambient_mappings.keys()},
-                Control: {ctrl: (1,) for ctrl in self.control_mappings.keys()},
+                Ambient: self.ambient_shapes,
+                Control: self.control_shapes,
             }
         )
 
@@ -218,7 +241,7 @@ class SymbolicModelParams(ComponentParams):
         """Define output interface based on defined output functions."""
         return Interface(
             all_shapes={
-                ModelOutput: {out: (1,) for out in self.output_functions.keys()}
+                ModelOutput: self.output_shapes
             }
         )
 
@@ -226,33 +249,46 @@ class SymbolicModelParams(ComponentParams):
 def symbolic_model_params_from_dict(param_dict: Dict[str, Any]) -> SymbolicModelParams:
     """Construct `SymbolicModelParams` from a dictionary definition."""
     symbol_mapping_dict: Dict[str, Dict] = param_dict["symbol_mappings"]
-    symbols: Dict[str, sp.Symbol] = {}
-    control_mappings: Dict[Control, str] = {}
-    ambient_mappings: Dict[Ambient, str] = {}
-
-    # Define symbols and mappings
-    for ctrl_var, sym_name in symbol_mapping_dict["control"].items():
-        symbols[sym_name] = sp.Symbol(sym_name)
-        control_mappings[Control(ctrl_var)] = sym_name
-    for amb_var, sym_name in symbol_mapping_dict["ambient"].items():
-        symbols[sym_name] = sp.Symbol(sym_name)
-        ambient_mappings[Ambient(amb_var)] = sym_name
-
+    str_to_symbol: Dict[str, sp.Symbol] = {}
+    ambient_list: List[Ambient] = [] 
+    ambient_shapes: Dict[Ambient, Tuple[int, ...]] = {}
+    control_list: List[Control] = []
+    control_shapes: Dict[Control, Tuple[int, ...]] = {}
+    symbols_list = []
+    # Define symbols and mappings for ambient conditions
+    for amb_var_str, sym_mapping in symbol_mapping_dict["ambient"].items():
+        amb_var = Ambient(amb_var_str)
+        sym_str = sym_mapping["name"]
+        amb_sym = sp.Symbol(sym_str)
+        str_to_symbol[sym_str] = amb_sym
+        symbols_list.append(amb_sym)
+        ambient_list.append(amb_var)
+        ambient_shapes[amb_var] = tuple(sym_mapping["shape"])
+    # Define symbols and mappings for control inputs
+    for ctrl_var_str, sym_mapping in symbol_mapping_dict["control"].items():
+        ctrl_var = Control(ctrl_var_str)
+        sym_str = sym_mapping["name"]
+        ctrl_sym = sp.Symbol(sym_str)
+        str_to_symbol[sym_str] = ctrl_sym
+        symbols_list.append(ctrl_sym)        
+        control_list.append(ctrl_var)
+        control_shapes[ctrl_var] = tuple(sym_mapping["shape"])
+    
     # Define output functions
     output_functions: Dict[ModelOutput, Callable[..., np.ndarray]] = {}
     for output, expr_str in param_dict["output_functions"].items():
-        expr = sp.sympify(expr_str, locals=symbols)
+        expr = sp.sympify(expr_str, locals=str_to_symbol)
         output_functions[ModelOutput(output)] = sp.lambdify(
-            tuple(symbols.values()), expr, "numpy"
+            symbols_list, expr, "numpy"
         )
 
     return SymbolicModelParams(
-        symbols=symbols,
-        control_mappings=control_mappings,
-        ambient_mappings=ambient_mappings,
-        output_functions=output_functions,
+        ambient_list=ambient_list,
+        control_list=control_list,
+        ambient_shapes=ambient_shapes,
+        control_shapes=control_shapes,
+        output_functions=output_functions
     )
-
 
 class SymbolicModel(PlantModel):
     """Plant model defined via symbolic expressions evaluated with NumPy."""
@@ -261,23 +297,21 @@ class SymbolicModel(PlantModel):
         """Initialize symbolic model."""
         super().__init__(name=name, params=params)
         self._params = params
-        self._symbol_order = list(params.symbols.keys())
+        pass
 
     def _evaluate(
         self,
         meteorological_condition: DataPoint[Ambient],
         control_input: DataPoint[Control],
     ) -> DataPoint[ModelOutput]:
-        """Evaluate symbolic expressions numerically."""
-        value_map = {}
-        for ctrl_var, symbol_name in self._params.control_mappings.items():
-            value_map[symbol_name] = control_input[ctrl_var]
-        for amb_var, symbol_name in self._params.ambient_mappings.items():
-            value_map[symbol_name] = meteorological_condition[amb_var]
-
-        symbol_values = [value_map[s] for s in self._symbol_order]
+        
+        
+        # Input values in correct order
+        values = [meteorological_condition[amb_var] for amb_var in self._params.ambient_list] + \
+            [control_input[ctrl_var] for ctrl_var in self._params.control_list]
+        
         result = {
-            model_output: func(*symbol_values)
+            model_output: func(*values)
             for model_output, func in self._params.output_functions.items()
         }
 

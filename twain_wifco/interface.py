@@ -87,6 +87,8 @@ def get_default_value(data_var: DataVariable,
         return np.ones(shape=shape)
     elif data_var == Control.YAW_STEERING:
         return np.zeros(shape=shape)
+    elif data_var == Ambient.WIND_SPEED:
+        return np.zeros(shape=shape)
     raise ValueError(f"No default value defined for data variable '{data_var}'.")
 
 
@@ -149,7 +151,7 @@ class DataCollection(Generic[DataType]):
     def abs_tols_vec(self) -> np.ndarray:
         """Concatenate absolute tolerances into a flat vector."""
         return np.concatenate([
-            self.abs_tols[dv] * np.ones(np.prod(self.shapes()[dv]))
+            self.abs_tols[dv] * np.ones(np.prod(self.shapes()[dv], dtype=int))
             for dv in self.order
         ])
 
@@ -168,7 +170,7 @@ class DataCollection(Generic[DataType]):
         Elements for missing variables are filled with fill_value.
         """
         def fill_vec(shape: Tuple[int, ...]):
-            return np.full(shape=np.prod(shape), fill_value=fill_value)
+            return np.full(shape=np.prod(shape, dtype=int), fill_value=fill_value)
 
         if order is None:
             order = self.order
@@ -239,7 +241,7 @@ class DataPoint(DataCollection[DataType]):
         data_dict = {}
         offset = 0
         for var in order:
-            numel = np.prod(shapes_dict[var])
+            numel = np.prod(shapes_dict[var], dtype=int)
             data_dict[var] = np.reshape(data_vector[offset:(offset + numel)], shape=shapes_dict[var])
             offset += numel
         return cls(data_dict, order)
@@ -312,7 +314,7 @@ class DataTable(DataCollection[DataType]):
         data_dict = {}
         offset = 0
         for var in order:
-            numel = np.prod(shapes_dict[var]) * num_points
+            numel = np.prod(shapes_dict[var], dtype=int) * num_points
             data_dict[var] = np.reshape(data_vector[offset:(offset + numel)],
                                         shape=(num_points,) + shapes_dict[var])
             offset += numel
