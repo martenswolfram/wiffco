@@ -72,6 +72,8 @@ def perturbed_control_policy_test(
             if not perturbed_is_suboptimal:
                 logger.info(f"Suboptimality check failed: Perturbed policy has reduced metric value {reduced_metric},"
                             f" vs. {optimal_reduced_metric} in the original metric.")
+                logger.info(f"Improved policy: {perturbed_policy}")
+                
             assert perturbed_is_suboptimal
 
 def test_grid_search():
@@ -81,7 +83,7 @@ def test_grid_search():
     # Initialization
     assert grid_search.optimization_name == "grid_search"
     assert grid_search.control_setpoint_vectors.keys() == set([Control.POWER_REGULATION])
-    assert grid_search.control_setpoint_vectors[Control.POWER_REGULATION].shape == ()
+    assert grid_search.control_setpoint_vectors[Control.POWER_REGULATION].shape == (2,)
     assert grid_search.max_num_amb_cond == 6
 
     # Optimization
@@ -95,7 +97,7 @@ def test_grid_search():
                                   duration=duration,
                                   optimal_policy=optimal_policy,
                                   perturbation_num=100,
-                                  discrete_steps={Control.POWER_REGULATION: 0.5})
+                                  discrete_steps={Control.POWER_REGULATION: 1})
 
 def test_simultaneous_optimization():
     json_path = test_data_folder / "optimization_simultaneous.json"

@@ -292,10 +292,11 @@ class GridSearch(ControlPolicyOptimization):
                     control_eval_system.metrics_accumulation.expected_acc_metrics(
                     aggregate_statistics=discrete_aggr_stat,
                     duration=duration)
-                multi_metrics_reduced.append(control_eval_system.multi_metrics_reduction.evaluate(
-                    acc_metrics=expected_acc_metrics))
+                # TODO: Check for null constraints
                 acc_metrics_constraint_satisfied = control_eval_system.constraint_accumulated.evaluate_satisfied(
                     constr_input_data=expected_acc_metrics)
+                multi_metrics_reduced.append(control_eval_system.multi_metrics_reduction.evaluate(
+                    acc_metrics=expected_acc_metrics))
                 constraints_satisfied.append(acc_metrics_constraint_satisfied)
             
         # Find the optimal control strategy that satisfies the constraints
@@ -311,8 +312,9 @@ class GridSearch(ControlPolicyOptimization):
         amb_cond_ctrl_indices = np.unravel_index([best_index], [num_ctrl_setpoint_combinations] * num_ambient_conditions)
         # Corresponding control setpoints as DataTable
         control_setpoint_list = []
-        for multi_index in amb_cond_ctrl_indices:
-            control_setpoints = np.array(list(ctrl_vector[i] for i, ctrl_vector in zip(multi_index, control_setpoint_vectors_list)))
+        for linear_index in amb_cond_ctrl_indices:
+            multi_index = np.unravel_index(indices=linear_index, shape=(tuple(len(vec) for vec in control_setpoint_vectors_list)))
+            control_setpoints = np.array(list(ctrl_vector[i[0]] for i, ctrl_vector in zip(multi_index, control_setpoint_vectors_list)))
             control_setpoint_list.append(DataPoint.from_vector(data_vector=control_setpoints,
                                                                 order=ctrl_variables_order,
                                                                 shapes_dict=ctrl_shapes_dict))
@@ -538,13 +540,15 @@ class LagrangianRelaxationParams:
                  max_num_amb_cond: int,
                  alpha_0: float,
                  max_iter: int,
-                 subgradient_tol: float,
+                 constraint_tol: float,
+                 lagrangian_lambda_tol: float,
                  scipy_method: str,
                  scipy_options: Dict[str, Any]):
         self.max_num_amb_cond = max_num_amb_cond
         self.alpha_0 = alpha_0
         self.max_iter = max_iter
-        self.subgradient_tol = subgradient_tol
+        self.constraint_tol = constraint_tol
+        self.lagrangian_lambda_tol = lagrangian_lambda_tol
         self.scipy_method = scipy_method
         self.scipy_options = scipy_options
 
@@ -552,17 +556,19 @@ def lagrangian_relaxation_params_from_dict(param_dict: Dict[str, Any]):
     max_num_amb_cond = param_dict["max_num_ambient_conditions"]
     alpha_0 = param_dict["alpha_0"]
     max_iter = param_dict["max_iter"]
-    subgradient_tol = param_dict["subgradient_tol"]
+    constraint_tol = param_dict["constraint_tol"]
+    lagrangian_lambda_tol = param_dict["lagrangian_lambda_tol"]
     scipy_method = param_dict["scipy_method"]
     scipy_options = param_dict["scipy_options"]
     return LagrangianRelaxationParams(
         max_num_amb_cond=max_num_amb_cond,
         alpha_0=alpha_0,
         max_iter=max_iter,
-        subgradient_tol=subgradient_tol,
+        constraint_tol=constraint_tol,
+        lagrangian_lambda_tol=lagrangian_lambda_tol,
         scipy_method=scipy_method,
         scipy_options=scipy_options)
- 
+
 class LagrangianRelaxation(ControlPolicyOptimization):
     def __init__(self,
                  optimization_name: str,
@@ -571,7 +577,8 @@ class LagrangianRelaxation(ControlPolicyOptimization):
         self.max_num_amb_cond = optimization_params.max_num_amb_cond
         self.alpha_0 = optimization_params.alpha_0
         self.max_iter = optimization_params.max_iter
-        self.subgradient_tol = optimization_params.subgradient_tol
+        self.constraint_tol = optimization_params.constraint_tol
+        self.lagrangian_lambda_tol = optimization_params.lagrangian_lambda_tol
         self.scipy_method = optimization_params.scipy_method
         self.scipy_options = optimization_params.scipy_options
         
@@ -595,12 +602,16 @@ class LagrangianRelaxation(ControlPolicyOptimization):
             upper_bound_constraints = control_eval_system.constraint_accumulated.upper_bound_constraints()
             if len(upper_bound_constraints) > 1:
                 # TODO: Check this
-                raise NotImplementedError("Currently only one set of accumulated metrics bounds implemented.")
+                raise NotImplementedError("Currently only one set of accumulated metrics bounds allowed.")
             ub_constraint = upper_bound_constraints[0]
             lagrangian_lambdas = np.zeros_like(ub_constraint.upper_bound, dtype=float)
+            lagrangian_lambdas_low = lagrangian_lambdas.copy()
+            lagrangian_lambdas_high = np.full_like(lagrangian_lambdas, fill_value=np.inf)
+            
         # outer-iteration counter
         for t in range(self.max_iter):
-            expected_constr_eval = np.zeros_like(lagrangian_lambdas)
+            if control_eval_system.constraint_accumulated is not None:
+                expected_constr_eval = np.zeros_like(lagrangian_lambdas)
             for i_ac, (prob_weight, ambient_condition) in enumerate(ambient_condition_sample.weighted_variables_iter()):
 
                 # Optimization functions with cache
@@ -616,11 +627,13 @@ class LagrangianRelaxation(ControlPolicyOptimization):
                     # and upper-bound constraints which must not be exceded.
                     if not opt_mgr.control_eval_system.multi_metrics_reduction.maximize:
                         scalar_objective *= -1   
-                    scalar_objective -= lagrangian_lambdas.dot(ub_constraint.constraint_fun(acc_metrics))
+                    if control_eval_system.constraint_accumulated is not None:
+                        # Lagrangian relaxation
+                        scalar_objective -= lagrangian_lambdas.dot(ub_constraint.constraint_fun(acc_metrics))
                     # Scipy will minimize a cost function, hence take the negative value
                     return - scalar_objective
                 
-                # CONSTRAINTS
+                # INSTANTANEOUS CONSTRAINTS
                 instant_constraints = []
                 bounds = None
                 # Order and shapes of control variables
@@ -663,21 +676,27 @@ class LagrangianRelaxation(ControlPolicyOptimization):
                     ambient_condition=ambient_condition,
                     control_setpoints=control_setpoints.get_point(i_ac),
                     duration=opt_mgr.duration)
+                if control_eval_system.constraint_accumulated is None:
+                    # We are done
+                    break
                 # Constraint evaluation
                 expected_constr_eval += prob_weight * ub_constraint.constraint_fun(acc_metrics)
+            logger.debug(f"Iter {t}, before Lagrangian update: lambda = {lagrangian_lambdas},  constraint_eval = {expected_constr_eval}")
+            constr_violation = expected_constr_eval - ub_constraint.upper_bound
+            lagrangian_lambdas_low = np.where(constr_violation > 0, lagrangian_lambdas, lagrangian_lambdas_low)
+            lagrangian_lambdas_high = np.where(constr_violation < 0, lagrangian_lambdas, lagrangian_lambdas_high)
             
-            subgradient = ub_constraint.upper_bound - expected_constr_eval
-            norm_s = np.max(np.abs(subgradient))
-            step_size = self.alpha_0 / np.sqrt(t + 1)
-            step_vec = step_size * subgradient / norm_s
-            lagrangian_lambdas = np.array(lagrangian_lambdas - step_vec)
-            logger.debug(f"Iteration {t}: lambda = {lagrangian_lambdas},  constraint_eval = {expected_constr_eval}")
-
-            if np.all(np.atleast_1d((subgradient >= -self.subgradient_tol))) and \
-                np.all(np.atleast_1d(lagrangian_lambdas * subgradient <= self.subgradient_tol)):
-                logger.info("Converged: constraints satisfied and multipliers consistent.")
+            for i_constr, (lam_low, lam_high) in enumerate(zip(lagrangian_lambdas_low, lagrangian_lambdas_high)):
+                if lam_high < np.inf:
+                    lagrangian_lambdas[i_constr] = (lam_high + lam_low) / 2
+                else:
+                    step = np.sign(constr_violation[i_constr])
+                    lagrangian_lambdas[i_constr] += step
+            if np.all(constr_violation < self.constraint_tol) and \
+                np.all(np.abs(lagrangian_lambdas_high - lagrangian_lambdas_low) < self.lagrangian_lambda_tol):
+                # Converged to stable lagrangian lamdas
                 break
-        
+
         final_acc_metrics = opt_mgr.control_eval_system.expected_acc_metrics(
                         ambient_condition_statistics=ambient_condition_statistics,
                         control_policy=opt_mgr.control_policy,

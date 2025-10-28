@@ -5,8 +5,9 @@
         "max_num_ambient_conditions": 6,
         "control_setpoint_vectors": {
             "power_regulation": {
-                "shape": [],
-                "data": [[1, 1.5, 2, 2.5, 3, 3.5, 4]]
+                "shape": [2],
+                "data": [[1, 2, 3],
+                         [1, 2, 3]]
             }            
         }
     }

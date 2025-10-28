@@ -20,7 +20,7 @@
                 "-v",
                 "-o",
                 "log_cli=true",
-                "--log-cli-level=INFO",
+                "--log-cli-level=DEBUG",
                 "tests",
                 // "--ignore=tests/test_optimization.py",
                 // "tests/test_optimization.py",

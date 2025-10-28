@@ -252,11 +252,13 @@ class SimpleProduct(Aggregation):
         aggregated_output: Dict[Aggregated, np.ndarray] = {}
 
         for out_var, mapping in self._mappings.items():
-            res = (
-                self._prod_values(model_output, mapping.model_inputs)
-                * self._prod_values(ambient_condition, mapping.ambient_inputs)
-                * self._prod_values(control_setpoints, mapping.control_inputs)
-            )
-            aggregated_output[out_var] = np.array(res)
+            res = 1
+            for model_in in mapping.model_inputs:
+                res *= model_output[model_in]
+            for ambient_in in mapping.ambient_inputs:
+                res *= ambient_condition[ambient_in]
+            for control_in in mapping.control_inputs:
+                res *= control_setpoints[control_in]
+            aggregated_output[out_var] = res
 
         return DataPoint(data=aggregated_output)

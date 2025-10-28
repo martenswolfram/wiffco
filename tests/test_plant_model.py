@@ -27,7 +27,7 @@ def test_scattered_plant_model():
 
     # Valid input
     valid_ctrl_input = DataPoint({Control.POWER_REGULATION: np.array(2)})
-    expected_output =  DataPoint({ModelOutput.DAMAGE_RATE: np.array(4 * 4),
+    expected_output =  DataPoint({ModelOutput.DAMAGE_RATE:  np.array(4 * 4),
                                   ModelOutput.ELECTRICAL_POWER: np.array(4 * 1.4)})
 
     output = power_damage_scattered_model.evaluate(meteorological_condition=valid_met_condition,
@@ -50,9 +50,9 @@ def test_symbolic_model():
     assert "missing required variables of type Control" in str(excinfo.value)
 
     # Valid input
-    valid_ctrl_input = DataPoint({Control.POWER_REGULATION: np.array(2)})
-    expected_output =  DataPoint({ModelOutput.DAMAGE_RATE: np.array(4 * 4),
-                                  ModelOutput.ELECTRICAL_POWER: np.array(4 * np.sqrt(2))})
+    valid_ctrl_input = DataPoint({Control.POWER_REGULATION: np.array([2, 2])})
+    expected_output =  DataPoint({ModelOutput.DAMAGE_RATE: 4 * 4 * np.array([1, 1]),
+                                  ModelOutput.ELECTRICAL_POWER: 4 * np.sqrt(2) * np.array([1, 1])})
 
     output = power_damage_sybolic_model.evaluate(meteorological_condition=valid_met_condition,
                                                    control_input=valid_ctrl_input)

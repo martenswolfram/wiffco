@@ -4,11 +4,11 @@
     "constraint_params":{
         "data_type": "accumulated_metric",
         "upper_bound": {
-            "accrued_damage": 500,
+            "accrued_damage": [500, 500],
             "revenue": null
         },
         "lower_bound": {
-            "accrued_damage": null,
+            "accrued_damage": [null, null],
             "revenue": null
         }
     }

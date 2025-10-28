@@ -1,6 +1,7 @@
 from typing import Dict, Any
 from abc import abstractmethod
 from enum import Enum
+import numpy as np 
 from twain_wifco.statistics import (
     Statistics)
 from twain_wifco.interface import (
@@ -86,12 +87,15 @@ class IntegrationMapping:
 
     Args:
         aggregate (Aggregated): The aggregate variable.
+        collapse (bool): Specifies whether arrays should be collapse into a scalar
         discount_rate (float): Discount rate applied per time step.
     """
     def __init__(self,
                  aggregate: Aggregated,
+                 collapse: bool,
                  discount_rate: float):
         self.aggregate = aggregate
+        self.collapse = collapse
         self.discount_rate = discount_rate
 
 
@@ -127,6 +131,7 @@ def discounted_integrator_params_from_dict(param_dict: Dict[str, Any]) -> Discou
     for acc_metric, mapping_dict in param_dict["integration_mappings"].items():
         integration_mappings[AccumulatedMetric(acc_metric)] = IntegrationMapping(
             aggregate=Aggregated(mapping_dict["aggregate"]),
+            collapse=bool(mapping_dict["collapse"]),
             discount_rate=float(mapping_dict["discount_rate"])
         )
     return DiscountedIntegrationParams(integration_mappings=integration_mappings)
@@ -155,6 +160,8 @@ class DiscountedIntegration(MetricsAccumulation):
                 discount_factor = 1 / (1 + discount_rate)
                 duration_discount_factor = (1 - discount_factor ** duration) / (1 - discount_factor)
                 accumulated_metrics[acc_metric] = value * duration_discount_factor
+            if mapping.collapse:
+                accumulated_metrics[acc_metric] = np.array(np.sum(accumulated_metrics[acc_metric]))
         return DataPoint(accumulated_metrics)
 
     def _expected_acc_metrics(self,

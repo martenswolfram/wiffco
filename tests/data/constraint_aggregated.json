@@ -4,10 +4,10 @@
     "constraint_params":{
         "data_type": "aggregate",
         "upper_bound": {
-            "damage_rate": 35
+            "damage_rate": [35, 35]
         },
         "lower_bound": {
-            "damage_rate": null
+            "damage_rate": [null, null]
         }
     }
 }

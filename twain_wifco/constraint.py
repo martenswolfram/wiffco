@@ -202,16 +202,12 @@ class SeparateConstraints(Constraint):
         Returns:
             bool: True if all constraints are satisfied.
         """
-        # Bounds for unconstrained variables are filled with corresponding (pos/neg) infinite bounds 
-        lb = self.bounds.lower_bound.to_vector(order=constr_input_data.order,
-                                               fill_shapes=constr_input_data.shapes(),
-                                               fill_value=-np.inf)
-        ub = self.bounds.upper_bound.to_vector(order=constr_input_data.order,
-                                               fill_shapes=constr_input_data.shapes(),
-                                               fill_value=np.inf)
+
+        lb = self.bounds.lower_bound.to_vector()
+        ub = self.bounds.upper_bound.to_vector()
         
-        lower_diff = constr_input_data.to_vector() - lb
-        upper_diff = constr_input_data.to_vector() - ub
+        lower_diff = constr_input_data.to_vector(order=self.bounds.order) - lb
+        upper_diff = constr_input_data.to_vector(order=self.bounds.order) - ub
         
         return all(lower_diff >= -self.bounds.lower_bound.abs_tols_vec()) and \
                all(upper_diff <= self.bounds.upper_bound.abs_tols_vec())
@@ -269,7 +265,7 @@ class SeparateConstraints(Constraint):
 
         for var in self.bounds.upper_bound.keys():
             # Lower bound as upper-bound constraint
-            if self.bounds.lower_bound[var] > -np.inf:
+            if (self.bounds.lower_bound[var] > -np.inf).any():
                 def constraint_fun(values, v=var):
                     return -values[v]
                 ub_constraints.append(UpperBoundConstraint(
@@ -278,7 +274,7 @@ class SeparateConstraints(Constraint):
                 ))
 
             # Upper bound as upper-bound constraint
-            if self.bounds.upper_bound[var] < np.inf:
+            if (self.bounds.upper_bound[var] < np.inf).any():
                 def constraint_fun(values, v=var):
                     return values[v]
                 ub_constraints.append(UpperBoundConstraint(
