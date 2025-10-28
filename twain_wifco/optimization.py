@@ -292,13 +292,15 @@ class GridSearch(ControlPolicyOptimization):
                     control_eval_system.metrics_accumulation.expected_acc_metrics(
                     aggregate_statistics=discrete_aggr_stat,
                     duration=duration)
-                # TODO: Check for null constraints
-                acc_metrics_constraint_satisfied = control_eval_system.constraint_accumulated.evaluate_satisfied(
-                    constr_input_data=expected_acc_metrics)
+                if control_eval_system.constraint_accumulated is not None:
+                    acc_metrics_constraint_satisfied = control_eval_system.constraint_accumulated.evaluate_satisfied(
+                        constr_input_data=expected_acc_metrics)
+                    constraints_satisfied.append(acc_metrics_constraint_satisfied)
+                else:
+                    constraints_satisfied.append(True)
                 multi_metrics_reduced.append(control_eval_system.multi_metrics_reduction.evaluate(
                     acc_metrics=expected_acc_metrics))
-                constraints_satisfied.append(acc_metrics_constraint_satisfied)
-            
+                
         # Find the optimal control strategy that satisfies the constraints
         if not any(constraints_satisfied):
             raise ValueError("GridSearch.optimize_policy: Failed to find feasible policy due to constraints-violation.")
