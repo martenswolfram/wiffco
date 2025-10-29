@@ -81,23 +81,20 @@ class ControlEvaluationSystem:
                 
     def acc_metrics_from_amb(self,
                              ambient_condition: DataPoint[Ambient],
-                             control_setpoints: DataPoint[Control],
-                             duration: int):
+                             control_setpoints: DataPoint[Control]):
         
         aggregate = self.aggregate_from_amb(
             ambient_condition=ambient_condition,
             control_setpoints=control_setpoints)
 
         acc_metrics = self.metrics_accumulation.acc_metrics(
-            aggregate=aggregate,
-            duration=duration)
+            aggregate=aggregate)
             
         return acc_metrics
     
     def acc_metrics_from_amb_constr_eval(self,
                                          ambient_condition: DataPoint[Ambient],
-                                         control_setpoints: DataPoint[Control],
-                                         duration: int):
+                                         control_setpoints: DataPoint[Control]):
         
         aggregate, constraints_satisfied = self.aggregate_from_amb_constr_eval(
             ambient_condition=ambient_condition,
@@ -107,8 +104,7 @@ class ControlEvaluationSystem:
             return None, False
         
         acc_metrics = self.metrics_accumulation.acc_metrics(
-            aggregate=aggregate,
-            duration=duration)
+            aggregate=aggregate)
         
         if self.constraint_accumulated is not None:
             if not self.constraint_accumulated.evaluate_satisfied(
@@ -120,7 +116,6 @@ class ControlEvaluationSystem:
     def expected_acc_metrics(self,
                              ambient_condition_statistics: Statistics,
                              control_policy: DiscreteControlPolicy,
-                             duration: int,
                              max_num_amb_cond: int | None = None):
         
         ambient_condition_sample = ambient_condition_statistics.systematic_sample(N_max=max_num_amb_cond)
@@ -133,21 +128,19 @@ class ControlEvaluationSystem:
             aggregate_list.append(aggregated)
 
         aggregate_support = DataTable.from_data_points(aggregate_list)
-        discrete_statistics_params = DiscreteStatisticsParams(support_data=aggregate_support,
-                                                              probabilities=ambient_condition_sample.normalized_weights)        
         new_name = ""
-        discrete_aggregate_statistics = DiscreteStatistics(name=new_name,
-                                                           statistics_params=discrete_statistics_params)
+        discrete_aggregate_statistics = DiscreteStatistics(
+            name=new_name,
+            support_data=aggregate_support,
+            probabilities=ambient_condition_sample.normalized_weights)
         expected_acc_metrics = self.metrics_accumulation.expected_acc_metrics(
-            aggregate_statistics=discrete_aggregate_statistics,
-            duration=duration)
+            aggregate_statistics=discrete_aggregate_statistics)
         
         return expected_acc_metrics
 
     def expected_acc_metrics_constr_eval(self,
                                          ambient_condition_statistics: Statistics,
                                          control_policy: DiscreteControlPolicy,
-                                         duration: int,
                                          max_num_amb_cond: int | None = None):
         
         ambient_condition_sample = ambient_condition_statistics.systematic_sample(N_max=max_num_amb_cond)
@@ -162,14 +155,13 @@ class ControlEvaluationSystem:
             aggregate_list.append(aggregated)
 
         aggregate_support = DataTable.from_data_points(aggregate_list)
-        discrete_statistics_params = DiscreteStatisticsParams(support_data=aggregate_support,
-                                                              probabilities=ambient_condition_sample.normalized_weights)        
         new_name = ""
-        discrete_aggregate_statistics = DiscreteStatistics(name=new_name,
-                                                           statistics_params=discrete_statistics_params)
+        discrete_aggregate_statistics = DiscreteStatistics(
+            name=new_name,
+            support_data=aggregate_support,
+            probabilities=ambient_condition_sample.normalized_weights)        
         expected_acc_metrics = self.metrics_accumulation.expected_acc_metrics(
-            aggregate_statistics=discrete_aggregate_statistics,
-            duration=duration)
+            aggregate_statistics=discrete_aggregate_statistics)
         
         if self.constraint_accumulated is not None:
             if not self.constraint_accumulated.evaluate_satisfied(
@@ -184,15 +176,11 @@ class OptimizationMethod(Enum):
     LAGRANGIAN_RELAXATION = "lagrangian_relaxation"
 
 class ControlPolicyOptimization(ABC):
-    def __init__(self,
-                 optimization_name: str):
-        self.optimization_name = optimization_name
-
+    
     @abstractmethod
     def optimize_policy(self,
                         control_eval_system: ControlEvaluationSystem,
-                        ambient_condition_statistics: Statistics,
-                        duration: int):
+                        ambient_condition_statistics: Statistics):
         pass
 
 class ControlSetpointVectors:
@@ -204,34 +192,17 @@ class ControlSetpointVectors:
         self.shape = shape
         self.vectors = vectors
 
-class GridSearchParams:
+class GridSearch(ControlPolicyOptimization):
     def __init__(self,
                  max_num_amb_cond: int,
                  control_setpoint_vectors: Dict[Control, ControlSetpointVectors]):
         self.max_num_amb_cond = max_num_amb_cond
         self.control_setpoint_vectors = control_setpoint_vectors
         
-def grid_search_params_from_dict(param_dict: Dict[str, Dict | Any]):
-    max_num_amb_cond = param_dict["max_num_ambient_conditions"]
-    control_setpoint_vectors = {}
-    for ctrl_var, setpoint_vectors in param_dict["control_setpoint_vectors"].items():
-        control_setpoint_vectors[Control(ctrl_var)] = ControlSetpointVectors(shape=tuple(setpoint_vectors["shape"]),
-                                                                             vectors=setpoint_vectors["data"])
-    return GridSearchParams(max_num_amb_cond=max_num_amb_cond,
-                            control_setpoint_vectors=control_setpoint_vectors)
-
-class GridSearch(ControlPolicyOptimization):
-    def __init__(self,
-                 optimization_name: str,
-                 optimization_params: GridSearchParams):
-        super().__init__(optimization_name=optimization_name)
-        self.max_num_amb_cond = optimization_params.max_num_amb_cond
-        self.control_setpoint_vectors = optimization_params.control_setpoint_vectors
 
     def optimize_policy(self,
                         control_eval_system: ControlEvaluationSystem,
-                        ambient_condition_statistics: Statistics[Ambient],
-                        duration: int):
+                        ambient_condition_statistics: Statistics[Ambient]):
         
         logger.info(f"GridSearch: Find optimal control policy")
         ambient_condition_sample = ambient_condition_statistics.systematic_sample(N_max=self.max_num_amb_cond)
@@ -283,16 +254,13 @@ class GridSearch(ControlPolicyOptimization):
                 # Each ctrl_indices corresponds to a discrete control strategy
                 aggr_support_data = DataTable.from_data_points(
                     list(aggregate_evaluations[i_ac][ctrl_indices[i_ac]] for i_ac in np.arange(num_ambient_conditions)))
-                discrete_stat_params = DiscreteStatisticsParams(
-                    support_data=aggr_support_data,
-                    probabilities=ambient_condition_sample.normalized_weights)
                 discrete_aggr_stat = DiscreteStatistics(
                     name="",
-                    statistics_params=discrete_stat_params)
+                    support_data=aggr_support_data,
+                    probabilities=ambient_condition_sample.normalized_weights)
                 expected_acc_metrics = \
                     control_eval_system.metrics_accumulation.expected_acc_metrics(
-                    aggregate_statistics=discrete_aggr_stat,
-                    duration=duration)
+                    aggregate_statistics=discrete_aggr_stat)
                 if control_eval_system.constraint_accumulated is not None:
                     acc_metrics_constraint_satisfied = control_eval_system.constraint_accumulated.evaluate_satisfied(
                         constr_input_data=expected_acc_metrics)
@@ -322,18 +290,15 @@ class GridSearch(ControlPolicyOptimization):
                                                                 order=ctrl_variables_order,
                                                                 shapes_dict=ctrl_shapes_dict))
         control_setpoints_data = DataTable.from_data_points(control_setpoint_list)
-        discrete_control_policy_params = DiscreteControlPolicyParams(
-            ambient_support_data=ambient_condition_sample.support_data,
-            control_out_data=control_setpoints_data
-        )
+        
         optimal_policy = DiscreteControlPolicy(
             name="optimized_discrete_control_policy",
-            params=discrete_control_policy_params)
+            ambient_support_data=ambient_condition_sample.support_data,
+            control_out_data=control_setpoints_data)
     
         final_acc_metrics = control_eval_system.expected_acc_metrics(
             ambient_condition_statistics=ambient_condition_statistics,
-            control_policy=optimal_policy,
-            duration=duration)
+            control_policy=optimal_policy)
         logger.info(f"Grid-search optimization final control policy:\n"
                     f"{optimal_policy}"
                     f"Final accumulated metrics:\n"
@@ -341,35 +306,27 @@ class GridSearch(ControlPolicyOptimization):
 
         return optimal_policy
 
-class SimultaneousOptimizationParams:
-    def __init__(self,
-                 max_num_amb_cond: int,
-                 scipy_method: str,
-                 scipy_options: Dict[str, Any]):
-        self.max_num_amb_cond = max_num_amb_cond
-        self.scipy_method = scipy_method
-        self.scipy_options = scipy_options
 
-def simultaneous_optimization_params_from_dict(param_dict: Dict[str, Any]):
+def grid_search_from_dict(param_dict: Dict[str, Dict | Any]):
     max_num_amb_cond = param_dict["max_num_ambient_conditions"]
-    scipy_method = param_dict["scipy_method"]
-    scipy_options = param_dict["scipy_options"]
-    return SimultaneousOptimizationParams(
+    control_setpoint_vectors = {}
+    for ctrl_var, setpoint_vectors in param_dict["control_setpoint_vectors"].items():
+        control_setpoint_vectors[Control(ctrl_var)] = ControlSetpointVectors(
+            shape=tuple(setpoint_vectors["shape"]),
+            vectors=setpoint_vectors["data"])
+    return GridSearch(
         max_num_amb_cond=max_num_amb_cond,
-        scipy_method=scipy_method,
-        scipy_options=scipy_options)
+        control_setpoint_vectors=control_setpoint_vectors)
 
 class ContinuousOptimizationManager:
     def __init__(self,
                  control_eval_system: ControlEvaluationSystem,
                  ambient_condition_statistics: Statistics[Ambient],
-                 duration: int,
                  max_num_amb_cond: int | None = None):
-        self.control_eval_system = control_eval_system
-        self.ambient_condition_sample = ambient_condition_statistics.systematic_sample(
+        self._control_eval_system = control_eval_system
+        self._ambient_condition_sample = ambient_condition_statistics.systematic_sample(
             N_max=max_num_amb_cond)
-        self.duration = duration        
-        self.control_policy = self.default_discrete_policy()
+        self._control_policy = self.default_discrete_policy()
 
     # TODO: Make sure that caching works.
     @lru_cache(maxsize=None)
@@ -378,11 +335,11 @@ class ContinuousOptimizationManager:
                                  ctrl_as_tuple: Tuple[float, ...]):
         control_setpoints = DataPoint.from_vector(
             data_vector=np.array(ctrl_as_tuple),
-            order=self.control_policy.control_out_data.order,
-            shapes_dict=self.control_policy.control_out_data.shapes())
+            order=self._control_policy.control_out_data().order,
+            shapes_dict=self._control_policy.control_out_data().shapes())
 
-        return self.control_eval_system.aggregate_from_amb(
-            ambient_condition=self.ambient_condition_sample.support_data.get_point(i_ac),
+        return self._control_eval_system.aggregate_from_amb(
+            ambient_condition=self._ambient_condition_sample.support_data.get_point(i_ac),
             control_setpoints=control_setpoints)
         
     @lru_cache(maxsize=None)
@@ -393,23 +350,22 @@ class ContinuousOptimizationManager:
             i_ac=i_ac,
             ctrl_as_tuple=ctrl_as_tuple)
         
-        return self.control_eval_system.metrics_accumulation.acc_metrics(
-            aggregate=aggregate,
-            duration=self.duration)
+        return self._control_eval_system.metrics_accumulation.acc_metrics(
+            aggregate=aggregate)
 
     @lru_cache(maxsize=None)
     def all_aggregates_w_cache(self,
                            ctrl_as_tuple: Tuple[float, ...]):
         control_setpoints_data = DataTable.from_vector(
             data_vector=np.array(ctrl_as_tuple),
-            order=self.control_policy.control_out_data.order,
-            shapes_dict=self.control_policy.control_out_data.shapes(),
-            num_points=len(self.control_policy.control_out_data))
+            order=self._control_policy.control_out_data().order,
+            shapes_dict=self._control_policy.control_out_data().shapes(),
+            num_points=len(self._control_policy.control_out_data()))
 
         aggregate_list = []
-        for i_ac, ambient_condition in enumerate(self.ambient_condition_sample.support_data):
+        for i_ac, ambient_condition in enumerate(self._ambient_condition_sample.support_data):
             control_setpoints = control_setpoints_data.get_point(i_ac)
-            aggregate = self.control_eval_system.aggregate_from_amb(
+            aggregate = self._control_eval_system.aggregate_from_amb(
                 ambient_condition=ambient_condition,
                 control_setpoints=control_setpoints)
             aggregate_list.append(aggregate)
@@ -419,53 +375,46 @@ class ContinuousOptimizationManager:
     def expected_acc_metrics_w_cache(self,
                                      ctrl_as_tuple: Tuple[float, ...]):
         aggregate_support = self.all_aggregates_w_cache(ctrl_as_tuple=ctrl_as_tuple)
-        discrete_statistics_params = DiscreteStatisticsParams(
+        discrete_aggregate_statistics = DiscreteStatistics(
+            name="",
             support_data=aggregate_support,
-            probabilities=self.ambient_condition_sample.normalized_weights)        
-        new_name = ""
-        discrete_aggregate_statistics = DiscreteStatistics(name=new_name,
-                                                           statistics_params=discrete_statistics_params)
+            probabilities=self._ambient_condition_sample.normalized_weights)        
 
-        expected_acc_metrics = self.control_eval_system.metrics_accumulation.expected_acc_metrics(
-            aggregate_statistics=discrete_aggregate_statistics,
-            duration=self.duration)
+        expected_acc_metrics = self._control_eval_system.metrics_accumulation.expected_acc_metrics(
+            aggregate_statistics=discrete_aggregate_statistics)
         
         return expected_acc_metrics
         
     def default_discrete_policy(self):
-        ctrl_shapes = self.control_eval_system.plant_model.input_interface.shapes(Control)
-        num_samples = self.ambient_condition_sample.N
+        ctrl_shapes = self._control_eval_system.plant_model._input_interface.shapes(Control)
+        num_samples = self._ambient_condition_sample.N
         control_setpoints = DataTable({ctrl_var: get_default_value(data_var=ctrl_var,
                                                                    shape=(num_samples,) + shape) for \
                                        ctrl_var, shape in ctrl_shapes.items()})
-        # Scattered Interpolation out data
-        discrete_control_policy_params = DiscreteControlPolicyParams(
-            ambient_support_data=self.ambient_condition_sample.support_data,
-            control_out_data=control_setpoints)        
         default_policy = DiscreteControlPolicy(
             name="discrete_control_policy",
-            params=discrete_control_policy_params)
+            ambient_support_data=self._ambient_condition_sample.support_data,
+            control_out_data=control_setpoints)
+                
         return default_policy
-            
+
 class SimultaneousOptimization(ControlPolicyOptimization):
     def __init__(self,
-                 optimization_name: str,
-                 optimization_params: SimultaneousOptimizationParams):
-        super().__init__(optimization_name=optimization_name)
-        self.max_num_amb_cond = optimization_params.max_num_amb_cond
-        self.scipy_method = optimization_params.scipy_method
-        self.scipy_options = optimization_params.scipy_options
+                 max_num_amb_cond: int,
+                 scipy_method: str,
+                 scipy_options: Dict[str, Any]):
+        self.max_num_amb_cond = max_num_amb_cond
+        self.scipy_method = scipy_method
+        self.scipy_options = scipy_options
 
     def optimize_policy(self,
                         control_eval_system: ControlEvaluationSystem,
-                        ambient_condition_statistics: Statistics[Ambient],
-                        duration: int):
+                        ambient_condition_statistics: Statistics[Ambient]):
         
         # OptimizationManager
         opt_mgr = ContinuousOptimizationManager(
             control_eval_system=control_eval_system,
             ambient_condition_statistics=ambient_condition_statistics,
-            duration=duration,
             max_num_amb_cond=self.max_num_amb_cond)
         
         # Optimization functions with cache
@@ -475,20 +424,20 @@ class SimultaneousOptimization(ControlPolicyOptimization):
         # COST FUNCTION
         # based on accumulated metrics
         cost_function = \
-            opt_mgr.control_eval_system.multi_metrics_reduction.cost_function(
+            opt_mgr._control_eval_system.multi_metrics_reduction.cost_function(
                 eval_acc_metrics_from_x=expected_acc_metrics_w_cache)
 
         # CONSTRAINTS
         constraints = []
         bounds = None
         # Order and shapes of control variables
-        x_order = opt_mgr.control_policy.control_out_data.order
-        x_shapes_dict=opt_mgr.control_policy.control_out_data.shapes()
+        x_order = opt_mgr._control_policy.control_out_data().order
+        x_shapes_dict=opt_mgr._control_policy.control_out_data().shapes()
 
         # CONTROL CONSTRAINT
-        if opt_mgr.control_eval_system.constraint_control is not None:
-            num_ac = len(opt_mgr.control_policy.control_out_data)
-            control_constraint_object = opt_mgr.control_eval_system.constraint_control.scipy_object(
+        if opt_mgr._control_eval_system.constraint_control is not None:
+            num_ac = len(opt_mgr._control_policy.control_out_data())
+            control_constraint_object = opt_mgr._control_eval_system.constraint_control.scipy_object(
                 x_order=x_order,
                 x_shapes_dict=x_shapes_dict,
                 num_points=num_ac,
@@ -499,8 +448,8 @@ class SimultaneousOptimization(ControlPolicyOptimization):
                 constraints.append(control_constraint_object)
 
         # AGGREGATE CONSTRAINT
-        if opt_mgr.control_eval_system.constraint_aggregated is not None:
-            aggregate_constraint = opt_mgr.control_eval_system.constraint_aggregated.scipy_object(
+        if opt_mgr._control_eval_system.constraint_aggregated is not None:
+            aggregate_constraint = opt_mgr._control_eval_system.constraint_aggregated.scipy_object(
                 x_order=x_order,
                 x_shapes_dict=x_shapes_dict,
                 num_points=num_ac,
@@ -509,36 +458,53 @@ class SimultaneousOptimization(ControlPolicyOptimization):
             constraints.append(aggregate_constraint)
 
         # ACCUMULATED CONSTRAINT
-        if opt_mgr.control_eval_system.constraint_accumulated is not None:
+        if opt_mgr._control_eval_system.constraint_accumulated is not None:
             acc_metrics_constraint = \
-                opt_mgr.control_eval_system.constraint_accumulated.scipy_object(
+                opt_mgr._control_eval_system.constraint_accumulated.scipy_object(
                     x_order=x_order,
                     x_shapes_dict=x_shapes_dict,                     
                     x_constraint_evaluation=expected_acc_metrics_w_cache)
             constraints.append(acc_metrics_constraint)
         
         # SCIPY-OPTIMIZATION
-        x0 = opt_mgr.control_policy.control_out_data.to_vector()
+        x0 = opt_mgr._control_policy.control_out_data().to_vector()
         res = minimize(cost_function,
                        x0,
                        method=self.scipy_method,
                        bounds=bounds,
                        constraints=constraints,
                        options=self.scipy_options)
-        opt_mgr.control_policy.set_control_data_from_vector(control_data_vector=res.x)
+        # TODO: Fix retrieval of DataTable properties:
+        optimal_control_setpoints = DataTable.from_vector(
+            data_vector=res.x,
+            order=opt_mgr._control_policy.control_out_data().order,
+            shapes_dict=opt_mgr._control_policy.control_out_data().shapes(),
+            num_points=len(opt_mgr._control_policy.control_out_data()))
+        optimal_control_policy = DiscreteControlPolicy(
+            name="optimal_policy",
+            ambient_support_data=opt_mgr._ambient_condition_sample.support_data,
+            control_out_data=optimal_control_setpoints            
+        )
         
-        final_acc_metrics = opt_mgr.control_eval_system.expected_acc_metrics(
+        final_acc_metrics = opt_mgr._control_eval_system.expected_acc_metrics(
                         ambient_condition_statistics=ambient_condition_statistics,
-                        control_policy=opt_mgr.control_policy,
-                        duration=opt_mgr.duration)
+                        control_policy=optimal_control_policy)
         logger.info(f"Simultaneous optimization final control policy:\n"
-                    f"{opt_mgr.control_policy}"
+                    f"{optimal_control_policy}"
                     f"Final accumulated metrics:\n"
                     f"{final_acc_metrics}")
-        return opt_mgr.control_policy
+        return optimal_control_policy
      
+def simultaneous_optimization_from_dict(param_dict: Dict[str, Any]):
+    max_num_amb_cond = param_dict["max_num_ambient_conditions"]
+    scipy_method = param_dict["scipy_method"]
+    scipy_options = param_dict["scipy_options"]
+    return SimultaneousOptimization(
+        max_num_amb_cond=max_num_amb_cond,
+        scipy_method=scipy_method,
+        scipy_options=scipy_options)
 
-class LagrangianRelaxationParams:
+class LagrangianRelaxation:
     def __init__(self,
                  max_num_amb_cond: int,
                  alpha_0: float,
@@ -555,51 +521,36 @@ class LagrangianRelaxationParams:
         self.scipy_method = scipy_method
         self.scipy_options = scipy_options
 
-def lagrangian_relaxation_params_from_dict(param_dict: Dict[str, Any]):
-    max_num_amb_cond = param_dict["max_num_ambient_conditions"]
-    alpha_0 = param_dict["alpha_0"]
-    max_iter = param_dict["max_iter"]
-    constraint_tol = param_dict["constraint_tol"]
-    lagrangian_lambda_tol = param_dict["lagrangian_lambda_tol"]
-    scipy_method = param_dict["scipy_method"]
-    scipy_options = param_dict["scipy_options"]
-    return LagrangianRelaxationParams(
-        max_num_amb_cond=max_num_amb_cond,
-        alpha_0=alpha_0,
-        max_iter=max_iter,
-        constraint_tol=constraint_tol,
-        lagrangian_lambda_tol=lagrangian_lambda_tol,
-        scipy_method=scipy_method,
-        scipy_options=scipy_options)
-
 class LagrangianRelaxation(ControlPolicyOptimization):
     def __init__(self,
-                 optimization_name: str,
-                 optimization_params: LagrangianRelaxationParams):
-        super().__init__(optimization_name=optimization_name)
-        self.max_num_amb_cond = optimization_params.max_num_amb_cond
-        self.alpha_0 = optimization_params.alpha_0
-        self.max_iter = optimization_params.max_iter
-        self.constraint_tol = optimization_params.constraint_tol
-        self.lagrangian_lambda_tol = optimization_params.lagrangian_lambda_tol
-        self.scipy_method = optimization_params.scipy_method
-        self.scipy_options = optimization_params.scipy_options
+                 max_num_amb_cond: int,
+                 alpha_0: float,
+                 max_iter: int,
+                 constraint_tol: float,
+                 lagrangian_lambda_tol: float,
+                 scipy_method: str,
+                 scipy_options: Dict[str, Any]):
+        self._max_num_amb_cond = max_num_amb_cond
+        self._alpha_0 = alpha_0
+        self._max_iter = max_iter
+        self._constraint_tol = constraint_tol
+        self._lagrangian_lambda_tol = lagrangian_lambda_tol
+        self._scipy_method = scipy_method
+        self._scipy_options = scipy_options
         
     def optimize_policy(self,
                         control_eval_system: ControlEvaluationSystem,
-                        ambient_condition_statistics: Statistics[Ambient],
-                        duration: int):
+                        ambient_condition_statistics: Statistics[Ambient]):
         
         # OptimizationManager
         opt_mgr = ContinuousOptimizationManager(
             control_eval_system=control_eval_system,
             ambient_condition_statistics=ambient_condition_statistics,
-            duration=duration,
-            max_num_amb_cond=self.max_num_amb_cond)
+            max_num_amb_cond=self._max_num_amb_cond)
         
-        control_setpoints = opt_mgr.control_policy.control_out_data
+        control_setpoints = opt_mgr._control_policy.control_out_data()
                 
-        ambient_condition_sample = ambient_condition_statistics.systematic_sample(N_max=self.max_num_amb_cond)
+        ambient_condition_sample = ambient_condition_statistics.systematic_sample(N_max=self._max_num_amb_cond)
 
         if control_eval_system.constraint_accumulated is not None:
             upper_bound_constraints = control_eval_system.constraint_accumulated.upper_bound_constraints()
@@ -612,7 +563,7 @@ class LagrangianRelaxation(ControlPolicyOptimization):
             lagrangian_lambdas_high = np.full_like(lagrangian_lambdas, fill_value=np.inf)
             
         # outer-iteration counter
-        for t in range(self.max_iter):
+        for t in range(self._max_iter):
             if control_eval_system.constraint_accumulated is not None:
                 expected_constr_eval = np.zeros_like(lagrangian_lambdas)
             for i_ac, (prob_weight, ambient_condition) in enumerate(ambient_condition_sample.weighted_variables_iter()):
@@ -624,11 +575,11 @@ class LagrangianRelaxation(ControlPolicyOptimization):
                 # COST FUNCTION
                 def cost_function(ctrl_setpoints_vec, i_ac=i_ac):
                     acc_metrics = acc_metrics_w_cache(ctrl_setpoints_vec)
-                    scalar_objective = opt_mgr.control_eval_system.multi_metrics_reduction.evaluate(
+                    scalar_objective = opt_mgr._control_eval_system.multi_metrics_reduction.evaluate(
                         acc_metrics=acc_metrics)
                     # First assume that we have an objective function (which we want to maximise),
                     # and upper-bound constraints which must not be exceded.
-                    if not opt_mgr.control_eval_system.multi_metrics_reduction.maximize:
+                    if not opt_mgr._control_eval_system.multi_metrics_reduction.maximize:
                         scalar_objective *= -1   
                     if control_eval_system.constraint_accumulated is not None:
                         # Lagrangian relaxation
@@ -640,12 +591,12 @@ class LagrangianRelaxation(ControlPolicyOptimization):
                 instant_constraints = []
                 bounds = None
                 # Order and shapes of control variables
-                x_order = opt_mgr.control_policy.control_out_data.order
-                x_shapes_dict=opt_mgr.control_policy.control_out_data.shapes()
+                x_order = opt_mgr._control_policy.control_out_data().order
+                x_shapes_dict=opt_mgr._control_policy.control_out_data().shapes()
                 
                 # CONTROL CONSTRAINTS
-                if opt_mgr.control_eval_system.constraint_control is not None:
-                    control_constraint_object = opt_mgr.control_eval_system.constraint_control.scipy_object(
+                if opt_mgr._control_eval_system.constraint_control is not None:
+                    control_constraint_object = opt_mgr._control_eval_system.constraint_control.scipy_object(
                         x_order=x_order,
                         x_shapes_dict=x_shapes_dict
                     )
@@ -655,8 +606,8 @@ class LagrangianRelaxation(ControlPolicyOptimization):
                         instant_constraints.append(control_constraint_object)
 
                 # AGGREGATE CONSTRAINT
-                if opt_mgr.control_eval_system.constraint_aggregated is not None:
-                    aggregate_constraint = opt_mgr.control_eval_system.constraint_aggregated.scipy_object(
+                if opt_mgr._control_eval_system.constraint_aggregated is not None:
+                    aggregate_constraint = opt_mgr._control_eval_system.constraint_aggregated.scipy_object(
                         x_order=x_order,
                         x_shapes_dict=x_shapes_dict,
                         x_constraint_evaluation=aggregate_w_cache
@@ -667,18 +618,17 @@ class LagrangianRelaxation(ControlPolicyOptimization):
                 x0 = control_setpoints.get_point(i_ac).to_vector()
                 res = minimize(cost_function,
                                x0,
-                               method=self.scipy_method,
+                               method=self._scipy_method,
                                bounds=bounds,
                                constraints=instant_constraints,
-                               options=self.scipy_options)
+                               options=self._scipy_options)
                 control_setpoints.update_point_from_vector(ind=i_ac,
                                                            vector=res.x)
                 
                 # Recompute final accumulated metrics
-                acc_metrics = opt_mgr.control_eval_system.acc_metrics_from_amb(
+                acc_metrics = opt_mgr._control_eval_system.acc_metrics_from_amb(
                     ambient_condition=ambient_condition,
-                    control_setpoints=control_setpoints.get_point(i_ac),
-                    duration=opt_mgr.duration)
+                    control_setpoints=control_setpoints.get_point(i_ac))
                 if control_eval_system.constraint_accumulated is None:
                     # We are done
                     break
@@ -695,20 +645,35 @@ class LagrangianRelaxation(ControlPolicyOptimization):
                 else:
                     step = np.sign(constr_violation[i_constr])
                     lagrangian_lambdas[i_constr] += step
-            if np.all(constr_violation < self.constraint_tol) and \
-                np.all(np.abs(lagrangian_lambdas_high - lagrangian_lambdas_low) < self.lagrangian_lambda_tol):
+            if np.all(constr_violation < self._constraint_tol) and \
+                np.all(np.abs(lagrangian_lambdas_high - lagrangian_lambdas_low) < self._lagrangian_lambda_tol):
                 # Converged to stable lagrangian lamdas
                 break
 
-        final_acc_metrics = opt_mgr.control_eval_system.expected_acc_metrics(
+        final_acc_metrics = opt_mgr._control_eval_system.expected_acc_metrics(
                         ambient_condition_statistics=ambient_condition_statistics,
-                        control_policy=opt_mgr.control_policy,
-                        duration=opt_mgr.duration)
+                        control_policy=opt_mgr._control_policy)
         logger.info(f"Lagrangian relaxation optimization finished after {t + 1} external iterations."
                     f"Final control policy:\n"
-                    f"{opt_mgr.control_policy}"
+                    f"{opt_mgr._control_policy}"
                     f"Final accumulated metrics:\n"
                     f"{final_acc_metrics}")
-        return opt_mgr.control_policy
+        return opt_mgr._control_policy
         
-     
+def lagrangian_relaxation_from_dict(param_dict: Dict[str, Any]):
+    max_num_amb_cond = param_dict["max_num_ambient_conditions"]
+    alpha_0 = param_dict["alpha_0"]
+    max_iter = param_dict["max_iter"]
+    constraint_tol = param_dict["constraint_tol"]
+    lagrangian_lambda_tol = param_dict["lagrangian_lambda_tol"]
+    scipy_method = param_dict["scipy_method"]
+    scipy_options = param_dict["scipy_options"]
+    return LagrangianRelaxation(
+        max_num_amb_cond=max_num_amb_cond,
+        alpha_0=alpha_0,
+        max_iter=max_iter,
+        constraint_tol=constraint_tol,
+        lagrangian_lambda_tol=lagrangian_lambda_tol,
+        scipy_method=scipy_method,
+        scipy_options=scipy_options)
+

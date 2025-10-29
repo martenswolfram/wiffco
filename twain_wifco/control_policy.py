@@ -31,6 +31,9 @@ class DiscreteControlPolicy(Component):
             all_shapes={
                 Control: self._control_out_data.shapes()})
     
+    def control_out_data(self):
+        return self._control_out_data
+
     @Component.with_validation
     def get_control_setpoints(
         self, ambient_condition: DataPoint[Ambient]

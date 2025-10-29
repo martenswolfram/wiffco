@@ -1,15 +1,12 @@
 {
-    "name": "lagrangian_relaxation",
     "optimization_method": "lagrangian_relaxation", 
-    "optimization_params": {
-        "max_num_ambient_conditions": 10,
-        "alpha_0": 0.1,
-        "max_iter": 100,
-        "constraint_tol": 0.001,
-        "lagrangian_lambda_tol": 0.001,
-        "scipy_method": "SLSQP",
-        "scipy_options": {
-            "disp": false
-        }
+    "max_num_ambient_conditions": 10,
+    "alpha_0": 0.1,
+    "max_iter": 100,
+    "constraint_tol": 0.001,
+    "lagrangian_lambda_tol": 0.001,
+    "scipy_method": "SLSQP",
+    "scipy_options": {
+        "disp": false
     }
 }

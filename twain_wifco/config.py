@@ -34,17 +34,14 @@ from twain_wifco.constraint import (
     SeparateConstraints)
 from twain_wifco.multi_metrics_reduction import (
     MultiMetricsReductionType,
-    scalar_weighting_params_from_dict,
+    scalar_weighting_from_dict,
     ScalarWeighting)
 from twain_wifco.optimization import (
     ControlEvaluationSystem,
     OptimizationMethod,
-    grid_search_params_from_dict,
-    GridSearch,
-    simultaneous_optimization_params_from_dict,
-    SimultaneousOptimization,
-    lagrangian_relaxation_params_from_dict,
-    LagrangianRelaxation)
+    grid_search_from_dict,
+    simultaneous_optimization_from_dict,
+    lagrangian_relaxation_from_dict)
 
 
 def parse_json_file(path):
@@ -139,14 +136,9 @@ def constraint_from_json(json_path: pathlib.Path):
 
 def multi_metrics_reduction_from_json(json_path: pathlib.Path):
     param_dict = parse_json_file(path=json_path)
-    multi_metrics_reduction_name = param_dict["name"]
-    maximize = param_dict["maximize"]
     multi_metrics_reduction_type = MultiMetricsReductionType(param_dict["multi_metrics_reduction_type"])
     if multi_metrics_reduction_type == MultiMetricsReductionType.SCALAR_WEIGHTING:
-        params = scalar_weighting_params_from_dict(param_dict=param_dict["multi_metrics_reduction_params"])
-        return ScalarWeighting(multi_metrics_reduction_name=multi_metrics_reduction_name,
-                               maximize=maximize,
-                               multi_metrics_reduction_params=params)
+        return scalar_weighting_from_dict(param_dict=param_dict)
     else:
         raise NotImplementedError("Only scalar weighting implemented.")
 
@@ -208,20 +200,13 @@ def control_evaluation_system_from_json(json_path: pathlib.Path):
 
 def control_optimization_from_json(json_path: pathlib.Path):
     param_dict = parse_json_file(path=json_path)
-    optimization_name = param_dict["name"]
     optimization_method = OptimizationMethod(param_dict["optimization_method"])
     if optimization_method == OptimizationMethod.GRID_SEARCH:
-        params = grid_search_params_from_dict(param_dict=param_dict["optimization_params"])
-        return GridSearch(optimization_name=optimization_name,
-                          optimization_params=params)
+        return grid_search_from_dict(param_dict=param_dict)
     elif optimization_method == OptimizationMethod.SIMULTANEOUS_OPTIMIZATION:
-        params = simultaneous_optimization_params_from_dict(param_dict=param_dict["optimization_params"])
-        return SimultaneousOptimization(optimization_name=optimization_name,
-                                        optimization_params=params)
+        return simultaneous_optimization_from_dict(param_dict=param_dict)
     elif optimization_method == OptimizationMethod.LAGRANGIAN_RELAXATION:
-        params = lagrangian_relaxation_params_from_dict(param_dict=param_dict["optimization_params"])
-        return LagrangianRelaxation(optimization_name=optimization_name,
-                                    optimization_params=params)
+        return lagrangian_relaxation_from_dict(param_dict=param_dict)
     else:
         raise NotImplementedError("Only grid-search, simultaneous opt. and lagrangian relaxation implemented.")
 

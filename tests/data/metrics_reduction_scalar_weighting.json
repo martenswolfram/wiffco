@@ -1,10 +1,8 @@
 {
     "name": "scalar_metrics_weighting",
-    "maximize": true,
     "multi_metrics_reduction_type": "scalar_weighting",
-    "multi_metrics_reduction_params": {
-        "metric_weights": {
-            "revenue": 1
-        }
+    "maximize": true,
+    "metric_weights": {
+        "revenue": 1
     }
 }

@@ -1,7 +1,7 @@
 import pathlib
-import pytest
+import numpy as np
 from twain_wifco.config import multi_metrics_reduction_from_json
-from twain_wifco.interface import AccumulatedMetric
+from twain_wifco.interface import AccumulatedMetric, DataPoint
 
     
 def test_linear_constraint():
@@ -9,11 +9,11 @@ def test_linear_constraint():
     json_path = test_data_folder / "metrics_reduction_scalar_weighting.json"
     scalar_metrics_weighting = multi_metrics_reduction_from_json(json_path=json_path)
         
+    acc_metrics = DataPoint({AccumulatedMetric.REVENUE: np.array(17),
+                             AccumulatedMetric.ACCRUED_DAMAGE: np.array(23)})
     # Initialization
-    assert scalar_metrics_weighting.component_name == "scalar_metrics_weighting"
-    assert scalar_metrics_weighting.metric_weights.keys() == set([AccumulatedMetric.REVENUE])
-    assert scalar_metrics_weighting.metric_weights[AccumulatedMetric.REVENUE] == pytest.approx(1)
-    assert scalar_metrics_weighting.maximize is True
+    assert scalar_metrics_weighting.evaluate(acc_metrics=acc_metrics) == 17
+    pass
     
 
     

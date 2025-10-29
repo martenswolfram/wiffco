@@ -1,9 +1,6 @@
 {
-    "name": "simultaneous_optimization",
     "optimization_method": "simultaneous_optimization", 
-    "optimization_params": {
-        "max_num_ambient_conditions": 10,
-        "scipy_method": "SLSQP",
-        "scipy_options": {}
-    }
+    "max_num_ambient_conditions": 10,
+    "scipy_method": "SLSQP",
+    "scipy_options": {}
 }
