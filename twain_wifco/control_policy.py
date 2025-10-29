@@ -11,40 +11,6 @@ from twain_wifco.interface import (
     Interface,
 )
 
-
-# ======================================================================
-# Parameter Class
-# ======================================================================
-
-class DiscreteControlPolicyParams(ComponentParams):
-    """Defines parameters for a discrete control policy.
-
-    A discrete control policy maps ambient conditions to corresponding
-    control setpoints using lookup tables stored as `DataTable` instances.
-    """
-
-    def __init__(
-        self,
-        ambient_support_data: DataTable[Ambient],
-        control_out_data: DataTable[Control],
-    ):
-        """Initialize policy parameters.
-
-        Args:
-            ambient_support_data: Data table of ambient condition points.
-            control_out_data: Data table of corresponding control setpoints.
-        """
-        self.ambient_support_data = ambient_support_data
-        self.control_out_data = control_out_data
-
-    def input_interface(self) -> Interface:
-        """Define required ambient input variables."""
-        return Interface(all_shapes={Ambient: self.ambient_support_data.shapes()})
-
-    def output_interface(self) -> Interface:
-        """Define output control variables."""
-        return Interface(all_shapes={Control: self.control_out_data.shapes()})
-
 # ======================================================================
 # Discrete Control Policy
 # ======================================================================

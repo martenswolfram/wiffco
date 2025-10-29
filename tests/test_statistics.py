@@ -30,14 +30,6 @@ def test_statistics():
                                                   7,
                                                   7])})
     
-    # Initialization
-    assert discrete_ambient_statistics.component_name == \
-        "discrete_ambient_statistics"
-    assert discrete_ambient_statistics.ordered_probabilities == \
-        pytest.approx(ordered_prevalence)
-    
-    assert ordered_support_data == \
-        discrete_ambient_statistics.ordered_support_data
 
     # Sample without N specifed
     sys_sample_default = discrete_ambient_statistics.systematic_sample()

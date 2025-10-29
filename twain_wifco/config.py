@@ -15,8 +15,7 @@ from twain_wifco.plant_model import (
     SymbolicModel)
 from twain_wifco.statistics import (
     StatisticsType,
-    discrete_statistics_params_from_dict,
-    DiscreteStatisticsParams,
+    discrete_statistics_from_dict,
     DiscreteStatistics)
 from twain_wifco.control_policy import (
     discrete_control_policy_from_dict,
@@ -82,21 +81,18 @@ def discrete_statistics_from_csv(csv_path: pathlib.Path,
     if prevalence is not None and len(data):
         probabilities = prevalence / np.sum(prevalence)
         support_data = DataTable(data, order)
-        discrete_stats_params = DiscreteStatisticsParams(support_data=support_data,
-                                                         probabilities=probabilities)
-        return DiscreteStatistics(statistics_name=statistics_name,
-                                  statistics_params=discrete_stats_params)
+        return DiscreteStatistics(
+            name=statistics_name,
+            support_data=support_data,
+            probabilities=probabilities)
     else:
         raise ValueError("Could not parse CSV data to statistics")
         
 def statistics_from_json(json_path: pathlib.Path):
     param_dict = parse_json_file(path=json_path)
-    statistics_name = param_dict["name"]
     statistics_type = StatisticsType(param_dict["statistics_type"])
     if statistics_type == StatisticsType.DISCRETE_STATISTICS:
-        params = discrete_statistics_params_from_dict(param_dict=param_dict["statistics_params"])
-        return DiscreteStatistics(statistics_name=statistics_name,
-                                  statistics_params=params)
+        return discrete_statistics_from_dict(param_dict=param_dict)
     else:
         raise NotImplementedError("Only discrete_statistics implemented.")
 

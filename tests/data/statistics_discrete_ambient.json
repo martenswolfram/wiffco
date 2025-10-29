@@ -1,28 +1,26 @@
 {
     "name": "discrete_ambient_statistics",
     "statistics_type": "discrete_statistics",
-    "statistics_params":{
-        "data_type": "ambient",
-        "support_data": {
-            "wind_speed": [10,
-                           20,
-                           30,
-                           20,
-                           10,
-                            5],
-            "wind_direction": [  0,
-                                60,
-                               120,
-                               180,
-                               240,
-                               300],
-            "electricity_price": [7,
-                                  5,
-                                  2,
-                                  5,
-                                  5,
-                                  7]
-        },
-        "prevalence": [0.01, 0.1, 0.19,  0.4, 0.25, 0.05]
-    }
+    "data_type": "ambient",
+    "support_data": {
+        "wind_speed": [10,
+                        20,
+                        30,
+                        20,
+                        10,
+                        5],
+        "wind_direction": [  0,
+                            60,
+                            120,
+                            180,
+                            240,
+                            300],
+        "electricity_price": [7,
+                                5,
+                                2,
+                                5,
+                                5,
+                                7]
+    },
+    "prevalence": [0.01, 0.1, 0.19,  0.4, 0.25, 0.05]
 }
