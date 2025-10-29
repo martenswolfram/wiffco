@@ -20,7 +20,7 @@ from twain_wifco.interface import (
 # Base Aggregation Component
 # ======================================================================
 
-class Aggregation(Component, ABC):
+class Aggregation(Component):
     """Abstract base class for output aggregation components.
 
     An aggregation combines multiple sources of data (model outputs,
@@ -28,15 +28,8 @@ class Aggregation(Component, ABC):
     aggregated quantities (e.g., revenue rate or damage rate).
     """
 
-    def __init__(self, name: str, params: ComponentParams):
-        """Initialize the aggregation component.
-
-        Args:
-            name: Name of this aggregation component.
-            params: Parameter object defining configuration and interfaces.
-        """
-        super().__init__(component_name=name, component_params=params)
-
+    @abstractmethod
+    @Component.with_validation
     def compute_aggregate(
         self,
         model_output: DataPoint[ModelOutput],
@@ -56,39 +49,7 @@ class Aggregation(Component, ABC):
         Returns:
             DataPoint[Aggregated]: Computed aggregated outputs.
         """
-        self.validate_input(
-            input_data={
-                ModelOutput: model_output,
-                Ambient: ambient_condition,
-                Control: control_setpoints,
-            }
-        )
-
-        return self._compute(
-            model_output=model_output,
-            ambient_condition=ambient_condition,
-            control_setpoints=control_setpoints,
-        )
-
-    @abstractmethod
-    def _compute(
-        self,
-        model_output: DataPoint[ModelOutput],
-        ambient_condition: DataPoint[Ambient],
-        control_setpoints: DataPoint[Control],
-    ) -> DataPoint[Aggregated]:
-        """Subclass-specific implementation of the aggregation.
-
-        Args:
-            model_output: Model output data.
-            ambient_condition: Ambient data.
-            control_setpoints: Control data.
-
-        Returns:
-            DataPoint[Aggregated]: Computed aggregated results.
-        """
         ...
-
 
 # ======================================================================
 # Aggregation Type Enum
@@ -116,35 +77,21 @@ class ProductAggregateMapping:
     ambient_inputs: Set[Ambient] = field(default_factory=set)
     control_inputs: Set[Control] = field(default_factory=set)
 
-
-# ======================================================================
-# Parameter Class
-# ======================================================================
-
-class SimpleProductParams(ComponentParams):
+class SimpleProduct(Component):
     """Defines parameters and interface structure for simple product aggregation."""
 
-    def __init__(self, aggregate_mappings: Dict[Aggregated, ProductAggregateMapping]):
+    def __init__(self,
+                 name: str,
+                 aggregate_mappings: Dict[Aggregated, ProductAggregateMapping]):
         """Initialize parameters for the simple product aggregation.
 
         Args:
             aggregate_mappings: Mapping from aggregated outputs to their
                 corresponding input variable sets.
         """
+        self._component_name = name
         self._aggregate_mappings = aggregate_mappings
 
-    @property
-    def aggregate_mappings(self) -> Dict[Aggregated, ProductAggregateMapping]:
-        """Mapping from aggregated outputs to their contributing inputs."""
-        return self._aggregate_mappings
-
-    def input_interface(self) -> Interface:
-        """Define the required input variables for this aggregation.
-
-        Returns:
-            Interface: Input variable interface containing required variables
-            grouped by type (model, ambient, control).
-        """
         model_shapes, ambient_shapes, control_shapes = {}, {}, {}
 
         for mapping in self._aggregate_mappings.values():
@@ -152,7 +99,7 @@ class SimpleProductParams(ComponentParams):
             ambient_shapes.update({var: None for var in mapping.ambient_inputs})
             control_shapes.update({var: None for var in mapping.control_inputs})
 
-        return Interface(
+        self._input_interface = Interface(
             all_shapes={
                 ModelOutput: model_shapes,
                 Ambient: ambient_shapes,
@@ -160,66 +107,12 @@ class SimpleProductParams(ComponentParams):
             }
         )
 
-    def output_interface(self) -> Interface:
-        """Define the expected output structure of this aggregation.
 
-        Returns:
-            Interface: Output variable interface defining shapes for each
-            aggregated variable (by default scalar outputs of shape (1,)).
-        """
-        return Interface(
+        self._output_interface = Interface(
             all_shapes={
                 Aggregated: {aggr: (1,) for aggr in self._aggregate_mappings.keys()}
             }
         )
-
-
-# ======================================================================
-# Helper: Construct Parameters from Dictionary
-# ======================================================================
-
-def simple_product_params_from_dict(param_dict: Dict[str, Any]) -> SimpleProductParams:
-    """Construct a `SimpleProductParams` instance from a plain dictionary.
-
-    This function enables loading configuration data from JSON or YAML files.
-
-    Args:
-        param_dict: Dictionary containing the field ``aggregate_mappings`` with
-            variable names under ``from_model``, ``from_ambient``, and ``from_control``.
-
-    Returns:
-        SimpleProductParams: Parsed parameter object.
-    """
-    aggregate_mappings: Dict[Aggregated, ProductAggregateMapping] = {}
-
-    for agg_key, mapping_def in param_dict["aggregate_mappings"].items():
-        aggregate_mappings[Aggregated(agg_key)] = ProductAggregateMapping(
-            model_inputs={ModelOutput(m) for m in mapping_def["from_model"]},
-            ambient_inputs={Ambient(a) for a in mapping_def["from_ambient"]},
-            control_inputs={Control(c) for c in mapping_def["from_control"]},
-        )
-
-    return SimpleProductParams(aggregate_mappings=aggregate_mappings)
-
-
-# ======================================================================
-# Aggregation Implementation
-# ======================================================================
-
-class SimpleProduct(Aggregation):
-    """Aggregation that computes the product of selected model, ambient,
-    and control variables for each defined aggregate output.
-    """
-
-    def __init__(self, name: str, params: SimpleProductParams):
-        """Initialize the simple product aggregation.
-
-        Args:
-            name: Name of the aggregation component.
-            params: Parameter object defining variable mappings.
-        """
-        super().__init__(name=name, params=params)
-        self._mappings = params.aggregate_mappings
 
     def _prod_values(self, data_point: DataPoint, variables: Set) -> float:
         """Compute the product of all variable values in a given data point.
@@ -233,7 +126,8 @@ class SimpleProduct(Aggregation):
         """
         return np.prod([data_point[v] for v in variables]) if variables else 1.0
 
-    def _compute(
+    @Component.with_validation
+    def compute_aggregate(
         self,
         model_output: DataPoint[ModelOutput],
         ambient_condition: DataPoint[Ambient],
@@ -251,7 +145,7 @@ class SimpleProduct(Aggregation):
         """
         aggregated_output: Dict[Aggregated, np.ndarray] = {}
 
-        for out_var, mapping in self._mappings.items():
+        for out_var, mapping in self._aggregate_mappings.items():
             res = 1
             for model_in in mapping.model_inputs:
                 res *= model_output[model_in]
@@ -262,3 +156,34 @@ class SimpleProduct(Aggregation):
             aggregated_output[out_var] = res
 
         return DataPoint(data=aggregated_output)
+
+# ======================================================================
+# Helper: Construct from Dictionary
+# ======================================================================
+
+def simple_product_from_dict(param_dict: Dict[str, Any]) -> SimpleProduct:
+    """Construct a `SimpleProductParams` instance from a plain dictionary.
+
+    This function enables loading configuration data from JSON or YAML files.
+
+    Args:
+        param_dict: Dictionary containing the field ``aggregate_mappings`` with
+            variable names under ``from_model``, ``from_ambient``, and ``from_control``.
+
+    Returns:
+        SimpleProductParams: Parsed parameter object.
+    """
+    name = param_dict["name"]
+    aggregate_mappings: Dict[Aggregated, ProductAggregateMapping] = {}
+
+    for agg_key, mapping_def in param_dict["aggregate_mappings"].items():
+        aggregate_mappings[Aggregated(agg_key)] = ProductAggregateMapping(
+            model_inputs={ModelOutput(m) for m in mapping_def["from_model"]},
+            ambient_inputs={Ambient(a) for a in mapping_def["from_ambient"]},
+            control_inputs={Control(c) for c in mapping_def["from_control"]},
+        )
+
+    return SimpleProduct(name=name, 
+                         aggregate_mappings=aggregate_mappings)
+
+

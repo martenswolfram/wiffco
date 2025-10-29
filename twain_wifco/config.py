@@ -22,11 +22,11 @@ from twain_wifco.control_policy import (
     DiscreteControlPolicy)
 from twain_wifco.aggregation import (
     AggregationType,
-    simple_product_params_from_dict,
+    simple_product_from_dict,
     SimpleProduct)
 from twain_wifco.metrics_accumulation import (
     MetricsAccumulationType,
-    discounted_integrator_params_from_dict,
+    discounted_integrator_from_dict,
     DiscountedIntegration)
 from twain_wifco.constraint import (
     ConstraintType,
@@ -115,23 +115,17 @@ def control_policy_from_json(json_path: pathlib.Path):
     
 def aggregation_from_json(json_path: pathlib.Path):
     param_dict = parse_json_file(path=json_path)
-    name = param_dict["name"]
     aggregation_type = AggregationType(param_dict["aggregation_type"])
     if aggregation_type == AggregationType.SIMPLE_PRODUCT:
-        params = simple_product_params_from_dict(param_dict=param_dict["params"])
-        return SimpleProduct(name=name,
-                             params=params)
+        return simple_product_from_dict(param_dict=param_dict)
     else:
         raise NotImplementedError("Only simple_product aggregation implemented.")
 
 def metrics_accumulation_from_json(json_path: pathlib.Path):
     param_dict = parse_json_file(path=json_path)
-    accumulation_name = param_dict["name"]
     accumulation_type = MetricsAccumulationType(param_dict["accumulation_type"])
     if accumulation_type == MetricsAccumulationType.DISCOUNTED_INTEGRATION:
-        params = discounted_integrator_params_from_dict(param_dict=param_dict["accumulation_params"])
-        return DiscountedIntegration(accumulation_name=accumulation_name,
-                                     accumulation_params=params)
+        return discounted_integrator_from_dict(param_dict=param_dict)
     else:
         raise NotImplementedError("Only discounted-integration metrics accumulation implemented.")
 

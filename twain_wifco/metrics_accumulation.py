@@ -6,7 +6,6 @@ from twain_wifco.statistics import (
     Statistics)
 from twain_wifco.interface import (
     Component,
-    ComponentParams,
     Aggregated,
     AccumulatedMetric,
     DataPoint,
@@ -18,15 +17,11 @@ from twain_wifco.interface import (
 class MetricsAccumulation(Component):
     """Abstract base class for accumulation of aggregate variables over time."""
 
-    def __init__(self,
-                 accumulation_name: str,
-                 accumulation_params: ComponentParams):
-        super().__init__(component_name=accumulation_name,
-                         component_params=accumulation_params)
-
+    @abstractmethod
+    @Component.with_validation
     def acc_metrics(self,
-                    aggregate: DataPoint[Aggregated],
-                    duration: int) -> DataPoint[AccumulatedMetric]:
+                    aggregate: DataPoint[Aggregated]
+                    ) -> DataPoint[AccumulatedMetric]:
         """Accumulate metrics for a given aggregate over a duration.
 
         Args:
@@ -36,12 +31,12 @@ class MetricsAccumulation(Component):
         Returns:
             DataPoint[AccumulatedMetric]: Accumulated metrics.
         """
-        self.validate_input(input_data={Aggregated: aggregate})
-        return self._acc_metrics(aggregate=aggregate, duration=duration)
+        ...
 
+    @abstractmethod
     def expected_acc_metrics(self,
-                             aggregate_statistics: Statistics[Aggregated],
-                             duration: int) -> DataPoint[AccumulatedMetric]:
+                             aggregate_statistics: Statistics[Aggregated]
+                             ) -> DataPoint[AccumulatedMetric]:
         """Compute expected accumulated metrics given aggregate statistics.
 
         Args:
@@ -51,26 +46,7 @@ class MetricsAccumulation(Component):
         Returns:
             DataPoint[AccumulatedMetric]: Expected accumulated metrics.
         """
-        self.validate_shapes(input_shapes={
-            Aggregated: aggregate_statistics.output_interface.shapes(data_type=Aggregated)
-        })
-        return self._expected_acc_metrics(aggregate_statistics=aggregate_statistics,
-                                          duration=duration)
-
-    @abstractmethod
-    def _acc_metrics(self,
-                     aggregate: DataPoint[Aggregated],
-                     duration: int) -> DataPoint[AccumulatedMetric]:
-        """Implementation-specific accumulation logic."""
-        pass
-
-    @abstractmethod
-    def _expected_acc_metrics(self,
-                              aggregate_statistics: Statistics[Aggregated],
-                              duration: int) -> DataPoint[AccumulatedMetric]:
-        """Implementation-specific expected accumulation logic."""
-        pass
-
+        ...
 
 # ----------------------------
 # MetricsAccumulation Types
@@ -99,34 +75,54 @@ class IntegrationMapping:
         self.discount_rate = discount_rate
 
 
-class DiscountedIntegrationParams(ComponentParams):
+class DiscountedIntegration(Component):
     """Parameters for DiscountedIntegration.
 
     Attributes:
         integration_mappings (Dict[AccumulatedMetric, IntegrationMapping]): Mapping of metrics to integration rules.
     """
     def __init__(self,
-                 integration_mappings: Dict[AccumulatedMetric, IntegrationMapping]):
-        self.integration_mappings = integration_mappings
+                 name: str,
+                 integration_mappings: Dict[AccumulatedMetric, IntegrationMapping],
+                 duration: int):
+        
+        self._component_name = name
+        self._integration_mappings = integration_mappings
+        self._duration = duration
 
-    def input_interface(self) -> Interface:
-        aggregated_shapes = {mapping.aggregate: None for mapping in self.integration_mappings.values()}
-        return Interface(all_shapes={Aggregated: aggregated_shapes})
+        aggregated_shapes = {mapping.aggregate: None for \
+                             mapping in self._integration_mappings.values()}
+        
+        self._input_interface = Interface(all_shapes={Aggregated: aggregated_shapes})
 
-    def output_interface(self) -> Interface:
-        accumulated_metric_shapes = {metric: None for metric in self.integration_mappings.keys()}
-        return Interface(all_shapes={AccumulatedMetric: accumulated_metric_shapes})
+        accumulated_metric_shapes = {metric: None for metric in self._integration_mappings.keys()}
+        self._output_interface = Interface(all_shapes={AccumulatedMetric: accumulated_metric_shapes})
 
+    @Component.with_validation
+    def acc_metrics(self,
+                     aggregate: DataPoint[Aggregated]) -> DataPoint[AccumulatedMetric]:
+        accumulated_metrics = {}
+        for acc_metric, mapping in self._integration_mappings.items():
+            discount_rate = mapping.discount_rate
+            value = aggregate[mapping.aggregate]
+            if discount_rate == 0:
+                accumulated_metrics[acc_metric] = self._duration * value
+            else:
+                discount_factor = 1 / (1 + discount_rate)
+                duration_discount_factor = (1 - discount_factor ** self._duration) / (1 - discount_factor)
+                accumulated_metrics[acc_metric] = value * duration_discount_factor
+            if mapping.collapse:
+                accumulated_metrics[acc_metric] = np.array(np.sum(accumulated_metrics[acc_metric]))
+        return DataPoint(accumulated_metrics)
 
-def discounted_integrator_params_from_dict(param_dict: Dict[str, Any]) -> DiscountedIntegrationParams:
-    """Construct DiscountedIntegrationParams from a dictionary.
-
-    Args:
-        param_dict (Dict[str, Any]): Dictionary containing integration mappings.
-
-    Returns:
-        DiscountedIntegrationParams: Constructed parameters.
-    """
+    def expected_acc_metrics(self,
+                              aggregate_statistics: Statistics[Aggregated]) -> DataPoint[AccumulatedMetric]:
+        aggregate_expectation = aggregate_statistics.expected_value()
+        return self.acc_metrics(aggregate=aggregate_expectation)
+    
+def discounted_integrator_from_dict(param_dict: Dict[str, Any]) -> DiscountedIntegration:
+    
+    name = param_dict["name"]
     integration_mappings = {}
     for acc_metric, mapping_dict in param_dict["integration_mappings"].items():
         integration_mappings[AccumulatedMetric(acc_metric)] = IntegrationMapping(
@@ -134,38 +130,8 @@ def discounted_integrator_params_from_dict(param_dict: Dict[str, Any]) -> Discou
             collapse=bool(mapping_dict["collapse"]),
             discount_rate=float(mapping_dict["discount_rate"])
         )
-    return DiscountedIntegrationParams(integration_mappings=integration_mappings)
+    duration = param_dict["duration"]
+    return DiscountedIntegration(name=name,
+                                 integration_mappings=integration_mappings,
+                                 duration=duration)
 
-
-class DiscountedIntegration(MetricsAccumulation):
-    """Accumulate metrics using discounted integration over time."""
-
-    def __init__(self,
-                 accumulation_name: str,
-                 accumulation_params: DiscountedIntegrationParams):
-        super().__init__(accumulation_name=accumulation_name,
-                         accumulation_params=accumulation_params)
-        self.integration_mappings = accumulation_params.integration_mappings
-
-    def _acc_metrics(self,
-                     aggregate: DataPoint[Aggregated],
-                     duration: int) -> DataPoint[AccumulatedMetric]:
-        accumulated_metrics = {}
-        for acc_metric, mapping in self.integration_mappings.items():
-            discount_rate = mapping.discount_rate
-            value = aggregate[mapping.aggregate]
-            if discount_rate == 0:
-                accumulated_metrics[acc_metric] = duration * value
-            else:
-                discount_factor = 1 / (1 + discount_rate)
-                duration_discount_factor = (1 - discount_factor ** duration) / (1 - discount_factor)
-                accumulated_metrics[acc_metric] = value * duration_discount_factor
-            if mapping.collapse:
-                accumulated_metrics[acc_metric] = np.array(np.sum(accumulated_metrics[acc_metric]))
-        return DataPoint(accumulated_metrics)
-
-    def _expected_acc_metrics(self,
-                              aggregate_statistics: Statistics[Aggregated],
-                              duration: int) -> DataPoint[AccumulatedMetric]:
-        aggregate_expectation = aggregate_statistics.expected_value()
-        return self._acc_metrics(aggregate=aggregate_expectation, duration=duration)

@@ -28,7 +28,7 @@
                 "--log-cli-level=DEBUG",
                 // "tests",
                 // "--ignore=tests/test_optimization.py",
-                "tests/test_plant_model.py",
+                "tests/test_aggregation.py",
             ],
             "justMyCode": true,
         },
