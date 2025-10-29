@@ -133,7 +133,7 @@ class ControlEvaluationSystem:
 
         aggregate_support = DataTable.from_data_points(aggregate_list)
         discrete_statistics_params = DiscreteStatisticsParams(support_data=aggregate_support,
-                                                              prevalence=ambient_condition_sample.normalized_weights)        
+                                                              probabilities=ambient_condition_sample.normalized_weights)        
         new_name = ""
         discrete_aggregate_statistics = DiscreteStatistics(statistics_name=new_name,
                                                            statistics_params=discrete_statistics_params)
@@ -162,7 +162,7 @@ class ControlEvaluationSystem:
 
         aggregate_support = DataTable.from_data_points(aggregate_list)
         discrete_statistics_params = DiscreteStatisticsParams(support_data=aggregate_support,
-                                                              prevalence=ambient_condition_sample.normalized_weights)        
+                                                              probabilities=ambient_condition_sample.normalized_weights)        
         new_name = ""
         discrete_aggregate_statistics = DiscreteStatistics(statistics_name=new_name,
                                                            statistics_params=discrete_statistics_params)
@@ -284,7 +284,7 @@ class GridSearch(ControlPolicyOptimization):
                     list(aggregate_evaluations[i_ac][ctrl_indices[i_ac]] for i_ac in np.arange(num_ambient_conditions)))
                 discrete_stat_params = DiscreteStatisticsParams(
                     support_data=aggr_support_data,
-                    prevalence=ambient_condition_sample.normalized_weights)
+                    probabilities=ambient_condition_sample.normalized_weights)
                 discrete_aggr_stat = DiscreteStatistics(
                     statistics_name="",
                     statistics_params=discrete_stat_params)
@@ -420,7 +420,7 @@ class ContinuousOptimizationManager:
         aggregate_support = self.all_aggregates_w_cache(ctrl_as_tuple=ctrl_as_tuple)
         discrete_statistics_params = DiscreteStatisticsParams(
             support_data=aggregate_support,
-            prevalence=self.ambient_condition_sample.normalized_weights)        
+            probabilities=self.ambient_condition_sample.normalized_weights)        
         new_name = ""
         discrete_aggregate_statistics = DiscreteStatistics(statistics_name=new_name,
                                                            statistics_params=discrete_statistics_params)

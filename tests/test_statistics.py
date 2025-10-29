@@ -33,7 +33,7 @@ def test_statistics():
     # Initialization
     assert discrete_ambient_statistics.component_name == \
         "discrete_ambient_statistics"
-    assert discrete_ambient_statistics.ordered_prevalence == \
+    assert discrete_ambient_statistics.ordered_probabilities == \
         pytest.approx(ordered_prevalence)
     
     assert ordered_support_data == \
@@ -51,7 +51,7 @@ def test_statistics():
     # Invalid N
     with pytest.raises(ValueError) as excinfo: 
         discrete_ambient_statistics.systematic_sample(N_max=0)
-    assert "Invalid number of samples" in str(excinfo.value)
+    assert "N_max must be a positive integer." in str(excinfo.value)
     
     # Sample with larger N specifed
     N = 100

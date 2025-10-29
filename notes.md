@@ -1,8 +1,8 @@
 TODO:
 - features:
     - units
-    - non-scalar data variables
-    - Aggregated output constraints
+- refactor:
+    - reorganize component-params functionality
 - type hints:
     - return types
 

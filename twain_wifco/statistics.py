@@ -45,7 +45,7 @@ class SystematicSample:
         """Return a DiscreteStatistics object representing this sample."""
         discrete_statistics_params = DiscreteStatisticsParams(
             support_data=self.support_data,
-            prevalence=self.normalized_weights
+            probabilities=self.normalized_weights
         )
         return DiscreteStatistics(
             statistics_name="discrete_stats_from_sample",
@@ -67,11 +67,14 @@ class Statistics(Component, Generic[DataType]):
                          component_params=statistics_params)
 
     @abstractmethod
-    def systematic_sample(self, N_max: int = None) -> SystematicSample:
+    def systematic_sample(self,
+                          N_max: int = None,
+                          min_prob: float = None) -> SystematicSample:
         """Return a systematic sample of the underlying data.
 
         Args:
             N_max (int, optional): Maximum number of points to include.
+            min_prob (float, optional): Minimum probability to be covered.
 
         Returns:
             SystematicSample: The generated sample.
@@ -97,13 +100,13 @@ class DiscreteStatisticsParams(ComponentParams):
 
     Args:
         support_data (DataTable[DataType]): Data points.
-        prevalence (np.ndarray): Weights/probabilities of data points.
+        probabilities (np.ndarray): Weights/probabilities of data points.
     """
     def __init__(self,
                  support_data: DataTable[DataType],
-                 prevalence: np.ndarray):
+                 probabilities: np.ndarray):
         self.support_data = support_data
-        self.prevalence = prevalence
+        self.probabilities = probabilities / np.sum(probabilities)
 
     def input_interface(self) -> Interface:
         """Input interface (empty for DiscreteStatistics)."""
@@ -114,7 +117,6 @@ class DiscreteStatisticsParams(ComponentParams):
         return Interface(all_shapes={
             self.support_data.data_type: self.support_data.shapes()
         })
-
 
 def discrete_statistics_params_from_dict(param_dict: Dict[str, Any]) -> DiscreteStatisticsParams:
     """Construct DiscreteStatisticsParams from a dictionary.
@@ -128,12 +130,12 @@ def discrete_statistics_params_from_dict(param_dict: Dict[str, Any]) -> Discrete
     data_type = data_type_from_string(param_dict["data_type"])
     support_data = DataTable({data_type(var): np.array(supp) for var, supp in param_dict["support_data"].items()})
     prevalence = np.array(param_dict["prevalence"])
-    prevalence = prevalence / np.sum(prevalence)
+    probabilities = prevalence / np.sum(prevalence)
+        
     return DiscreteStatisticsParams(
         support_data=support_data,
-        prevalence=prevalence
+        probabilities=probabilities
     )
-
 
 class DiscreteStatistics(Statistics):
     """Concrete implementation of Statistics for discrete distributions."""
@@ -144,43 +146,55 @@ class DiscreteStatistics(Statistics):
         super().__init__(statistics_name=statistics_name,
                          statistics_params=statistics_params)
 
-        # Order support data by prevalence descending
-        prevalence_index = np.argsort(statistics_params.prevalence)[::-1]
-        self.ordered_support_data = statistics_params.support_data
-        for var, data in self.ordered_support_data.data.items():
-            self.ordered_support_data.data[var] = data[prevalence_index, ...]
-        self.ordered_prevalence = statistics_params.prevalence[prevalence_index]
+        # Discard zero-probability points
+        probabilities = statistics_params.probabilities[statistics_params.probabilities > 0]
+        support = {key: key_data[statistics_params.probabilities > 0, ...] for \
+                        key, key_data in statistics_params.support_data.data.items()}
+        
+        #  Order support data by prevalence descending
+        sorted_index = np.argsort(probabilities)[::-1]
+        ordered_support = {}
+        for var, data in support.items():
+            ordered_support[var] = data[sorted_index, ...]
+        self.ordered_probabilities = probabilities[sorted_index]
+        self.ordered_support_data = DataTable(data=ordered_support,
+                                              order=statistics_params.support_data.order)
 
-    def systematic_sample(self, N_max: int = None) -> SystematicSample:
+    def systematic_sample(self,
+                          N_max: int = None,
+                          min_prob: float = None) -> SystematicSample:
         """Return a systematic sample of the data points.
 
         Args:
             N_max (int, optional): Maximum number of samples. If None, include all points.
-
+            min_prob (float, optional): Minimum probability to be covered. If both are specified, N_max has priority
+            
         Returns:
             SystematicSample: Sampled points with normalized weights.
 
         Raises:
             ValueError: If N_max < 1.
         """
-        total_points = len(self.ordered_prevalence)
-        if N_max is None or N_max >= total_points:
-            return SystematicSample(
-                support_data=self.ordered_support_data,
-                normalized_weights=self.ordered_prevalence
-            )
+        if N_max is None:
+            if min_prob is not None:
+                if not 0 < min_prob:
+                    raise ValueError("min_prob must be a positive number.")
+                cumsum = np.cumsum(self.ordered_probabilities)
+                if min_prob < 1:
+                    N_max = np.searchsorted(cumsum, min_prob) + 1
+        elif N_max <= 0:
+            raise ValueError("N_max must be a positive integer.")
 
-        if 1 <= N_max < total_points:
-            weights = self.ordered_prevalence[:N_max]
-            probability_covered = np.sum(weights)
-            support_data_subset = {var: supp[:N_max, ...] for var, supp in self.ordered_support_data.data.items()}
-            return SystematicSample(
-                support_data=DataPoint(support_data_subset),
-                normalized_weights=weights / probability_covered,
-                probability_covered=probability_covered
-            )
+        weights = self.ordered_probabilities[:N_max]
+        probability_covered = np.sum(weights)
+        support_data_subset = {var: supp[:N_max, ...] for var, supp in self.ordered_support_data.data.items()}
+        return SystematicSample(
+            support_data=DataTable(data=support_data_subset,
+                                   order=self.ordered_support_data.order),
+            normalized_weights=weights / probability_covered,
+            probability_covered=probability_covered
+        )
 
-        raise ValueError("DiscreteStatistics: Invalid number of samples N.")
 
     def expected_value(self) -> DataPoint[DataType]:
         """Compute expected value of the discrete distribution.
@@ -189,6 +203,6 @@ class DiscreteStatistics(Statistics):
             DataPoint[DataType]: Expected value per variable.
         """
         return DataPoint({
-            var: self.ordered_prevalence @ supp
+            var: self.ordered_probabilities @ supp
             for var, supp in self.ordered_support_data.data.items()
         })

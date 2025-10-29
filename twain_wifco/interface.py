@@ -361,8 +361,6 @@ class DataTable(DataCollection[DataType]):
                                         for k in self.order))
         return print_table(table)
 
-
-
 # ======================================================================
 # INTERFACE AND COMPONENT CLASSES
 # ======================================================================

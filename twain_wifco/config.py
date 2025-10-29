@@ -1,5 +1,12 @@
 import json
 import pathlib
+import csv
+import ast
+import numpy as np
+from typing import Dict
+from twain_wifco.interface import (
+    DataTable,
+    DataType)
 from twain_wifco.plant_model import (
     ModelType,
     factorized_scattered_interp_params_from_dict,
@@ -9,6 +16,7 @@ from twain_wifco.plant_model import (
 from twain_wifco.statistics import (
     StatisticsType,
     discrete_statistics_params_from_dict,
+    DiscreteStatisticsParams,
     DiscreteStatistics)
 from twain_wifco.control_policy import (
     discrete_control_policy_params_from_dict,
@@ -44,7 +52,43 @@ def parse_json_file(path):
     with open(path, "r") as json_file:
         data_dict = json.load(json_file)
         return data_dict
+    
+def discrete_statistics_from_csv(csv_path: pathlib.Path,
+                                 support_names: Dict[str, DataType],
+                                 prevalence_name: str,
+                                 delimiter: str = ";",
+                                 statistics_name: str = "statistics_from_csv"):
+    with open(csv_path, newline='') as csvfile:
+        reader = csv.reader(csvfile, delimiter=delimiter)
+        # Header
+        header = next(reader)
+        columns = {h_str: [] for h_str in header}
 
+        # Read rows
+        for row in reader:
+            for h_str, value in zip(header, row):
+                columns[h_str].append(np.array(ast.literal_eval(value)))
+
+    data = {}
+    prevalence = None
+    for h_str, col in columns.items():
+        if h_str in support_names:
+            key = support_names[h_str]
+            data[key] = np.stack(col, axis=0)
+        elif h_str == prevalence_name:
+            prevalence = np.array(col)
+    order = list(data.keys())
+    
+    if prevalence is not None and len(data):
+        probabilities = prevalence / np.sum(prevalence)
+        support_data = DataTable(data, order)
+        discrete_stats_params = DiscreteStatisticsParams(support_data=support_data,
+                                                         probabilities=probabilities)
+        return DiscreteStatistics(statistics_name=statistics_name,
+                                  statistics_params=discrete_stats_params)
+    else:
+        raise ValueError("Could not parse CSV data to statistics")
+        
 def statistics_from_json(json_path: pathlib.Path):
     param_dict = parse_json_file(path=json_path)
     statistics_name = param_dict["name"]
