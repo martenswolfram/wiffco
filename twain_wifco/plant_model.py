@@ -7,12 +7,10 @@ import sympy as sp
 from twain_wifco.interface import (
     DataPoint,
     Component,
-    ComponentParams,
     Ambient,
     Control,
     ModelOutput,
     Interface,
-    DataVariable,
     get_default_value,
 )
 from twain_wifco.scattered_interpolation import (
@@ -25,7 +23,7 @@ from twain_wifco.scattered_interpolation import (
 # Base Model Class
 # ======================================================================
 
-class PlantModel(Component, ABC):
+class PlantModel(Component):
     """Abstract base class for physical or data-driven plant models.
 
     A `PlantModel` maps ambient and control conditions to model outputs,
@@ -33,15 +31,8 @@ class PlantModel(Component, ABC):
     and control setpoints.
     """
 
-    def __init__(self, name: str, params: ComponentParams):
-        """Initialize a plant model.
-
-        Args:
-            name: Name of this model component.
-            params: Component parameters defining interfaces and metadata.
-        """
-        super().__init__(component_name=name, component_params=params)
-
+    @abstractmethod
+    @Component.with_validation
     def evaluate(
         self,
         meteorological_condition: DataPoint[Ambient],
@@ -56,23 +47,7 @@ class PlantModel(Component, ABC):
         Returns:
             DataPoint[ModelOutput]: Model output quantities.
         """
-        self.validate_input(
-            input_data={Ambient: meteorological_condition, Control: control_input}
-        )
-        return self._evaluate(
-            meteorological_condition=meteorological_condition,
-            control_input=control_input,
-        )
-
-    @abstractmethod
-    def _evaluate(
-        self,
-        meteorological_condition: DataPoint[Ambient],
-        control_input: DataPoint[Control],
-    ) -> DataPoint[ModelOutput]:
-        """Subclass-specific model evaluation logic."""
         ...
-
 
 # ======================================================================
 # Model Type Enum
@@ -88,83 +63,32 @@ class ModelType(Enum):
 # Factorized Scattered Interpolation
 # ======================================================================
 
-class FactorizedScatteredInterpParams(ComponentParams):
-    """Parameters for a factorized scattered interpolator model.
-
-    The model assumes separability between ambient and control factors:
-        f(ambient, control) = f_a(ambient) * f_c(control)
-    """
-
-    def __init__(
-        self,
-        control_interp_params: ScatteredInterpolatorParams,
-        ambient_interp_params: ScatteredInterpolatorParams,
-    ):
-        """Initialize parameters for a factorized interpolator.
-
-        Args:
-            control_interp_params: Interpolator parameters for the control-dependent factor.
-            ambient_interp_params: Interpolator parameters for the ambient-dependent factor.
-
-        Raises:
-            ValueError: If output variable shapes of both factors do not match.
-        """
-        if control_interp_params.out_data.shapes() != ambient_interp_params.out_data.shapes():
-            raise ValueError(
-                "Output variable shapes of interpolation factors must be identical."
-            )
-
-        self.control_interp_params = control_interp_params
-        self.ambient_interp_params = ambient_interp_params
-
-    def input_interface(self) -> Interface:
-        """Define required inputs for ambient and control factors."""
-        return Interface(
-            all_shapes={
-                Ambient: self.ambient_interp_params.support_data.shapes(),
-                Control: self.control_interp_params.support_data.shapes(),
-            }
-        )
-
-    def output_interface(self) -> Interface:
-        """Define the output interface (matching factor outputs)."""
-        return Interface(
-            all_shapes={ModelOutput: self.ambient_interp_params.out_data.shapes()}
-        )
-
-
-def factorized_scattered_interp_params_from_dict(
-    param_dict: Dict[str, Any]
-) -> FactorizedScatteredInterpParams:
-    """Create `FactorizedScatteredInterpParams` from a configuration dictionary."""
-    control_interp_params = scattered_interpolator_params_from_dict(
-        param_dict=param_dict["control"],
-        support_data_type=Control,
-        out_data_type=ModelOutput,
-    )
-    ambient_interp_params = scattered_interpolator_params_from_dict(
-        param_dict=param_dict["ambient"],
-        support_data_type=Ambient,
-        out_data_type=ModelOutput,
-    )
-    return FactorizedScatteredInterpParams(
-        control_interp_params=control_interp_params,
-        ambient_interp_params=ambient_interp_params,
-    )
-
-
 class FactorizedScatteredInterp(PlantModel):
     """Plant model where outputs are the product of two scattered interpolators:
     one for ambient conditions and one for control inputs.
     """
 
-    def __init__(self, name: str, params: FactorizedScatteredInterpParams):
-        """Initialize the factorized interpolator model."""
-        super().__init__(name=name, params=params)
-        self._ambient_interp = ScatteredInterpolator(params.ambient_interp_params)
-        self._control_interp = ScatteredInterpolator(params.control_interp_params)
+    def __init__(self,
+                 name: str,
+                 ambient_interp_params: ScatteredInterpolatorParams,
+                 control_interp_params: ScatteredInterpolatorParams):
+        
+        self._component_name = name
+        self._ambient_interp = ScatteredInterpolator(ambient_interp_params)
+        self._control_interp = ScatteredInterpolator(control_interp_params)
 
-    def _evaluate(
+        self._input_interface = Interface(
+            all_shapes={
+                Ambient: self._ambient_interp.support_data.shapes(),
+                Control: self._control_interp.support_data.shapes(),
+            }
+        )
+        self._output_interface = Interface(
+            all_shapes={ModelOutput: self._ambient_interp.out_data.shapes()}
+        )
+
+    @Component.with_validation
+    def evaluate(
         self,
         meteorological_condition: DataPoint[Ambient],
         control_input: DataPoint[Control],
@@ -179,41 +103,55 @@ class FactorizedScatteredInterp(PlantModel):
         }
         return DataPoint(data=result)
 
+def factorized_scattered_interp_from_dict(
+    param_dict: Dict[str, Any]
+) -> FactorizedScatteredInterp:
+    """Create `FactorizedScatteredInterp` from a configuration dictionary."""
+    name = param_dict["name"]
+    control_interp_params = scattered_interpolator_params_from_dict(
+        param_dict=param_dict["control"],
+        support_data_type=Control,
+        out_data_type=ModelOutput,
+    )
+    ambient_interp_params = scattered_interpolator_params_from_dict(
+        param_dict=param_dict["ambient"],
+        support_data_type=Ambient,
+        out_data_type=ModelOutput,
+    )
+    return FactorizedScatteredInterp(
+        name=name,
+        control_interp_params=control_interp_params,
+        ambient_interp_params=ambient_interp_params,
+    )
 
 # ======================================================================
 # Symbolic Model
 # ======================================================================
 
-class SymbolicMapping:
-    def __init__(self,
-                 name: str,
-                 shape: Tuple[int, ...]):
-        self.name = name
-        self.shape = shape
-
-
-class SymbolicModelParams(ComponentParams):
+class SymbolicModel(Component):
     """Parameters for a symbolic model defined by symbolic expressions."""
 
     def __init__(
         self,
+        name: str,
         ambient_list: List[Ambient],
         control_list: List[Control],
         ambient_shapes: Dict[Ambient, Tuple[int, ...]],
         control_shapes: Dict[Control, Tuple[int, ...]],
         output_functions: Dict[ModelOutput, Callable[..., np.ndarray]]
     ):
-        """Initialize symbolic model parameters.
-
-        Args:
-            TODO
-        """
-        self.ambient_list = ambient_list
-        self.control_list = control_list
-        self.ambient_shapes = ambient_shapes
-        self.control_shapes = control_shapes
-        self.output_functions = output_functions
+        self._component_name = name
+        self._ambient_list = ambient_list
+        self._control_list = control_list
+        self._output_functions = output_functions
         
+        self._input_interface = Interface(
+            all_shapes={
+                Ambient: ambient_shapes,
+                Control: control_shapes,
+            }
+        )
+
         # Determine output shapes via default computation
         default_ambient = list(
             get_default_value(data_var=amb_var, shape=shape) for \
@@ -223,31 +161,40 @@ class SymbolicModelParams(ComponentParams):
             ctrl_var, shape in control_shapes.items())
         default_result = {
             model_output: func(*(default_ambient + default_control))
-            for model_output, func in self.output_functions.items()
+            for model_output, func in self._output_functions.items()
         }
 
-        self.output_shapes = {output: res.shape for output, res in default_result.items()}
+        output_shapes = {output: res.shape for \
+                         output, res in default_result.items()}
 
-    def input_interface(self) -> Interface:
-        """Define required input interface for symbolic model."""
-        return Interface(
+        self._output_interface = Interface(
             all_shapes={
-                Ambient: self.ambient_shapes,
-                Control: self.control_shapes,
+                ModelOutput: output_shapes
             }
         )
 
-    def output_interface(self) -> Interface:
-        """Define output interface based on defined output functions."""
-        return Interface(
-            all_shapes={
-                ModelOutput: self.output_shapes
-            }
-        )
+    @Component.with_validation
+    def evaluate(
+        self,
+        meteorological_condition: DataPoint[Ambient],
+        control_input: DataPoint[Control],
+    ) -> DataPoint[ModelOutput]:
+                
+        # Input values in correct order
+        values = [meteorological_condition[amb_var] for amb_var in self._ambient_list] + \
+            [control_input[ctrl_var] for ctrl_var in self._control_list]
+        
+        result = {
+            model_output: func(*values)
+            for model_output, func in self._output_functions.items()
+        }
+
+        return DataPoint(data=result)
 
 
-def symbolic_model_params_from_dict(param_dict: Dict[str, Any]) -> SymbolicModelParams:
-    """Construct `SymbolicModelParams` from a dictionary definition."""
+def symbolic_model_from_dict(param_dict: Dict[str, Any]) -> SymbolicModel:
+    """Construct `SymbolicModel` from a dictionary definition."""
+    name = param_dict["name"]
     symbol_mapping_dict: Dict[str, Dict] = param_dict["symbol_mappings"]
     str_to_symbol: Dict[str, sp.Symbol] = {}
     ambient_list: List[Ambient] = [] 
@@ -282,37 +229,11 @@ def symbolic_model_params_from_dict(param_dict: Dict[str, Any]) -> SymbolicModel
             symbols_list, expr, "numpy"
         )
 
-    return SymbolicModelParams(
+    return SymbolicModel(
+        name=name,
         ambient_list=ambient_list,
         control_list=control_list,
         ambient_shapes=ambient_shapes,
         control_shapes=control_shapes,
         output_functions=output_functions
     )
-
-class SymbolicModel(PlantModel):
-    """Plant model defined via symbolic expressions evaluated with NumPy."""
-
-    def __init__(self, name: str, params: SymbolicModelParams):
-        """Initialize symbolic model."""
-        super().__init__(name=name, params=params)
-        self._params = params
-        pass
-
-    def _evaluate(
-        self,
-        meteorological_condition: DataPoint[Ambient],
-        control_input: DataPoint[Control],
-    ) -> DataPoint[ModelOutput]:
-        
-        
-        # Input values in correct order
-        values = [meteorological_condition[amb_var] for amb_var in self._params.ambient_list] + \
-            [control_input[ctrl_var] for ctrl_var in self._params.control_list]
-        
-        result = {
-            model_output: func(*values)
-            for model_output, func in self._params.output_functions.items()
-        }
-
-        return DataPoint(data=result)

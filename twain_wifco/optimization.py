@@ -15,11 +15,12 @@ from twain_wifco.interface import (
     get_default_value)
 from twain_wifco.statistics import (
     Statistics,
-    DiscreteStatisticsParams,
+    # DiscreteStatisticsParams,
     DiscreteStatistics)
 from twain_wifco.control_policy import (
     DiscreteControlPolicy,
-    DiscreteControlPolicyParams)
+    # DiscreteControlPolicyParams,
+    )
 from twain_wifco.plant_model import PlantModel
 from twain_wifco.aggregation import Aggregation
 from twain_wifco.metrics_accumulation import MetricsAccumulation
@@ -135,7 +136,7 @@ class ControlEvaluationSystem:
         discrete_statistics_params = DiscreteStatisticsParams(support_data=aggregate_support,
                                                               probabilities=ambient_condition_sample.normalized_weights)        
         new_name = ""
-        discrete_aggregate_statistics = DiscreteStatistics(statistics_name=new_name,
+        discrete_aggregate_statistics = DiscreteStatistics(name=new_name,
                                                            statistics_params=discrete_statistics_params)
         expected_acc_metrics = self.metrics_accumulation.expected_acc_metrics(
             aggregate_statistics=discrete_aggregate_statistics,
@@ -164,7 +165,7 @@ class ControlEvaluationSystem:
         discrete_statistics_params = DiscreteStatisticsParams(support_data=aggregate_support,
                                                               probabilities=ambient_condition_sample.normalized_weights)        
         new_name = ""
-        discrete_aggregate_statistics = DiscreteStatistics(statistics_name=new_name,
+        discrete_aggregate_statistics = DiscreteStatistics(name=new_name,
                                                            statistics_params=discrete_statistics_params)
         expected_acc_metrics = self.metrics_accumulation.expected_acc_metrics(
             aggregate_statistics=discrete_aggregate_statistics,
@@ -286,7 +287,7 @@ class GridSearch(ControlPolicyOptimization):
                     support_data=aggr_support_data,
                     probabilities=ambient_condition_sample.normalized_weights)
                 discrete_aggr_stat = DiscreteStatistics(
-                    statistics_name="",
+                    name="",
                     statistics_params=discrete_stat_params)
                 expected_acc_metrics = \
                     control_eval_system.metrics_accumulation.expected_acc_metrics(
@@ -422,7 +423,7 @@ class ContinuousOptimizationManager:
             support_data=aggregate_support,
             probabilities=self.ambient_condition_sample.normalized_weights)        
         new_name = ""
-        discrete_aggregate_statistics = DiscreteStatistics(statistics_name=new_name,
+        discrete_aggregate_statistics = DiscreteStatistics(name=new_name,
                                                            statistics_params=discrete_statistics_params)
 
         expected_acc_metrics = self.control_eval_system.metrics_accumulation.expected_acc_metrics(

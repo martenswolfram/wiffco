@@ -486,9 +486,9 @@ class Component(ABC):
 
     @staticmethod
     def with_validation(func: Callable[..., Any]) -> Callable[..., Any]:
-        def wrapper(self: T, *kwargs: Any) -> Any:
-            self.validate_input(*kwargs)
-            return func(self, *kwargs)
+        def wrapper(self: T, **kwargs: Any) -> Any:
+            self.validate_input(*kwargs.values())
+            return func(self, **kwargs)
         return wrapper
     
     def __repr__(self):

@@ -9,9 +9,9 @@ from twain_wifco.interface import (
     DataType)
 from twain_wifco.plant_model import (
     ModelType,
-    factorized_scattered_interp_params_from_dict,
+    factorized_scattered_interp_from_dict,
     FactorizedScatteredInterp,
-    symbolic_model_params_from_dict,
+    symbolic_model_from_dict,
     SymbolicModel)
 from twain_wifco.statistics import (
     StatisticsType,
@@ -98,19 +98,13 @@ def statistics_from_json(json_path: pathlib.Path):
 
 def plant_model_from_json(json_path: pathlib.Path):
     param_dict = parse_json_file(path=json_path)
-    
-    plant_name = param_dict["name"]
     model_type = ModelType(param_dict["model_type"])
     if model_type == ModelType.FACTORIZED_SCATTERED_INTERPOLATOR:
-        params = factorized_scattered_interp_params_from_dict(
-            param_dict=param_dict["model_params"])
-        return FactorizedScatteredInterp(name=plant_name,
-                                         params=params)
+        return factorized_scattered_interp_from_dict(
+            param_dict=param_dict)
     elif model_type == ModelType.SYMBOLIC:
-        params = symbolic_model_params_from_dict(
-            param_dict=param_dict["model_params"])
-        return SymbolicModel(name=plant_name,
-                             params=params)
+        return symbolic_model_from_dict(
+            param_dict=param_dict)
     else:
         raise NotImplementedError(f"Only factorized_scattered_interpolator and symbolic"
                                   f" models implemented.")

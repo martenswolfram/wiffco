@@ -1,50 +1,48 @@
 {
     "name": "power_damage_scattered",
     "model_type": "factorized_scattered_interpolator",
-    "model_params": {
-        "control": {
-            "scattered_interp_type": "linear",
-            "support_data": {
-                "power_regulation": [0,
-                                     1,
-                                     2,
-                                     3,
-                                     4]
-            },
-            "out_data": {
-                "electrical_power": [  0,  
-                                       1,  
-                                     1.4,
-                                     1.7,
-                                       2],
-                "damage_rate": [ 0,  
-                                 1,  
-                                 4,
-                                 9,
-                                16]  
-            }
-        },                
-        "ambient": {
-            "scattered_interp_type": "linear",
-            "support_data": {
-                "wind_speed": [ 0,
-                               10,
-                               20,
-                               30,
-                               40]
-            },
-            "out_data": {
-                "electrical_power": [ 0,  
-                                      1,  
-                                      4,
-                                      9,
-                                     16],
-                "damage_rate": [ 0,  
-                                 1,  
-                                 4,
-                                 9,
-                                16]  
-            }
+    "control": {
+        "scattered_interp_type": "linear",
+        "support_data": {
+            "power_regulation": [0,
+                                    1,
+                                    2,
+                                    3,
+                                    4]
+        },
+        "out_data": {
+            "electrical_power": [  0,  
+                                    1,  
+                                    1.4,
+                                    1.7,
+                                    2],
+            "damage_rate": [ 0,  
+                                1,  
+                                4,
+                                9,
+                            16]  
+        }
+    },                
+    "ambient": {
+        "scattered_interp_type": "linear",
+        "support_data": {
+            "wind_speed": [ 0,
+                            10,
+                            20,
+                            30,
+                            40]
+        },
+        "out_data": {
+            "electrical_power": [ 0,  
+                                    1,  
+                                    4,
+                                    9,
+                                    16],
+            "damage_rate": [ 0,  
+                                1,  
+                                4,
+                                9,
+                            16]  
         }
     }
 }
