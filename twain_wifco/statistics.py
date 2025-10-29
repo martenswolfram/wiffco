@@ -56,12 +56,6 @@ class Statistics(Component, Generic[DataType]):
         statistics_name (str): Name of the statistics component.
         statistics_params (ComponentParams): Parameters for the statistics.
     """
-    def __init__(self,
-                 statistics_name: str,
-                 statistics_params: ComponentParams):
-        super().__init__(component_name=statistics_name,
-                         component_params=statistics_params)
-
     @abstractmethod
     def systematic_sample(self,
                           N_max: int = None,
