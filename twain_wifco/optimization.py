@@ -524,7 +524,7 @@ class SimultaneousOptimization(ControlPolicyOptimization):
                        bounds=bounds,
                        constraints=constraints,
                        options=self.scipy_options)
-        opt_mgr.control_policy.set_control_data(control_data_vector=res.x)
+        opt_mgr.control_policy.set_control_data_from_vector(control_data_vector=res.x)
         
         final_acc_metrics = opt_mgr.control_eval_system.expected_acc_metrics(
                         ambient_condition_statistics=ambient_condition_statistics,

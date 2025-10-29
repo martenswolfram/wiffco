@@ -3,7 +3,7 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python Debugger: Current File",
+            "name": "Current File",
             "type": "debugpy",
             "request": "launch",
             "python": "${workspaceFolder}/.venv/bin/python",
@@ -15,7 +15,7 @@
             }
         },
         {
-            "name": "Debug Pytest",
+            "name": "Pytest",
             "type": "debugpy",
             "request": "launch",
             "module": "pytest",
@@ -26,9 +26,9 @@
                 "-o",
                 "log_cli=true",
                 "--log-cli-level=DEBUG",
-                "tests",
+                // "tests",
                 // "--ignore=tests/test_optimization.py",
-                // "tests/test_optimization.py",
+                "tests/test_control_policy.py",
             ],
             "justMyCode": true,
         },

@@ -19,7 +19,7 @@ from twain_wifco.statistics import (
     DiscreteStatisticsParams,
     DiscreteStatistics)
 from twain_wifco.control_policy import (
-    discrete_control_policy_params_from_dict,
+    discrete_control_policy_from_dict,
     DiscreteControlPolicy)
 from twain_wifco.aggregation import (
     AggregationType,
@@ -121,10 +121,7 @@ def plant_model_from_json(json_path: pathlib.Path):
 
 def control_policy_from_json(json_path: pathlib.Path):
     param_dict = parse_json_file(path=json_path)
-    policy_name = param_dict["name"]
-    params = discrete_control_policy_params_from_dict(param_dict=param_dict["policy_params"])
-    return DiscreteControlPolicy(name=policy_name,
-                                 params=params)
+    return discrete_control_policy_from_dict(param_dict=param_dict)
     
 def aggregation_from_json(json_path: pathlib.Path):
     param_dict = parse_json_file(path=json_path)

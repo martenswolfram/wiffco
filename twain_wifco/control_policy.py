@@ -45,11 +45,67 @@ class DiscreteControlPolicyParams(ComponentParams):
         """Define output control variables."""
         return Interface(all_shapes={Control: self.control_out_data.shapes()})
 
+# ======================================================================
+# Discrete Control Policy
+# ======================================================================
 
-def discrete_control_policy_params_from_dict(
+class DiscreteControlPolicy(Component):
+    
+    def __init__(self,
+                 name: str,
+                 ambient_support_data: DataTable[Ambient],
+                 control_out_data: DataTable[Control]):
+        
+        self._component_name = name
+        self._ambient_support_data = ambient_support_data
+        self._control_out_data = control_out_data
+        self._input_interface = Interface(
+            all_shapes={Ambient: self._ambient_support_data.shapes()})
+        self._output_interface = Interface(
+            all_shapes={
+                Control: self._control_out_data.shapes()})
+    
+    @Component.with_validation
+    def get_control_setpoints(
+        self, ambient_condition: DataPoint[Ambient]
+    ) -> DataPoint[Control]:
+        point_index = self._ambient_support_data.find_matching_point(data_point=ambient_condition)
+        return self._control_out_data.get_point(point_index)
+
+    def random_perturbation(self,
+                            scale: float = 1.0,
+                            discrete_steps: Dict[Control, float] = None) -> "DiscreteControlPolicy":
+        
+        perturbed_ctrl_out_data = {}
+        for ctrl_var, data in self._control_out_data.items():
+            if discrete_steps is None:
+                magnitude = scale * self._control_out_data.abs_tol(ctrl_var)
+                perturbed_ctrl_out_data[ctrl_var] = data + np.random.uniform(
+                    low=-magnitude, high=magnitude, size=data.shape
+                )
+            else:
+                perturbed_ctrl_out_data[ctrl_var] = data + np.random.choice(
+                    a=[-discrete_steps[ctrl_var], 0, discrete_steps[ctrl_var]],
+                    p=[1/3, 1/3, 1/3],
+                    size=data.shape
+                )
+
+        return DiscreteControlPolicy(
+            name=f"{self._component_name}_perturbed",
+            ambient_support_data=self._ambient_support_data,
+            control_out_data=DataTable(perturbed_ctrl_out_data)
+        )
+
+    def repr_details(self):
+        out = (f"Ambient support:\n{self._ambient_support_data}"
+               f"Control setpoints:\n{self._control_out_data}")
+        return out
+
+
+def discrete_control_policy_from_dict(
     param_dict: Dict[str, Any]
-) -> DiscreteControlPolicyParams:
-    """Construct `DiscreteControlPolicyParams` from a configuration dictionary.
+) -> DiscreteControlPolicy:
+    """Construct `DiscreteControlPolicy` from a configuration dictionary.
 
     The dictionary is expected to contain numeric data for each ambient and control variable:
         {
@@ -61,8 +117,10 @@ def discrete_control_policy_params_from_dict(
         param_dict: Configuration dictionary (e.g., loaded from JSON).
 
     Returns:
-        DiscreteControlPolicyParams: Parsed parameter object.
+        DiscreteControlPolicy: Discrete conytrol policy object.
     """
+    name = param_dict["name"]
+    
     ambient_support_data = DataTable(
         {Ambient(var): np.array(data) for var, data in param_dict["ambient_support_data"].items()}
     )
@@ -70,97 +128,9 @@ def discrete_control_policy_params_from_dict(
         {Control(var): np.array(data) for var, data in param_dict["control_out_data"].items()}
     )
 
-    return DiscreteControlPolicyParams(
+    return DiscreteControlPolicy(
+        name=name,
         ambient_support_data=ambient_support_data,
         control_out_data=control_out_data,
     )
 
-
-# ======================================================================
-# Discrete Control Policy
-# ======================================================================
-
-class DiscreteControlPolicy(Component):
-    """Discrete mapping from ambient conditions to control setpoints.
-
-    This component implements a lookup policy where each ambient condition
-    corresponds to one control setpoint entry from pre-defined tables.
-    """
-
-    def __init__(self, name: str, params: DiscreteControlPolicyParams):
-        """Initialize a discrete control policy.
-
-        Args:
-            name: Name of the control policy.
-            params: Parameter object defining ambient and control data tables.
-        """
-        super().__init__(component_name=name, component_params=params)
-        self.ambient_support_data = params.ambient_support_data
-        self.control_out_data = params.control_out_data
-
-    def get_control_setpoints(
-        self, ambient_condition: DataPoint[Ambient]
-    ) -> DataPoint[Control]:
-        """Return control setpoints corresponding to given ambient condition.
-
-        Args:
-            ambient_condition: Ambient condition data point.
-
-        Returns:
-            DataPoint[Control]: Control setpoint for the matching condition.
-
-        Raises:
-            ValueError: If the given ambient condition does not match any support point.
-        """
-        self.validate_inputs(input_data={Ambient: ambient_condition})
-        point_index = self.ambient_support_data.find_matching_point(data_point=ambient_condition)
-        return self.control_out_data.get_point(point_index)
-
-    def set_control_data(self, control_data_vector: np.ndarray) -> None:
-        """Update the control table from a flat vector.
-
-        Args:
-            control_data_vector: Flattened array of control values.
-        """
-        self.control_out_data.update_from_vector(control_data_vector)
-
-    def random_perturbation(self,
-                            scale: float = 1.0,
-                            discrete_steps: Dict[Control, float] = None) -> "DiscreteControlPolicy":
-        """Create a perturbed copy of this control policy.
-
-        Adds uniform random perturbations scaled by each variable's absolute tolerance.
-
-        Args:
-            scale: Multiplier for the perturbation magnitude (default: 1.0).
-
-        Returns:
-            DiscreteControlPolicy: New perturbed control policy instance.
-        """
-        perturbed_ctrl_out_data = {}
-        for ctrl_var, data in self.control_out_data.items():
-            if discrete_steps is None:
-                magnitude = scale * self.control_out_data.abs_tol(ctrl_var)
-                perturbed_ctrl_out_data[ctrl_var] = data + np.random.uniform(
-                    low=-magnitude, high=magnitude, size=data.shape
-                )
-            else:
-                perturbed_ctrl_out_data[ctrl_var] = data + np.random.choice(
-                    a=[-discrete_steps[ctrl_var], 0, discrete_steps[ctrl_var]],
-                    p=[1/3, 1/3, 1/3],
-                    size=data.shape
-                )
-
-        perturbed_params = DiscreteControlPolicyParams(
-            ambient_support_data=self.ambient_support_data,
-            control_out_data=DataTable(perturbed_ctrl_out_data),
-        )
-
-        return DiscreteControlPolicy(
-            name=f"{self.component_name}_perturbed", params=perturbed_params
-        )
-
-    def repr_details(self):
-        out = (f"Ambient support:\n{self.ambient_support_data}"
-               f"Control setpoints:\n{self.control_out_data}")
-        return out

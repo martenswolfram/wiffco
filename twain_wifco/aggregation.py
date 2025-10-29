@@ -56,7 +56,7 @@ class Aggregation(Component, ABC):
         Returns:
             DataPoint[Aggregated]: Computed aggregated outputs.
         """
-        self.validate_inputs(
+        self.validate_input(
             input_data={
                 ModelOutput: model_output,
                 Ambient: ambient_condition,

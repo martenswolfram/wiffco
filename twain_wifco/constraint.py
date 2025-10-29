@@ -67,7 +67,7 @@ class Constraint(Component, Generic[DataType]):
         Returns:
             bool: True if constraint is satisfied, False otherwise.
         """
-        self.validate_inputs(input_data={constr_input_data.data_type: constr_input_data})
+        self.validate_input(input_data={constr_input_data.data_type: constr_input_data})
         return self._evaluate_satisfied(constr_input_data=constr_input_data)
 
     @abstractmethod

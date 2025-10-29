@@ -36,7 +36,7 @@ class MetricsAccumulation(Component):
         Returns:
             DataPoint[AccumulatedMetric]: Accumulated metrics.
         """
-        self.validate_inputs(input_data={Aggregated: aggregate})
+        self.validate_input(input_data={Aggregated: aggregate})
         return self._acc_metrics(aggregate=aggregate, duration=duration)
 
     def expected_acc_metrics(self,
@@ -51,7 +51,7 @@ class MetricsAccumulation(Component):
         Returns:
             DataPoint[AccumulatedMetric]: Expected accumulated metrics.
         """
-        self.validate_input_shapes(input_shapes={
+        self.validate_shapes(input_shapes={
             Aggregated: aggregate_statistics.output_interface.shapes(data_type=Aggregated)
         })
         return self._expected_acc_metrics(aggregate_statistics=aggregate_statistics,

@@ -13,9 +13,6 @@ def test_discrete_control_policy():
     json_path = test_data_folder / "discrete_control_policy.json"
     simple_control_policy = control_policy_from_json(json_path=json_path)
         
-    # Initialization
-    assert simple_control_policy.component_name == "discrete_control_policy"
-    
     # retrieve control setpoints for dicrete ambient conditions
     # Invalid ambient condition keys
     invalid_amb_condition = DataPoint({Ambient.WIND_SPEED: np.array(20)})

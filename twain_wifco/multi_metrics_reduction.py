@@ -39,7 +39,7 @@ class MultiMetricsReduction(Component, ABC):
         Returns:
             float: Scalar reduction of the metrics.
         """
-        self.validate_inputs(input_data={AccumulatedMetric: acc_metrics})
+        self.validate_input(input_data={AccumulatedMetric: acc_metrics})
         return self._evaluate(acc_metrics=acc_metrics)
 
     def cost_function(self, eval_acc_metrics_from_x):

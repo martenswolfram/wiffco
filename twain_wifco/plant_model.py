@@ -56,7 +56,7 @@ class PlantModel(Component, ABC):
         Returns:
             DataPoint[ModelOutput]: Model output quantities.
         """
-        self.validate_inputs(
+        self.validate_input(
             input_data={Ambient: meteorological_condition, Control: control_input}
         )
         return self._evaluate(

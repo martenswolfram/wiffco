@@ -4,7 +4,9 @@ from typing import (
     Tuple,
     TypeVar,
     Dict,
-    Generic
+    Generic,
+    Callable,
+    Any
 )
 import numpy as np
 from dataclasses import dataclass
@@ -16,32 +18,35 @@ from twain_wifco.utils import print_table
 # ENUMERATIONS
 # ======================================================================
 
-class Ambient(Enum):
+class DataEnum(Enum):
+    def __repr__(self):
+        return self.value
+
+class Ambient(DataEnum):
     """Enumeration of ambient (environmental and contextual) variables."""
     WIND_SPEED = "wind_speed"
     WIND_DIRECTION = "wind_direction"
     ELECTRICITY_PRICE = "electricity_price"
 
-
-class Control(Enum):
+class Control(DataEnum):
     """Enumeration of control variables."""
     POWER_REGULATION = "power_regulation"
     YAW_STEERING = "yaw_steering"
 
 
-class ModelOutput(Enum):
+class ModelOutput(DataEnum):
     """Enumeration of model output variables."""
     ELECTRICAL_POWER = "electrical_power"
     DAMAGE_RATE = "damage_rate"
 
 
-class Aggregated(Enum):
+class Aggregated(DataEnum):
     """Enumeration of aggregated variables (derived from outputs and ambient conditions)."""
     REVENUE_RATE = "revenue_rate"
     DAMAGE_RATE = "damage_rate"
 
 
-class AccumulatedMetric(Enum):
+class AccumulatedMetric(DataEnum):
     """Enumeration of accumulated (time-integrated) metrics."""
     REVENUE = "revenue"
     ACCRUED_DAMAGE = "accrued_damage"
@@ -380,9 +385,8 @@ class Interface:
                 }
     """
 
-    def __init__(self,
-                 all_shapes: Dict[Type[DataVariable],
-                                  Dict[DataVariable, Tuple[int, ...]]]):
+    def __init__(self, all_shapes: Dict[Type[DataVariable],
+                                   Dict[DataVariable, Tuple[int, ...]]]):
         self.all_shapes = all_shapes
 
     def shapes(self, data_type: Type[DataVariable]) -> Dict[DataVariable, Tuple[int, ...]]:
@@ -431,16 +435,7 @@ class ComponentParams(ABC):
     for a specific type of component.
     """
 
-    @abstractmethod
-    def input_interface(self) -> Interface:
-        """Return the input interface definition for the component."""
-        raise NotImplementedError
-
-    @abstractmethod
-    def output_interface(self) -> Interface:
-        """Return the output interface definition for the component."""
-        raise NotImplementedError
-
+T = TypeVar("T", bound="Component")
 
 class Component(ABC):
     """Abstract base class for all components in the toolbox.
@@ -453,18 +448,14 @@ class Component(ABC):
         input_interface: Interface object defining required input variables.
         output_interface: Interface object defining produced output variables.
     """
+    _component_name: str = "<unnamed component>"
+    _input_interface: Interface | None = None
+    _output_interface: Interface | None = None
 
-    def __init__(self,
-                 component_name: str,
-                 component_params: ComponentParams):
-        self.component_name = component_name
-        self.input_interface = component_params.input_interface()
-        self.output_interface = component_params.output_interface()
-
-    def validate_input_shapes(self,
-                              input_shapes: Dict[Type[DataVariable],
-                                                 Dict[DataVariable, Tuple[int, ...]]]):
-        """Validate that the input data shapes satisfy this component’s interface.
+    def validate_shapes(self,
+                        input_shapes: Dict[Type[DataVariable],
+                                           Dict[DataVariable, Tuple[int, ...]]]):
+        """Validate that the input data shapes satisfy this component's interface.
 
         Args:
             input_shapes: Mapping from data type (e.g. Ambient, Control)
@@ -473,37 +464,35 @@ class Component(ABC):
         Raises:
             ValueError: If input variables are missing or mismatched in shape.
         """
-        # Validate shape consistency with the declared input interface
-        self.input_interface.validate_shapes(
-            external_shapes=input_shapes,
-            component_name=self.component_name
-        )
+        if self._input_interface is not None:
+            # Validate shape consistency with the declared input interface
+            self._input_interface.validate_shapes(
+                external_shapes=input_shapes,
+                component_name=self._component_name
+            )
 
-
-    def validate_inputs(self,
-                        input_data: Dict[Type[DataVariable], DataCollection[DataVariable]]):
-        """Validate that input data satisfies this component’s interface.
-
-        Args:
-            input_data: Mapping from data type (e.g. Ambient, Control)
-                to `DataCollection` instances containing actual data.
-
-        Raises:
-            ValueError: If input variables are missing or mismatched in shape.
-        """
+    def validate_input(self, *args: DataCollection):
+        
         # Collect the external data shapes for validation
         external_shapes = {
-            dtype: dcoll.shapes()
-            for dtype, dcoll in input_data.items()
+            data_collection.data_type: data_collection.shapes()
+            for data_collection in args
         }
-
+        
         # Validate consistency with the declared input interface
-        self.validate_input_shapes(
+        self.validate_shapes(
             input_shapes=external_shapes
         )
 
+    @staticmethod
+    def with_validation(func: Callable[..., Any]) -> Callable[..., Any]:
+        def wrapper(self: T, *kwargs: Any) -> Any:
+            self.validate_input(*kwargs)
+            return func(self, *kwargs)
+        return wrapper
+    
     def __repr__(self):
-        out = f"{self.__class__.__name__} '{self.component_name}'"
+        out = f"{self.__class__.__name__} '{self._component_name}'"
         repr_details = self.repr_details()
         if repr_details is None:
             return out
