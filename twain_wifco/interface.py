@@ -427,14 +427,6 @@ class Interface:
                         f"Expected {req_shape}, got {provided_shapes[var]}."
                     )
 
-
-class ComponentParams(ABC):
-    """Abstract base class for all component parameter sets.
-
-    A `ComponentParams` subclass specifies the input and output interface
-    for a specific type of component.
-    """
-
 T = TypeVar("T", bound="Component")
 
 class Component(ABC):

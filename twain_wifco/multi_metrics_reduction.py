@@ -1,10 +1,9 @@
 from typing import Dict, Any
 import numpy as np
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from enum import Enum
 from twain_wifco.interface import (
     Component,
-    ComponentParams,
     AccumulatedMetric,
     DataPoint,
     Interface
@@ -18,9 +17,7 @@ class MultiMetricsReduction(Component):
     """Abstract base class to reduce multiple accumulated metrics to a scalar value.
 
     Args:
-        multi_metrics_name (str): Name of the multi-metrics reduction component.
         maximize (bool): Whether the evaluation is to be maximized.
-        multi_metrics_params (ComponentParams): Parameters for the reduction.
     """
     def __init__(self, maximize: bool):
         self._maximize = maximize
@@ -106,13 +103,13 @@ class ScalarWeighting(MultiMetricsReduction):
 
 
 def scalar_weighting_from_dict(param_dict: Dict[str, Any]) -> ScalarWeighting:
-    """Create ScalarWeightingParams from a dictionary.
+    """Create ScalarWeighting from a dictionary.
 
     Args:
         param_dict (Dict[str, Any]): Dictionary containing 'metric_weights'.
 
     Returns:
-        ScalarWeightingParams: Constructed parameters object.
+        ScalarWeighting: Constructed ScalarWeighting metrics reduction object.
     """
     name = param_dict["name"]
     maximize = param_dict["maximize"]

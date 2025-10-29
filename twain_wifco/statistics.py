@@ -4,7 +4,6 @@ from enum import Enum
 import numpy as np
 from twain_wifco.interface import (
     Component,
-    ComponentParams,
     DataType,
     DataTable,
     DataPoint,
@@ -52,9 +51,6 @@ class SystematicSample:
 class Statistics(Component, Generic[DataType]):
     """Abstract base class for statistics computations.
 
-    Args:
-        statistics_name (str): Name of the statistics component.
-        statistics_params (ComponentParams): Parameters for the statistics.
     """
     @abstractmethod
     def systematic_sample(self,

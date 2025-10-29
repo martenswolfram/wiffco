@@ -15,11 +15,9 @@ from twain_wifco.interface import (
     get_default_value)
 from twain_wifco.statistics import (
     Statistics,
-    # DiscreteStatisticsParams,
     DiscreteStatistics)
 from twain_wifco.control_policy import (
     DiscreteControlPolicy,
-    # DiscreteControlPolicyParams,
     )
 from twain_wifco.plant_model import PlantModel
 from twain_wifco.aggregation import Aggregation

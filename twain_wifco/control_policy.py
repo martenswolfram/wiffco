@@ -5,7 +5,6 @@ from twain_wifco.interface import (
     DataPoint,
     DataTable,
     Component,
-    ComponentParams,
     Ambient,
     Control,
     Interface,

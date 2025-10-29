@@ -7,7 +7,6 @@ from enum import Enum
 
 from twain_wifco.interface import (
     Component,
-    ComponentParams,
     Ambient,
     ModelOutput,
     Control,
@@ -162,7 +161,7 @@ class SimpleProduct(Component):
 # ======================================================================
 
 def simple_product_from_dict(param_dict: Dict[str, Any]) -> SimpleProduct:
-    """Construct a `SimpleProductParams` instance from a plain dictionary.
+    """Construct a `SimpleProduct` instance from a plain dictionary.
 
     This function enables loading configuration data from JSON or YAML files.
 
@@ -171,7 +170,7 @@ def simple_product_from_dict(param_dict: Dict[str, Any]) -> SimpleProduct:
             variable names under ``from_model``, ``from_ambient``, and ``from_control``.
 
     Returns:
-        SimpleProductParams: Parsed parameter object.
+        SimpleProduct: Parsed SimpleProduct aggregation object.
     """
     name = param_dict["name"]
     aggregate_mappings: Dict[Aggregated, ProductAggregateMapping] = {}

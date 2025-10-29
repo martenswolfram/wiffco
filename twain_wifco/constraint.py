@@ -5,7 +5,6 @@ from scipy.optimize import NonlinearConstraint, Bounds
 from enum import Enum
 from twain_wifco.interface import (
     Component,
-    ComponentParams,
     data_type_from_string,
     DataVariable,
     DataType,
@@ -47,9 +46,6 @@ class TwoSidedBounds:
 class Constraint(Component, Generic[DataType]):
     """Abstract base class for all constraints.
 
-    Args:
-        constraint_name (str): Name of the constraint.
-        constraint_params (ComponentParams): Parameters defining the constraint.
     """
 
     @abstractmethod
@@ -208,13 +204,13 @@ class SeparateConstraints(Component):
         return ub_constraints
 
 def separate_constraints_from_dict(param_dict: Dict[str, Any]) -> SeparateConstraints:
-    """Create SeparateConstraintsParams from a parameter dictionary.
+    """Create SeparateConstraints from a parameter dictionary.
 
     Args:
         param_dict (Dict[str, Any]): Dictionary containing upper/lower bounds and data type.
 
     Returns:
-        SeparateConstraintsParams: Constructed parameters object.
+        SeparateConstraints: Constructed Separate Constraints object.
     """
     name = param_dict["name"]
     data_type = data_type_from_string(param_dict["data_type"])
