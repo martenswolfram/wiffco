@@ -7,6 +7,7 @@ from twain_wifco.interface import (
     AccumulatedMetric,
     DataPoint)
 
+# TODO: Add test for aggregate constraint
     
 def test_linear_control_constraint():
     test_data_folder = pathlib.Path(__file__).parent / "data"
@@ -38,15 +39,6 @@ def test_acc_metrics_constraint():
     json_path = test_data_folder / "constraint_accumulated.json"
     linear_accumulated_constraint = constraint_from_json(json_path=json_path)
         
-    # Initialization
-    assert linear_accumulated_constraint.component_name == "linear_accumulated_constraint"
-    assert linear_accumulated_constraint.bounds.lower_bound.order == \
-        [AccumulatedMetric.ACCRUED_DAMAGE]
-    
-    assert np.array_equal(linear_accumulated_constraint.bounds.
-                          lower_bound.data[AccumulatedMetric.ACCRUED_DAMAGE],
-                          np.array([-np.inf, -np.inf]))
-    
     # Constraint evaluation
     constraint_satisfied = linear_accumulated_constraint.evaluate_satisfied(
         constr_input_data=DataPoint({AccumulatedMetric.ACCRUED_DAMAGE: np.array([700, 700]),

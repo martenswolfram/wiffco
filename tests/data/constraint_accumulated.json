@@ -1,15 +1,13 @@
 {
     "name": "linear_accumulated_constraint",
     "constraint_type": "separate_constraints",
-    "constraint_params":{
-        "data_type": "accumulated_metric",
-        "upper_bound": {
-            "accrued_damage": [500, 500],
-            "revenue": null
-        },
-        "lower_bound": {
-            "accrued_damage": [null, null],
-            "revenue": null
-        }
+    "data_type": "accumulated_metric",
+    "upper_bound": {
+        "accrued_damage": [500, 500],
+        "revenue": null
+    },
+    "lower_bound": {
+        "accrued_damage": [null, null],
+        "revenue": null
     }
 }

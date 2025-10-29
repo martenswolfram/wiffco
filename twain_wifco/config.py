@@ -30,7 +30,7 @@ from twain_wifco.metrics_accumulation import (
     DiscountedIntegration)
 from twain_wifco.constraint import (
     ConstraintType,
-    separate_constraints_params_from_dict,
+    separate_constraints_from_dict,
     SeparateConstraints)
 from twain_wifco.multi_metrics_reduction import (
     MultiMetricsReductionType,
@@ -131,12 +131,9 @@ def metrics_accumulation_from_json(json_path: pathlib.Path):
 
 def constraint_from_json(json_path: pathlib.Path):
     param_dict = parse_json_file(path=json_path)
-    constraint_name = param_dict["name"]
     constraint_type = ConstraintType(param_dict["constraint_type"])
     if constraint_type == ConstraintType.SEPARATE_CONSTRAINTS:
-        params = separate_constraints_params_from_dict(param_dict=param_dict["constraint_params"])
-        return SeparateConstraints(constraint_name=constraint_name,
-                                         constraint_params=params)
+        return separate_constraints_from_dict(param_dict=param_dict)
     else:
         raise NotImplementedError("Only separate-linear constraints implemented.")
 
