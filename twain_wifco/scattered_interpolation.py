@@ -3,9 +3,6 @@ from enum import Enum
 import numpy as np
 from scipy.interpolate import RBFInterpolator, LinearNDInterpolator, interp1d
 from twain_wifco.interface import (
-    Ambient,
-    Control,
-    ModelOutput,
     DataPoint,
     DataTable,
     DataType

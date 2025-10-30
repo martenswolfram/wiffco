@@ -277,7 +277,8 @@ class DataTable(DataCollection[DataType]):
         return {k: v.shape[1:] for k, v in self.data.items()}
 
     def to_matrix(self) -> np.ndarray:
-        """Flatten all variable arrays and combine into a single 2D matrix."""
+        """Flatten all variable arrays and combine into a single 2D matrix.
+        Each row corresponds to one data point"""
         n_points = len(self)
         flattened = [self.data[k].reshape(n_points, -1) for k in self.order]
         return np.concatenate(flattened, axis=1)
