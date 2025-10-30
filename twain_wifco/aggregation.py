@@ -1,6 +1,6 @@
 from __future__ import annotations
 from typing import Dict, Any, Set
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from dataclasses import dataclass, field
 import numpy as np
 from enum import Enum

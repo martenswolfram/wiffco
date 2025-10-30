@@ -8,7 +8,7 @@ class Ambient(Enum):
 
 class Control(Enum):
     POWER_REGULATION = "power_regulation"
-    YAW_STEERING = "yaw_steering"
+    yaw_angle = "yaw_angle"
 
 class ModelOutput(Enum):
     ELECTRICAL_POWER = "electrical_power"

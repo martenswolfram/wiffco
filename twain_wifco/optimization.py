@@ -1,4 +1,4 @@
-from typing import Dict, Any, Tuple, Sequence, Callable
+from typing import Dict, Any, Tuple, Sequence
 from abc import ABC, abstractmethod
 import numpy as np
 import logging
@@ -10,8 +10,7 @@ from twain_wifco.interface import (
     Ambient,
     Control,
     DataTable,
-    DataPoint,
-    get_default_value)
+    DataPoint)
 from twain_wifco.statistics import (
     Statistics,
     DiscreteStatistics)

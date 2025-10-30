@@ -1,5 +1,5 @@
 from typing import Dict, Any, Callable, Tuple, List
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from enum import Enum
 import numpy as np
 import sympy as sp

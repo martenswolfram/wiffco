@@ -10,7 +10,7 @@ from typing import (
 )
 import numpy as np
 from dataclasses import dataclass
-from abc import ABC, abstractmethod
+from abc import ABC
 from enum import Enum
 from twain_wifco.utils import print_table
 

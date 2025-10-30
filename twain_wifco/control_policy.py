@@ -79,7 +79,7 @@ def discrete_control_policy_from_dict(
     The dictionary is expected to contain numeric data for each ambient and control variable:
         {
             "ambient_support_data": { "wind_speed": [...], "wind_direction": [...] },
-            "control_out_data": { "power_regulation": [...], "yaw_steering": [...] }
+            "control_out_data": { "power_regulation": [...], "yaw_angle": [...] }
         }
 
     Args:
