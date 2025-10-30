@@ -26,12 +26,13 @@ class Ambient(DataEnum):
     """Enumeration of ambient (environmental and contextual) variables."""
     WIND_SPEED = "wind_speed"
     WIND_DIRECTION = "wind_direction"
+    TURBULENCE_INTENSITY = "turbulence_intensity"
     ELECTRICITY_PRICE = "electricity_price"
 
 class Control(DataEnum):
     """Enumeration of control variables."""
     POWER_REGULATION = "power_regulation"
-    YAW_STEERING = "yaw_steering"
+    YAW_ANGLE = "yaw_angle"
 
 
 class ModelOutput(DataEnum):
@@ -90,7 +91,7 @@ def get_default_value(data_var: DataVariable,
     """Return a default numpy array for a given data variable."""
     if data_var == Control.POWER_REGULATION:
         return np.ones(shape=shape)
-    elif data_var == Control.YAW_STEERING:
+    elif data_var == Control.YAW_ANGLE:
         return np.zeros(shape=shape)
     elif data_var == Ambient.WIND_SPEED:
         return np.zeros(shape=shape)

@@ -18,7 +18,7 @@ def test_linear_control_constraint():
     constraint_satisfied = linear_control_constraint.evaluate_satisfied(
         constr_input_data=DataPoint(
             {
-                Control.YAW_STEERING: np.array(0),
+                Control.YAW_ANGLE: np.array(0),
                 Control.POWER_REGULATION: np.array([0, 0])
             }
         ))
@@ -27,7 +27,7 @@ def test_linear_control_constraint():
     constraint_satisfied = linear_control_constraint.evaluate_satisfied(
         constr_input_data=DataPoint(
             {
-                Control.YAW_STEERING: np.array(0),
+                Control.YAW_ANGLE: np.array(0),
                 Control.POWER_REGULATION: np.array([2, 2])
             }
         ))

@@ -1,4 +1,4 @@
-import json
+import json5 as json
 import pathlib
 import csv
 import ast
@@ -10,32 +10,28 @@ from twain_wifco.interface import (
 from twain_wifco.plant_model import (
     ModelType,
     factorized_scattered_interp_from_dict,
-    FactorizedScatteredInterp,
-    symbolic_model_from_dict,
-    SymbolicModel)
+    symbolic_model_from_dict)
+from twain_wifco.floris_model.floris_model import (
+    floris_model_from_dict
+)
 from twain_wifco.statistics import (
     StatisticsType,
     discrete_statistics_from_dict,
     DiscreteStatistics)
 from twain_wifco.control_policy import (
-    discrete_control_policy_from_dict,
-    DiscreteControlPolicy)
+    discrete_control_policy_from_dict)
 from twain_wifco.aggregation import (
     AggregationType,
-    simple_product_from_dict,
-    SimpleProduct)
+    simple_product_from_dict)
 from twain_wifco.metrics_accumulation import (
     MetricsAccumulationType,
-    discounted_integrator_from_dict,
-    DiscountedIntegration)
+    discounted_integrator_from_dict)
 from twain_wifco.constraint import (
     ConstraintType,
-    separate_constraints_from_dict,
-    SeparateConstraints)
+    separate_constraints_from_dict)
 from twain_wifco.multi_metrics_reduction import (
     MultiMetricsReductionType,
-    scalar_weighting_from_dict,
-    ScalarWeighting)
+    scalar_weighting_from_dict)
 from twain_wifco.optimization import (
     ControlEvaluationSystem,
     OptimizationMethod,
@@ -101,6 +97,9 @@ def plant_model_from_json(json_path: pathlib.Path):
             param_dict=param_dict)
     elif model_type == ModelType.SYMBOLIC:
         return symbolic_model_from_dict(
+            param_dict=param_dict)
+    elif model_type == ModelType.FLORIS:
+        return floris_model_from_dict(
             param_dict=param_dict)
     else:
         raise NotImplementedError(f"Only factorized_scattered_interpolator and symbolic"

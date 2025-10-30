@@ -27,7 +27,7 @@ def test_discrete_control_policy():
          Ambient.WIND_DIRECTION: np.array(180),
          Ambient.ELECTRICITY_PRICE: np.array(5)})
     expected_output =  DataPoint({Control.POWER_REGULATION: np.array(4),
-                                  Control.YAW_STEERING: np.array(8)})
+                                  Control.YAW_ANGLE: np.array(8)})
 
     control_setpoints = simple_control_policy.get_control_setpoints(ambient_condition=valid_ambient_condition)
     assert control_setpoints == expected_output

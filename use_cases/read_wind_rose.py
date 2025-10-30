@@ -10,7 +10,6 @@ data_set = "la_haute_borne"
 current_file = pathlib.Path(__file__).resolve()
 project_root = current_file.parent.parent
 
-# Stel dat je configuratiebestanden in 'config/' staan:
 config_dir = project_root / "use_cases" / data_set
 csv_path = config_dir / "wind_rose.csv"
 

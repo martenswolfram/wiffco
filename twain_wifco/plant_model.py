@@ -57,6 +57,7 @@ class ModelType(Enum):
     """Enumeration of available plant model types."""
     FACTORIZED_SCATTERED_INTERPOLATOR = "factorized_scattered_interpolator"
     SYMBOLIC = "symbolic"
+    FLORIS = "floris"
 
 
 # ======================================================================

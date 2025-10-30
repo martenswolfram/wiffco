@@ -16,7 +16,7 @@ def test_scattered_plant_model():
             
     # Invalid input
     valid_met_condition = DataPoint({Ambient.WIND_SPEED: np.array(20)})
-    invalid_ctrl_input =  DataPoint({Control.YAW_STEERING: np.array(2)})
+    invalid_ctrl_input =  DataPoint({Control.YAW_ANGLE: np.array(2)})
     with pytest.raises(ValueError) as excinfo: 
         power_damage_scattered_model.evaluate(meteorological_condition=valid_met_condition,
                                         control_input=invalid_ctrl_input)
@@ -37,7 +37,7 @@ def test_symbolic_model():
             
     # Invalid input
     valid_met_condition = DataPoint({Ambient.WIND_SPEED: np.array(20)})
-    invalid_ctrl_input =  DataPoint({Control.YAW_STEERING: np.array(2)})
+    invalid_ctrl_input =  DataPoint({Control.YAW_ANGLE: np.array(2)})
     with pytest.raises(ValueError) as excinfo: 
         power_damage_sybolic_model.evaluate(meteorological_condition=valid_met_condition,
                                         control_input=invalid_ctrl_input)
@@ -51,3 +51,24 @@ def test_symbolic_model():
     output = power_damage_sybolic_model.evaluate(meteorological_condition=valid_met_condition,
                                                    control_input=valid_ctrl_input)
     assert output == expected_output
+
+def test_floris_model():
+    json_path = test_data_folder / "model_floris.jsonc"
+    floris_power_model = plant_model_from_json(json_path=json_path)
+    
+       
+    # Invalid input
+    valid_met_condition = DataPoint({Ambient.WIND_SPEED: np.array(20.),
+                                     Ambient.WIND_DIRECTION: np.array(270.),
+                                     Ambient.TURBULENCE_INTENSITY: np.array(0.)})
+    invalid_ctrl_input =  DataPoint({Control.POWER_REGULATION: np.array(2.)})
+    with pytest.raises(ValueError) as excinfo: 
+        floris_power_model.evaluate(meteorological_condition=valid_met_condition,
+                                        control_input=invalid_ctrl_input)
+    assert "missing required variables of type Control" in str(excinfo.value)
+
+    # Valid input
+    valid_ctrl_input = DataPoint({Control.YAW_ANGLE: np.array([0., 0., 0., 0.])})
+    output = floris_power_model.evaluate(meteorological_condition=valid_met_condition,
+                                         control_input=valid_ctrl_input)
+    assert output == DataPoint({ModelOutput.ELECTRICAL_POWER: np.full(shape=(4,), fill_value=5e6)})
