@@ -6,7 +6,7 @@ from twain_wifco.interface import Ambient, DataTable
 
 def test_statistics():
     test_data_folder = pathlib.Path(__file__).parent / "data"
-    json_path = test_data_folder / "statistics_discrete_ambient.json"
+    json_path = test_data_folder / "statistics_discrete_ambient.jsonc"
     discrete_ambient_statistics = statistics_from_json(json_path=json_path)
     
     ordered_prevalence = np.array([0.4, 0.25, 0.19, 0.1, 0.05, 0.01])

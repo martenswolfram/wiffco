@@ -21,16 +21,16 @@ logger = logging.getLogger(__name__)
 test_data_folder = pathlib.Path(__file__).parent / "data"
     
 def test_control_evaluation_system():
-    json_path = test_data_folder / "control_evaluation_system.json"
+    json_path = test_data_folder / "control_evaluation_system.jsonc"
     control_evaluation_system = control_evaluation_system_from_json(json_path=json_path)
     assert control_evaluation_system.name == "discrete_evaluation_system"
 
 # System
-json_path = test_data_folder / "control_evaluation_system.json"
+json_path = test_data_folder / "control_evaluation_system.jsonc"
 control_evaluation_system = control_evaluation_system_from_json(json_path=json_path)
 
 # Ambient conditions
-json_path = test_data_folder / "statistics_discrete_ambient.json"
+json_path = test_data_folder / "statistics_discrete_ambient.jsonc"
 ambient_statistics = statistics_from_json(json_path=json_path)
 
 # Duration
@@ -74,7 +74,7 @@ def perturbed_control_policy_test(
             assert perturbed_is_suboptimal
 
 def test_grid_search():
-    json_path = test_data_folder / "optimization_grid_search.json"
+    json_path = test_data_folder / "optimization_grid_search.jsonc"
     grid_search: GridSearch = control_optimization_from_json(json_path=json_path)
     
     # Optimization
@@ -89,7 +89,7 @@ def test_grid_search():
                                   discrete_steps={Control.POWER_REGULATION: 1})
 
 def test_simultaneous_optimization():
-    json_path = test_data_folder / "optimization_simultaneous.json"
+    json_path = test_data_folder / "optimization_simultaneous.jsonc"
     simultaneous_optimization: SimultaneousOptimization = control_optimization_from_json(json_path=json_path)
     
     # Optimization
@@ -107,7 +107,7 @@ def test_simultaneous_optimization():
 
 
 def test_lagrangian_relaxation():
-    json_path = test_data_folder / "optimization_lagrangian_relaxation.json"
+    json_path = test_data_folder / "optimization_lagrangian_relaxation.jsonc"
     lagrangian_relaxation: SimultaneousOptimization = control_optimization_from_json(json_path=json_path)
     
     # Optimization

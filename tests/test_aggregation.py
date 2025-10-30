@@ -1,5 +1,4 @@
 import pathlib
-import pytest
 import numpy as np
 from twain_wifco.config import aggregation_from_json
 from twain_wifco.interface import (
@@ -11,7 +10,7 @@ from twain_wifco.interface import (
     
 def test_simple_product_aggregation():
     test_data_folder = pathlib.Path(__file__).parent / "data"
-    json_path = test_data_folder / "aggregation_revenue_damage.json"
+    json_path = test_data_folder / "aggregation_revenue_damage.jsonc"
     simple_product_aggregation = aggregation_from_json(json_path=json_path)
     
     # Output aggregation

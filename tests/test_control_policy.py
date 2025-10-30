@@ -10,7 +10,7 @@ from twain_wifco.interface import (
     
 def test_discrete_control_policy():
     test_data_folder = pathlib.Path(__file__).parent / "data"
-    json_path = test_data_folder / "discrete_control_policy.json"
+    json_path = test_data_folder / "discrete_control_policy.jsonc"
     simple_control_policy = control_policy_from_json(json_path=json_path)
         
     # retrieve control setpoints for dicrete ambient conditions
