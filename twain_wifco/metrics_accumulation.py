@@ -86,17 +86,17 @@ class DiscountedIntegration(Component):
                  integration_mappings: Dict[AccumulatedMetric, IntegrationMapping],
                  duration: int):
         
-        self._component_name = name
+        self.component_name = name
         self._integration_mappings = integration_mappings
         self._duration = duration
 
         aggregated_shapes = {mapping.aggregate: None for \
                              mapping in self._integration_mappings.values()}
         
-        self._input_interface = Interface(all_shapes={Aggregated: aggregated_shapes})
+        self.input_interface = Interface(all_shapes={Aggregated: aggregated_shapes})
 
         accumulated_metric_shapes = {metric: None for metric in self._integration_mappings.keys()}
-        self._output_interface = Interface(all_shapes={AccumulatedMetric: accumulated_metric_shapes})
+        self.output_interface = Interface(all_shapes={AccumulatedMetric: accumulated_metric_shapes})
 
     @Component.with_validation
     def acc_metrics(self,

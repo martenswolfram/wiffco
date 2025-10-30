@@ -87,7 +87,7 @@ class DiscreteStatistics(Statistics):
                  support_data: DataTable[DataType],
                  probabilities: np.ndarray):
         
-        self._component_name = name
+        self.component_name = name
     
         # Discard zero-probability points
         probabilities_reduced = probabilities[probabilities > 0]
@@ -103,8 +103,8 @@ class DiscreteStatistics(Statistics):
         self._ordered_support_data = DataTable(data=ordered_support,
                                               order=support_data.order)
 
-        self._input_interface = Interface()
-        self._output_interface = Interface(
+        self.input_interface = Interface()
+        self.output_interface = Interface(
             all_shapes={
                 self._ordered_support_data.data_type: self._ordered_support_data.shapes()})
     

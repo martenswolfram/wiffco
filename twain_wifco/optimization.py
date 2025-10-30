@@ -9,7 +9,6 @@ from enum import Enum
 from twain_wifco.interface import (
     Ambient,
     Control,
-    Aggregated,
     DataTable,
     DataPoint,
     get_default_value)
@@ -18,6 +17,7 @@ from twain_wifco.statistics import (
     DiscreteStatistics)
 from twain_wifco.control_policy import (
     DiscreteControlPolicy,
+    default_discrete_policy
     )
 from twain_wifco.plant_model import PlantModel
 from twain_wifco.aggregation import Aggregation
@@ -324,7 +324,14 @@ class ContinuousOptimizationManager:
         self._control_eval_system = control_eval_system
         self._ambient_condition_sample = ambient_condition_statistics.systematic_sample(
             N_max=max_num_amb_cond)
-        self._control_policy = self.default_discrete_policy()
+        self._control_policy = default_discrete_policy(
+            control_shapes=self._control_eval_system.plant_model.input_interface.shapes[Control],
+            ambient_support=self._ambient_condition_sample.support_data
+        )
+        self._control_order = self._control_policy.control_out_data().order
+        self._control_shapes = self._control_policy.control_out_data().shapes()
+        self._control_len = len(self._control_policy.control_out_data())
+
 
     # TODO: Make sure that caching works.
     @lru_cache(maxsize=None)
@@ -333,8 +340,8 @@ class ContinuousOptimizationManager:
                                  ctrl_as_tuple: Tuple[float, ...]):
         control_setpoints = DataPoint.from_vector(
             data_vector=np.array(ctrl_as_tuple),
-            order=self._control_policy.control_out_data().order,
-            shapes_dict=self._control_policy.control_out_data().shapes())
+            order=self._control_order,
+            shapes_dict=self._control_shapes)
 
         return self._control_eval_system.aggregate_from_amb(
             ambient_condition=self._ambient_condition_sample.support_data.get_point(i_ac),
@@ -356,9 +363,9 @@ class ContinuousOptimizationManager:
                            ctrl_as_tuple: Tuple[float, ...]):
         control_setpoints_data = DataTable.from_vector(
             data_vector=np.array(ctrl_as_tuple),
-            order=self._control_policy.control_out_data().order,
-            shapes_dict=self._control_policy.control_out_data().shapes(),
-            num_points=len(self._control_policy.control_out_data()))
+            order=self._control_order,
+            shapes_dict=self._control_shapes,
+            num_points=self._control_len)
 
         aggregate_list = []
         for i_ac, ambient_condition in enumerate(self._ambient_condition_sample.support_data):
@@ -382,19 +389,6 @@ class ContinuousOptimizationManager:
             aggregate_statistics=discrete_aggregate_statistics)
         
         return expected_acc_metrics
-        
-    def default_discrete_policy(self):
-        ctrl_shapes = self._control_eval_system.plant_model._input_interface.shapes(Control)
-        num_samples = self._ambient_condition_sample.N
-        control_setpoints = DataTable({ctrl_var: get_default_value(data_var=ctrl_var,
-                                                                   shape=(num_samples,) + shape) for \
-                                       ctrl_var, shape in ctrl_shapes.items()})
-        default_policy = DiscreteControlPolicy(
-            name="discrete_control_policy",
-            ambient_support_data=self._ambient_condition_sample.support_data,
-            control_out_data=control_setpoints)
-                
-        return default_policy
 
 class SimultaneousOptimization(ControlPolicyOptimization):
     def __init__(self,
@@ -429,13 +423,14 @@ class SimultaneousOptimization(ControlPolicyOptimization):
         constraints = []
         bounds = None
         # Order and shapes of control variables
-        x_order = opt_mgr._control_policy.control_out_data().order
-        x_shapes_dict=opt_mgr._control_policy.control_out_data().shapes()
+        x_order = opt_mgr._control_order
+        x_shapes_dict=opt_mgr._control_shapes
 
         # CONTROL CONSTRAINT
         if opt_mgr._control_eval_system.constraint_control is not None:
-            num_ac = len(opt_mgr._control_policy.control_out_data())
-            control_constraint_object = opt_mgr._control_eval_system.constraint_control.scipy_object(
+            num_ac = opt_mgr._control_len
+            control_constraint_object = \
+                opt_mgr._control_eval_system.constraint_control.scipy_object(
                 x_order=x_order,
                 x_shapes_dict=x_shapes_dict,
                 num_points=num_ac,
@@ -447,7 +442,8 @@ class SimultaneousOptimization(ControlPolicyOptimization):
 
         # AGGREGATE CONSTRAINT
         if opt_mgr._control_eval_system.constraint_aggregated is not None:
-            aggregate_constraint = opt_mgr._control_eval_system.constraint_aggregated.scipy_object(
+            aggregate_constraint = \
+                opt_mgr._control_eval_system.constraint_aggregated.scipy_object(
                 x_order=x_order,
                 x_shapes_dict=x_shapes_dict,
                 num_points=num_ac,
@@ -475,9 +471,9 @@ class SimultaneousOptimization(ControlPolicyOptimization):
         # TODO: Fix retrieval of DataTable properties:
         optimal_control_setpoints = DataTable.from_vector(
             data_vector=res.x,
-            order=opt_mgr._control_policy.control_out_data().order,
-            shapes_dict=opt_mgr._control_policy.control_out_data().shapes(),
-            num_points=len(opt_mgr._control_policy.control_out_data()))
+            order=opt_mgr._control_order,
+            shapes_dict=opt_mgr._control_shapes,
+            num_points=opt_mgr._control_len)
         optimal_control_policy = DiscreteControlPolicy(
             name="optimal_policy",
             ambient_support_data=opt_mgr._ambient_condition_sample.support_data,
@@ -567,8 +563,10 @@ class LagrangianRelaxation(ControlPolicyOptimization):
             for i_ac, (prob_weight, ambient_condition) in enumerate(ambient_condition_sample.weighted_variables_iter()):
 
                 # Optimization functions with cache
-                aggregate_w_cache = lambda x, i_ac=i_ac : opt_mgr.single_aggregate_w_cache(i_ac, tuple(x))        
-                acc_metrics_w_cache = lambda x, i_ac=i_ac : opt_mgr.single_acc_metric_w_cache(i_ac, tuple(x))  
+                aggregate_w_cache = lambda x, i_ac=i_ac : \
+                    opt_mgr.single_aggregate_w_cache(i_ac, tuple(x))        
+                acc_metrics_w_cache = lambda x, i_ac=i_ac : \
+                    opt_mgr.single_acc_metric_w_cache(i_ac, tuple(x))  
                 # Separate optimization for each ambient condition
                 # COST FUNCTION
                 def cost_function(ctrl_setpoints_vec, i_ac=i_ac):
@@ -589,8 +587,8 @@ class LagrangianRelaxation(ControlPolicyOptimization):
                 instant_constraints = []
                 bounds = None
                 # Order and shapes of control variables
-                x_order = opt_mgr._control_policy.control_out_data().order
-                x_shapes_dict=opt_mgr._control_policy.control_out_data().shapes()
+                x_order = opt_mgr._control_order
+                x_shapes_dict=opt_mgr._control_shapes
                 
                 # CONTROL CONSTRAINTS
                 if opt_mgr._control_eval_system.constraint_control is not None:
@@ -651,7 +649,7 @@ class LagrangianRelaxation(ControlPolicyOptimization):
         final_acc_metrics = opt_mgr._control_eval_system.expected_acc_metrics(
                         ambient_condition_statistics=ambient_condition_statistics,
                         control_policy=opt_mgr._control_policy)
-        logger.info(f"Lagrangian relaxation optimization finished after {t + 1} external iterations."
+        logger.info(f"Lagrangian relaxation optimization finished after {t + 1} external iterations.\n"
                     f"Final control policy:\n"
                     f"{opt_mgr._control_policy}"
                     f"Final accumulated metrics:\n"

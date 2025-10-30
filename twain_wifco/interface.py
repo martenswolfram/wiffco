@@ -387,11 +387,7 @@ class Interface:
 
     def __init__(self, all_shapes: Dict[Type[DataVariable],
                                    Dict[DataVariable, Tuple[int, ...]]] = {}):
-        self.all_shapes = all_shapes
-
-    def shapes(self, data_type: Type[DataVariable]) -> Dict[DataVariable, Tuple[int, ...]]:
-        """Return the shape dictionary for a given data type."""
-        return self.all_shapes[data_type]
+        self.shapes = all_shapes
 
     def validate_shapes(self,
                         external_shapes: Dict[Type[DataVariable],
@@ -406,7 +402,7 @@ class Interface:
         Raises:
             ValueError: If required variables are missing or shape mismatches occur.
         """
-        for data_type, required_shapes in self.all_shapes.items():
+        for data_type, required_shapes in self.shapes.items():
             provided_shapes = external_shapes.get(data_type, {})
 
             # Check for missing variables
@@ -440,9 +436,9 @@ class Component(ABC):
         input_interface: Interface object defining required input variables.
         output_interface: Interface object defining produced output variables.
     """
-    _component_name: str = "<unnamed component>"
-    _input_interface: Interface | None = None
-    _output_interface: Interface | None = None
+    component_name: str = "<unnamed component>"
+    input_interface: Interface | None = None
+    output_interface: Interface | None = None
 
     def validate_shapes(self,
                         input_shapes: Dict[Type[DataVariable],
@@ -456,11 +452,11 @@ class Component(ABC):
         Raises:
             ValueError: If input variables are missing or mismatched in shape.
         """
-        if self._input_interface is not None:
+        if self.input_interface is not None:
             # Validate shape consistency with the declared input interface
-            self._input_interface.validate_shapes(
+            self.input_interface.validate_shapes(
                 external_shapes=input_shapes,
-                component_name=self._component_name
+                component_name=self.component_name
             )
 
     def validate_input(self, *args: DataCollection):
@@ -484,7 +480,7 @@ class Component(ABC):
         return wrapper
     
     def __repr__(self):
-        out = f"{self.__class__.__name__} '{self._component_name}'"
+        out = f"{self.__class__.__name__} '{self.component_name}'"
         repr_details = self.repr_details()
         if repr_details is None:
             return out

@@ -1,4 +1,4 @@
-from typing import Dict, Any
+from typing import Dict, Any, Tuple
 import numpy as np
 
 from twain_wifco.interface import (
@@ -8,6 +8,7 @@ from twain_wifco.interface import (
     Ambient,
     Control,
     Interface,
+    get_default_value
 )
 
 # ======================================================================
@@ -21,12 +22,12 @@ class DiscreteControlPolicy(Component):
                  ambient_support_data: DataTable[Ambient],
                  control_out_data: DataTable[Control]):
         
-        self._component_name = name
+        self.component_name = name
         self._ambient_support_data = ambient_support_data
         self._control_out_data = control_out_data
-        self._input_interface = Interface(
+        self.input_interface = Interface(
             all_shapes={Ambient: self._ambient_support_data.shapes()})
-        self._output_interface = Interface(
+        self.output_interface = Interface(
             all_shapes={
                 Control: self._control_out_data.shapes()})
     
@@ -59,7 +60,7 @@ class DiscreteControlPolicy(Component):
                 )
 
         return DiscreteControlPolicy(
-            name=f"{self._component_name}_perturbed",
+            name=f"{self.component_name}_perturbed",
             ambient_support_data=self._ambient_support_data,
             control_out_data=DataTable(perturbed_ctrl_out_data)
         )
@@ -102,3 +103,15 @@ def discrete_control_policy_from_dict(
         control_out_data=control_out_data,
     )
 
+def default_discrete_policy(
+    control_shapes: Dict[Control, Tuple[int, ...]],
+    ambient_support: DataTable[Ambient]):
+    num_samples = len(ambient_support)
+    control_setpoints = DataTable({
+        ctrl_var: get_default_value(data_var=ctrl_var,
+                                    shape=(num_samples,) + shape) for \
+        ctrl_var, shape in control_shapes.items()})
+    return DiscreteControlPolicy(
+        name="discrete_control_policy",
+        ambient_support_data=ambient_support,
+        control_out_data=control_setpoints)

@@ -73,17 +73,17 @@ class FactorizedScatteredInterp(PlantModel):
                  ambient_interp_params: ScatteredInterpolatorParams,
                  control_interp_params: ScatteredInterpolatorParams):
         
-        self._component_name = name
+        self.component_name = name
         self._ambient_interp = ScatteredInterpolator(ambient_interp_params)
         self._control_interp = ScatteredInterpolator(control_interp_params)
 
-        self._input_interface = Interface(
+        self.input_interface = Interface(
             all_shapes={
                 Ambient: self._ambient_interp.support_data.shapes(),
                 Control: self._control_interp.support_data.shapes(),
             }
         )
-        self._output_interface = Interface(
+        self.output_interface = Interface(
             all_shapes={ModelOutput: self._ambient_interp.out_data.shapes()}
         )
 
@@ -140,12 +140,12 @@ class SymbolicModel(Component):
         control_shapes: Dict[Control, Tuple[int, ...]],
         output_functions: Dict[ModelOutput, Callable[..., np.ndarray]]
     ):
-        self._component_name = name
+        self.component_name = name
         self._ambient_list = ambient_list
         self._control_list = control_list
         self._output_functions = output_functions
         
-        self._input_interface = Interface(
+        self.input_interface = Interface(
             all_shapes={
                 Ambient: ambient_shapes,
                 Control: control_shapes,
@@ -167,7 +167,7 @@ class SymbolicModel(Component):
         output_shapes = {output: res.shape for \
                          output, res in default_result.items()}
 
-        self._output_interface = Interface(
+        self.output_interface = Interface(
             all_shapes={
                 ModelOutput: output_shapes
             }

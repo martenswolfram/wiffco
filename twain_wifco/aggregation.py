@@ -88,7 +88,7 @@ class SimpleProduct(Component):
             aggregate_mappings: Mapping from aggregated outputs to their
                 corresponding input variable sets.
         """
-        self._component_name = name
+        self.component_name = name
         self._aggregate_mappings = aggregate_mappings
 
         model_shapes, ambient_shapes, control_shapes = {}, {}, {}
@@ -98,7 +98,7 @@ class SimpleProduct(Component):
             ambient_shapes.update({var: None for var in mapping.ambient_inputs})
             control_shapes.update({var: None for var in mapping.control_inputs})
 
-        self._input_interface = Interface(
+        self.input_interface = Interface(
             all_shapes={
                 ModelOutput: model_shapes,
                 Ambient: ambient_shapes,
@@ -107,7 +107,7 @@ class SimpleProduct(Component):
         )
 
 
-        self._output_interface = Interface(
+        self.output_interface = Interface(
             all_shapes={
                 Aggregated: {aggr: (1,) for aggr in self._aggregate_mappings.keys()}
             }

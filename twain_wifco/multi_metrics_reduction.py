@@ -75,15 +75,15 @@ class ScalarWeighting(MultiMetricsReduction):
                  maximize: bool,
                  metric_weights: DataPoint[AccumulatedMetric]):
         super().__init__(maximize=maximize)
-        self._component_name = name
+        self.component_name = name
         self._metric_weights = metric_weights
 
         accumulated_metric_shapes = {
             acc_metric: None for acc_metric in self._metric_weights.keys()}
-        self._input_interface = Interface(
+        self.input_interface = Interface(
             all_shapes={AccumulatedMetric: accumulated_metric_shapes})
 
-        self._output_interface = Interface()
+        self.output_interface = Interface()
 
     @Component.with_validation
     def evaluate(self, acc_metrics: DataPoint[AccumulatedMetric]) -> float:

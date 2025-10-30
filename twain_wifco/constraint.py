@@ -100,14 +100,14 @@ class SeparateConstraints(Component):
     def __init__(self,
                  name: str,
                  two_sided_bounds: TwoSidedBounds):
-        self._component_name = name
+        self.component_name = name
         self._bounds = two_sided_bounds
 
-        self._input_interface = Interface(all_shapes={
+        self.input_interface = Interface(all_shapes={
             self._bounds.data_type: self._bounds.upper_bound.shapes()
         })
     
-        self._output_interface = Interface()
+        self.output_interface = Interface()
 
     @Component.with_validation
     def evaluate_satisfied(self,
