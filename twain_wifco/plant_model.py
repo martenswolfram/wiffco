@@ -35,8 +35,8 @@ class PlantModel(Component):
     @Component.with_validation
     def evaluate(
         self,
-        meteorological_condition: DataTable[Ambient],
-        control_input: DataTable[Control],
+        meteorological_conditions: DataTable[Ambient],
+        control_inputs: DataTable[Control],
     ) -> DataTable[ModelOutput]:
         """Evaluate the model for given ambient and control inputs.
 
@@ -80,27 +80,27 @@ class FactorizedScatteredInterp(PlantModel):
 
         self.input_interface = Interface(
             all_shapes={
-                Ambient: self._ambient_interp.support_data.shapes(),
-                Control: self._control_interp.support_data.shapes(),
+                Ambient: self._ambient_interp.support_shapes,
+                Control: self._control_interp.support_shapes,
             }
         )
         self.output_interface = Interface(
-            all_shapes={ModelOutput: self._ambient_interp.out_data.shapes()}
+            all_shapes={ModelOutput: self._ambient_interp.out_shapes}
         )
 
     @Component.with_validation
     def evaluate(
         self,
-        meteorological_condition: DataTable[Ambient],
-        control_input: DataTable[Control],
+        meteorological_conditions: DataTable[Ambient],
+        control_inputs: DataTable[Control],
     ) -> DataTable[ModelOutput]:
         """Evaluate the factorized model."""
-        ambient_eval = self._ambient_interp.evaluate(query=meteorological_condition)
-        control_eval = self._control_interp.evaluate(query=control_input)
+        ambient_eval = self._ambient_interp.evaluate(query=meteorological_conditions)
+        control_eval = self._control_interp.evaluate(query=control_inputs)
 
         result = {
             out_var: ambient_eval[out_var] * control_eval[out_var]
-            for out_var in self._ambient_interp.out_data_point.keys()
+            for out_var in self._ambient_interp.out_shapes.keys()
         }
         return DataTable(data=result)
 
@@ -177,21 +177,21 @@ class SymbolicModel(Component):
     @Component.with_validation
     def evaluate(
         self,
-        meteorological_condition: DataTable[Ambient],
-        control_input: DataTable[Control],
+        meteorological_conditions: DataTable[Ambient],
+        control_inputs: DataTable[Control],
     ) -> DataTable[ModelOutput]:
                 
-        # Input values in correct order
-        values = [meteorological_condition[amb_var] for amb_var in self._ambient_list] + \
-            [control_input[ctrl_var] for ctrl_var in self._control_list]
-        
-        result = {
-            model_output: func(*values)
-            for model_output, func in self._output_functions.items()
-        }
-
-        return DataTable(data=result)
-
+        # Input values in correct order for arguments of output function
+        values = [meteorological_conditions[amb_var] for amb_var in self._ambient_list] + \
+            [control_inputs[ctrl_var] for ctrl_var in self._control_list]
+        num_points = len(meteorological_conditions)
+        out_data = {out_var: np.empty(shape=((num_points, ) + shape)) for \
+                    out_var, shape in self.output_interface.shapes[ModelOutput].items()}
+        for pt in np.arange(num_points):
+            for out_var, func in self._output_functions.items():
+                out_data[out_var][pt, ...] = \
+                    func(*[value[pt, ...] for value in values])
+        return DataTable(data=out_data)
 
 def symbolic_model_from_dict(param_dict: Dict[str, Any]) -> SymbolicModel:
     """Construct `SymbolicModel` from a dictionary definition."""
@@ -226,8 +226,11 @@ def symbolic_model_from_dict(param_dict: Dict[str, Any]) -> SymbolicModel:
     output_functions: Dict[ModelOutput, Callable[..., np.ndarray]] = {}
     for output, expr_str in param_dict["output_functions"].items():
         expr = sp.sympify(expr_str, locals=str_to_symbol)
+        # The output functions are defined for a single data point
         output_functions[ModelOutput(output)] = sp.lambdify(
-            symbols_list, expr, "numpy"
+            symbols_list,
+            expr,
+            "numpy"
         )
 
     return SymbolicModel(

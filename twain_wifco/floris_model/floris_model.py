@@ -35,13 +35,14 @@ class FlorisWindFarmModel(PlantModel):
     @Component.with_validation
     def evaluate(
         self,
-        meteorological_condition: DataTable[Ambient],
-        control_input: DataTable[Control],
+        meteorological_conditions: DataTable[Ambient],
+        control_inputs: DataTable[Control],
     ) -> DataTable[ModelOutput]:
         
+        num_points = len(meteorological_conditions)
         # Assume all ambient conditions are scalar, all control inputs are per turbine
-        kwargs = {wifco2floris(amb): np.expand_dims(val, 0) for amb, val in meteorological_condition.items()} | \
-                {wifco2floris(ctrl): np.expand_dims(val, 0) for ctrl, val in control_input.items()}
+        kwargs = {wifco2floris(amb): val for amb, val in meteorological_conditions.items()} | \
+                {wifco2floris(ctrl): val for ctrl, val in control_inputs.items()}
         
         self._floris_model.set(**kwargs)
         self._floris_model.run()
@@ -53,9 +54,9 @@ class FlorisWindFarmModel(PlantModel):
                     if shape == ():
                         output_data[output] = self._floris_model.get_farm_power()
                     else:
-                        output_data[output] = self._floris_model.get_turbine_powers().reshape(shape)
+                        output_data[output] = self._floris_model.get_turbine_powers().reshape((num_points,) + shape)
                 case _:
-                    raise ValueError(f"Model output {output.value} not provided by FLORIS model at this point")
+                    raise ValueError(f"Model output {output.value} not provided by FLORIS model.")
 
         return DataTable(output_data)
     

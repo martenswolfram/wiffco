@@ -200,6 +200,16 @@ class DataTable(Generic[DataType]):
             # For batch evaluation, tile the data for each variable
             return np.concatenate([np.tile(self.data[k].ravel(), batch_multiply) for k in order])
 
+    def to_matrix(self,
+                  order: List[DataType] | None = None) -> np.ndarray:
+        """Flatten all variable arrays and combine into a single 2D matrix.
+        Each row corresponds to one data point.
+        Note that the order can be different from self.order."""
+        if order is None:
+            order = self.order
+        flattened = [self.data[k].reshape(self.size, -1) for k in order]
+        return np.concatenate(flattened, axis=1)
+    
     def update_from_vector(self, vector: np.ndarray):
         """
         Update variable data from a flattened vector.
@@ -227,13 +237,6 @@ class DataTable(Generic[DataType]):
         for var, data in self.data.items():
             out += f"{var.value}:\n{data}\n"
         return out
-
-    def to_matrix(self) -> np.ndarray:
-        """Flatten all variable arrays and combine into a single 2D matrix.
-        Each row corresponds to one data point"""
-        n_points = len(self)
-        flattened = [self.data[k].reshape(n_points, -1) for k in self.order]
-        return np.concatenate(flattened, axis=1)
 
     def get_points(self, ids: np.ndarray) -> "DataTable[DataType]":
         """Extract multiple rows by index array."""
@@ -280,7 +283,7 @@ class DataTable(Generic[DataType]):
         offset = 0
         n_rows = data_matrix.shape[0]
         for var in order:
-            numel = np.prod(shapes_dict[var])
+            numel = np.prod(shapes_dict[var], dtype=int)
             data_dict[var] = np.reshape(
                 data_matrix[:, offset:(offset + numel)],
                 shape=(n_rows, *shapes_dict[var])
@@ -394,6 +397,13 @@ class Component(ABC):
 
     def validate_input(self, *args: DataTable):
         
+        # Check consistent number of data points
+        if not len({len(arg) for arg in args}) == 1:
+            raise ValueError(
+                f"Component '{self.component_name}' called with inconsistent number of data points."
+                )
+
+
         # Collect the external data shapes for validation
         external_shapes = {
             data_collection.data_type: data_collection.shapes()

@@ -1,7 +1,7 @@
 from typing import Dict, Any, Generic, TypeVar, Type
 from enum import Enum
 import numpy as np
-from scipy.interpolate import RBFInterpolator, LinearNDInterpolator, interp1d
+from scipy.interpolate import RBFInterpolator, LinearNDInterpolator, make_interp_spline
 from twain_wifco.interface import (
     DataTable,
     DataTable,
@@ -80,24 +80,23 @@ class ScatteredInterpolator(Generic[InDataType, OutDataType]):
     """
     def __init__(self, interpolator_params: ScatteredInterpolatorParams[InDataType]):
         self.scattered_interp_type = interpolator_params.scattered_interp_type
-        self.support_data = interpolator_params.support_data
-        self.out_data = interpolator_params.out_data
-        # Reference output point for updating vector results
-        self.out_data_point = interpolator_params.out_data.get_point(0)
-
-        support_matrix = self.support_data.to_matrix()
-        out_matrix = self.out_data.to_matrix()
+        self.support_order = interpolator_params.support_data.order
+        self.support_shapes = interpolator_params.support_data.shapes()
+        self.out_order = interpolator_params.out_data.order
+        self.out_shapes = interpolator_params.out_data.shapes()
+        support_matrix = interpolator_params.support_data.to_matrix()
+        out_matrix = interpolator_params.out_data.to_matrix()
+        self.scalar_interp = (support_matrix.shape[1] == 1)
 
         if self.scattered_interp_type == ScatteredInterpolatorType.RBF:
             self.interpolator = RBFInterpolator(y=support_matrix, d=out_matrix)
         elif self.scattered_interp_type == ScatteredInterpolatorType.LINEAR:
-            if support_matrix.shape[1] == 1:
+            if self.scalar_interp:
                 sort_index = np.argsort(support_matrix.T[0])
-                self.interpolator = interp1d(
+                self.interpolator = make_interp_spline(
                     x=support_matrix[sort_index, :].flatten(),
-                    y=out_matrix[sort_index, :].T,
-                    fill_value="extrapolate"
-                )
+                    y=out_matrix[sort_index, :],
+                    k=1)
             else:
                 self.interpolator = LinearNDInterpolator(points=support_matrix, values=out_matrix)
         else:
@@ -114,7 +113,11 @@ class ScatteredInterpolator(Generic[InDataType, OutDataType]):
         Returns:
             DataTable[OutDataType]: Interpolated output values.
         """
-        x = query.to_vector(order=self.support_data.order)
-        result = self.interpolator(x).flatten()
-        self.out_data_point.update_from_vector(result)
-        return self.out_data_point
+        x = query.to_matrix(order=self.support_order)
+        if self.scalar_interp:
+            x = x.flatten()
+        interp_result = self.interpolator(x)
+        out_data = DataTable.from_matrix(data_matrix=interp_result,
+                                         order=self.out_order,
+                                         shapes_dict=self.out_shapes)
+        return out_data

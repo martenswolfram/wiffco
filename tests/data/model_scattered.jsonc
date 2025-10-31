@@ -5,10 +5,10 @@
         "scattered_interp_type": "linear",
         "support_data": {
             "power_regulation": [0,
-                                    1,
-                                    2,
-                                    3,
-                                    4]
+                                 1,
+                                 2,
+                                 3,
+                                 4]
         },
         "out_data": {
             "electrical_power": [  0,  
