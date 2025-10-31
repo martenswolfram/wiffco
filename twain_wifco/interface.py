@@ -126,6 +126,7 @@ class DataTable(Generic[DataType]):
     data_type: Type[DataType] | None = None
     order: list[DataType] | None = None
     abs_tols: dict[DataType, float] | None = None
+    size: int = None
 
     def __post_init__(self):
         """Validate and initialize derived attributes."""
@@ -135,15 +136,19 @@ class DataTable(Generic[DataType]):
             self.data_type = type(self.order[0])
             if self.abs_tols is None:
                 self.abs_tols = {dv: get_abs_tol(dv) for dv in self.order}
+        num_points = [key_data.shape[0] for key_data in self.data.values()]
+        if len(set(num_points)) != 1:
+            raise ValueError("Inconsistent number of data entries.")
+        self.size = num_points[0]
 
     def __len__(self) -> int:
         """Return the number of rows (data points) in the table."""
-        return self.data[self.order[0]].shape[0]
+        return self.size
 
     def __iter__(self):
-        """Iterate over individual DataTable instances."""
+        """Iterate over individual data entries instances."""
         for i in range(len(self)):
-            yield self.get_point(i)
+            yield {key: data[i] for key, data in self.items()}
     
     def __getitem__(self, key: DataType) -> np.ndarray:
         """Access the array corresponding to a given variable."""
@@ -236,16 +241,10 @@ class DataTable(Generic[DataType]):
 
     def find_matching_points(self, data_table: "DataTable[DataType]") -> int:
         """Find the row indices corresponding to a given DataTable."""
-        #TODO: Fix this
-        mask = np.all(np.isclose(
-            self.to_matrix(),
-            data_table.to_matrix(),
-            atol=self.abs_tols_vec()),
-            axis=1)
-        row_index = np.where(mask)[0]
-        if not len(row_index):
-            raise ValueError(f"Data point not found in DataTable '{self.__class__.__name__}'.")
-        return row_index[0]
+        # Find matching row indices
+        row_indices = [next((i for i, ref_row in enumerate(self.to_matrix()) if np.allclose(
+            ref_row, query_row, atol=self.abs_tols_vec())), -1) for query_row in data_table.to_matrix()]
+        return row_indices
 
     def update_point_from_vector(self, ind: int, vector: np.ndarray):
         """Overwrite a specific row of the table with new flattened data."""
@@ -292,9 +291,9 @@ class DataTable(Generic[DataType]):
     def __repr__(self):
         
         table = [list(k.value for k in self.order)]
-        for point in self:
+        for point_data in self:
             table.append(
-                list(np.array2string(point.data[k],
+                list(np.array2string(point_data[k],
                                      precision=3,
                                      separator=", ") \
                                         for k in self.order))

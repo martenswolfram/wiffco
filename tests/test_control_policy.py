@@ -15,19 +15,19 @@ def test_discrete_control_policy():
         
     # retrieve control setpoints for dicrete ambient conditions
     # Invalid ambient condition keys
-    invalid_amb_condition = DataTable({Ambient.WIND_SPEED: np.array(20)})
+    invalid_amb_conditions = DataTable({Ambient.WIND_SPEED: np.array([20, 10])})
     
     with pytest.raises(ValueError) as excinfo:
-        simple_control_policy.get_control_setpoints(ambient_condition=invalid_amb_condition)
+        simple_control_policy.get_control_setpoints(ambient_conditions=invalid_amb_conditions)
         assert "missing required variables of type Ambient" in str(excinfo.value)
 
     # Valid ambient condition
-    valid_ambient_condition = DataTable(
-        {Ambient.WIND_SPEED: np.array(20),
-         Ambient.WIND_DIRECTION: np.array(180),
-         Ambient.ELECTRICITY_PRICE: np.array(5)})
-    expected_output =  DataTable({Control.POWER_REGULATION: np.array(4),
-                                  Control.YAW_ANGLE: np.array(8)})
+    valid_ambient_conditions = DataTable(
+        {Ambient.WIND_SPEED: np.array([20, 20]),
+         Ambient.WIND_DIRECTION: np.array([180, 60]),
+         Ambient.ELECTRICITY_PRICE: np.array([5, 5])})
+    expected_output =  DataTable({Control.POWER_REGULATION: np.array([4, 2]),
+                                  Control.YAW_ANGLE: np.array([8, 6])})
 
-    control_setpoints = simple_control_policy.get_control_setpoints(ambient_condition=valid_ambient_condition)
+    control_setpoints = simple_control_policy.get_control_setpoints(ambient_conditions=valid_ambient_conditions)
     assert control_setpoints == expected_output

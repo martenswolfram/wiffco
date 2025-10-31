@@ -2,8 +2,7 @@ from typing import List
 
 def print_table(list_of_row_lists: List[List[str]],
                 col_sep: str = " | ",
-                row_sep: str = "-",
-                elem_sep: str = ", "):
+                row_sep: str = "-"):
     if not len(list_of_row_lists):
         return "<empty table>"
     num_rows = len(list_of_row_lists)
