@@ -5,7 +5,7 @@ from twain_wifco.interface import (
     Ambient,
     ModelOutput,
     Aggregated,
-    DataPoint)
+    DataTable)
 
     
 def test_simple_product_aggregation():
@@ -15,10 +15,10 @@ def test_simple_product_aggregation():
     
     # Output aggregation
     aggregated_output = simple_product_aggregation.compute_aggregate(
-        model_output=DataPoint({ModelOutput.ELECTRICAL_POWER: np.array(5),
+        model_output=DataTable({ModelOutput.ELECTRICAL_POWER: np.array(5),
                                 ModelOutput.DAMAGE_RATE: np.array(4)}),
-        ambient_condition=DataPoint({Ambient.ELECTRICITY_PRICE: np.array(3)}),
-        control_setpoints=DataPoint({}))
-    expected_output = DataPoint({Aggregated.REVENUE_RATE: np.array(15),
+        ambient_condition=DataTable({Ambient.ELECTRICITY_PRICE: np.array(3)}),
+        control_setpoints=DataTable({}))
+    expected_output = DataTable({Aggregated.REVENUE_RATE: np.array(15),
                                                Aggregated.DAMAGE_RATE: np.array(4)})
     assert aggregated_output == expected_output

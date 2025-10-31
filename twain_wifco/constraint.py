@@ -8,7 +8,7 @@ from twain_wifco.interface import (
     data_type_from_string,
     DataVariable,
     DataType,
-    DataPoint,
+    DataTable,
     DataTable,
     Interface
 )
@@ -31,13 +31,13 @@ class TwoSidedBounds:
     """Container for upper and lower bounds for multiple variables of the same type.
 
     Attributes:
-        upper_bound (DataPoint[DataType]): Upper bounds.
-        lower_bound (DataPoint[DataType]): Lower bounds.
+        upper_bound (DataTable[DataType]): Upper bounds.
+        lower_bound (DataTable[DataType]): Lower bounds.
         data_type (Type[DataType]): Type of data stored.
     """
     def __init__(self,
-                 upper_bound: DataPoint[DataType],
-                 lower_bound: DataPoint[DataType]):
+                 upper_bound: DataTable[DataType],
+                 lower_bound: DataTable[DataType]):
         self.data_type = upper_bound.data_type
         self.upper_bound = upper_bound
         self.lower_bound = lower_bound
@@ -51,11 +51,11 @@ class Constraint(Component, Generic[DataType]):
     @abstractmethod
     @Component.with_validation
     def evaluate_satisfied(self,
-                           constr_input_data: DataPoint[DataType]) -> bool:
+                           constr_input_data: DataTable[DataType]) -> bool:
         """Check whether the constraint is satisfied for the given input.
 
         Args:
-            constr_input_data (DataPoint[DataType]): Input data to evaluate.
+            constr_input_data (DataTable[DataType]): Input data to evaluate.
 
         Returns:
             bool: True if constraint is satisfied, False otherwise.
@@ -111,11 +111,11 @@ class SeparateConstraints(Component):
 
     @Component.with_validation
     def evaluate_satisfied(self,
-                           constr_input_data: DataPoint[DataVariable]) -> bool:
+                           constr_input_data: DataTable[DataVariable]) -> bool:
         """Check if all constraints are satisfied for the given input.
 
         Args:
-            constr_input_data (DataPoint[DataVariable]): Input data.
+            constr_input_data (DataTable[DataVariable]): Input data.
 
         Returns:
             bool: True if all constraints are satisfied.
@@ -237,8 +237,8 @@ def separate_constraints_from_dict(param_dict: Dict[str, Any]) -> SeparateConstr
         lower_bound_data[data_type(constr_var)] = lower_bound
 
     two_sided_bounds = TwoSidedBounds(
-        upper_bound=DataPoint(data=upper_bound_data),
-        lower_bound=DataPoint(data=lower_bound_data)
+        upper_bound=DataTable(data=upper_bound_data),
+        lower_bound=DataTable(data=lower_bound_data)
     )
 
     return SeparateConstraints(

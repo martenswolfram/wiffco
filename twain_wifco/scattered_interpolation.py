@@ -3,7 +3,7 @@ from enum import Enum
 import numpy as np
 from scipy.interpolate import RBFInterpolator, LinearNDInterpolator, interp1d
 from twain_wifco.interface import (
-    DataPoint,
+    DataTable,
     DataTable,
     DataType
 )
@@ -105,14 +105,14 @@ class ScatteredInterpolator(Generic[InDataType, OutDataType]):
                 "ScatteredInterpolator: Only RBF and LINEAR types are implemented."
             )
 
-    def evaluate(self, query: DataPoint[InDataType]) -> DataPoint[OutDataType]:
+    def evaluate(self, query: DataTable[InDataType]) -> DataTable[OutDataType]:
         """Evaluate the interpolator at the given query points.
 
         Args:
-            query (DataPoint[InDataType]): Input data points where interpolation is requested.
+            query (DataTable[InDataType]): Input data points where interpolation is requested.
 
         Returns:
-            DataPoint[OutDataType]: Interpolated output values.
+            DataTable[OutDataType]: Interpolated output values.
         """
         x = query.to_vector(order=self.support_data.order)
         result = self.interpolator(x).flatten()

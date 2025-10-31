@@ -10,7 +10,7 @@ from twain_wifco.interface import (
     Ambient,
     Control,
     DataTable,
-    DataPoint)
+    DataTable)
 from twain_wifco.statistics import (
     Statistics,
     DiscreteStatistics)
@@ -48,8 +48,8 @@ class ControlEvaluationSystem:
         self.multi_metrics_reduction = multi_metrics_reduction
 
     def aggregate_from_amb(self,
-                               ambient_condition: DataPoint[Ambient],
-                               control_setpoints: DataPoint[Control]):
+                               ambient_condition: DataTable[Ambient],
+                               control_setpoints: DataTable[Control]):
         
         model_output = self.plant_model.evaluate(
              meteorological_condition=ambient_condition,
@@ -60,8 +60,8 @@ class ControlEvaluationSystem:
 
 
     def aggregate_from_amb_constr_eval(self,
-                                       ambient_condition: DataPoint[Ambient],
-                                       control_setpoints: DataPoint[Control]):
+                                       ambient_condition: DataTable[Ambient],
+                                       control_setpoints: DataTable[Control]):
         if self.constraint_control is not None:
             if not self.constraint_control.evaluate_satisfied(
                 constr_input_data=control_setpoints):
@@ -77,8 +77,8 @@ class ControlEvaluationSystem:
         return aggregate, True
                 
     def acc_metrics_from_amb(self,
-                             ambient_condition: DataPoint[Ambient],
-                             control_setpoints: DataPoint[Control]):
+                             ambient_condition: DataTable[Ambient],
+                             control_setpoints: DataTable[Control]):
         
         aggregate = self.aggregate_from_amb(
             ambient_condition=ambient_condition,
@@ -90,8 +90,8 @@ class ControlEvaluationSystem:
         return acc_metrics
     
     def acc_metrics_from_amb_constr_eval(self,
-                                         ambient_condition: DataPoint[Ambient],
-                                         control_setpoints: DataPoint[Control]):
+                                         ambient_condition: DataTable[Ambient],
+                                         control_setpoints: DataTable[Control]):
         
         aggregate, constraints_satisfied = self.aggregate_from_amb_constr_eval(
             ambient_condition=ambient_condition,
@@ -224,7 +224,7 @@ class GridSearch(ControlPolicyOptimization):
             aggregate_evaluations.append([])
             ctrl_setpoint_combinations = itertools.product(*control_setpoint_vectors_list)
             for n_ctrl, ctrl_setpoints in enumerate(ctrl_setpoint_combinations):
-                control = DataPoint.from_vector(data_vector=ctrl_setpoints,
+                control = DataTable.from_vector(data_vector=ctrl_setpoints,
                                                 order=ctrl_variables_order,
                                                 shapes_dict=ctrl_shapes_dict)
                 aggregate, instantaneous_constr_satisfied = \
@@ -283,7 +283,7 @@ class GridSearch(ControlPolicyOptimization):
         for linear_index in amb_cond_ctrl_indices:
             multi_index = np.unravel_index(indices=linear_index, shape=(tuple(len(vec) for vec in control_setpoint_vectors_list)))
             control_setpoints = np.array(list(ctrl_vector[i[0]] for i, ctrl_vector in zip(multi_index, control_setpoint_vectors_list)))
-            control_setpoint_list.append(DataPoint.from_vector(data_vector=control_setpoints,
+            control_setpoint_list.append(DataTable.from_vector(data_vector=control_setpoints,
                                                                 order=ctrl_variables_order,
                                                                 shapes_dict=ctrl_shapes_dict))
         control_setpoints_data = DataTable.from_data_points(control_setpoint_list)
@@ -337,7 +337,7 @@ class ContinuousOptimizationManager:
     def single_aggregate_w_cache(self,
                                  i_ac: int,
                                  ctrl_as_tuple: Tuple[float, ...]):
-        control_setpoints = DataPoint.from_vector(
+        control_setpoints = DataTable.from_vector(
             data_vector=np.array(ctrl_as_tuple),
             order=self._control_order,
             shapes_dict=self._control_shapes)

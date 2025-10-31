@@ -5,7 +5,7 @@ import numpy as np
 import sympy as sp
 
 from twain_wifco.interface import (
-    DataPoint,
+    DataTable,
     Component,
     Ambient,
     Control,
@@ -35,9 +35,9 @@ class PlantModel(Component):
     @Component.with_validation
     def evaluate(
         self,
-        meteorological_condition: DataPoint[Ambient],
-        control_input: DataPoint[Control],
-    ) -> DataPoint[ModelOutput]:
+        meteorological_condition: DataTable[Ambient],
+        control_input: DataTable[Control],
+    ) -> DataTable[ModelOutput]:
         """Evaluate the model for given ambient and control inputs.
 
         Args:
@@ -45,7 +45,7 @@ class PlantModel(Component):
             control_input: Control variables such as yaw or power regulation.
 
         Returns:
-            DataPoint[ModelOutput]: Model output quantities.
+            DataTable[ModelOutput]: Model output quantities.
         """
         ...
 
@@ -91,9 +91,9 @@ class FactorizedScatteredInterp(PlantModel):
     @Component.with_validation
     def evaluate(
         self,
-        meteorological_condition: DataPoint[Ambient],
-        control_input: DataPoint[Control],
-    ) -> DataPoint[ModelOutput]:
+        meteorological_condition: DataTable[Ambient],
+        control_input: DataTable[Control],
+    ) -> DataTable[ModelOutput]:
         """Evaluate the factorized model."""
         ambient_eval = self._ambient_interp.evaluate(query=meteorological_condition)
         control_eval = self._control_interp.evaluate(query=control_input)
@@ -102,7 +102,7 @@ class FactorizedScatteredInterp(PlantModel):
             out_var: ambient_eval[out_var] * control_eval[out_var]
             for out_var in self._ambient_interp.out_data_point.keys()
         }
-        return DataPoint(data=result)
+        return DataTable(data=result)
 
 def factorized_scattered_interp_from_dict(
     param_dict: Dict[str, Any]
@@ -177,9 +177,9 @@ class SymbolicModel(Component):
     @Component.with_validation
     def evaluate(
         self,
-        meteorological_condition: DataPoint[Ambient],
-        control_input: DataPoint[Control],
-    ) -> DataPoint[ModelOutput]:
+        meteorological_condition: DataTable[Ambient],
+        control_input: DataTable[Control],
+    ) -> DataTable[ModelOutput]:
                 
         # Input values in correct order
         values = [meteorological_condition[amb_var] for amb_var in self._ambient_list] + \
@@ -190,7 +190,7 @@ class SymbolicModel(Component):
             for model_output, func in self._output_functions.items()
         }
 
-        return DataPoint(data=result)
+        return DataTable(data=result)
 
 
 def symbolic_model_from_dict(param_dict: Dict[str, Any]) -> SymbolicModel:

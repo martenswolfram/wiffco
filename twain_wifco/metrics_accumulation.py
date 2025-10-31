@@ -8,7 +8,7 @@ from twain_wifco.interface import (
     Component,
     Aggregated,
     AccumulatedMetric,
-    DataPoint,
+    DataTable,
     Interface)
 
 # ----------------------------
@@ -20,23 +20,23 @@ class MetricsAccumulation(Component):
     @abstractmethod
     @Component.with_validation
     def acc_metrics(self,
-                    aggregate: DataPoint[Aggregated]
-                    ) -> DataPoint[AccumulatedMetric]:
+                    aggregate: DataTable[Aggregated]
+                    ) -> DataTable[AccumulatedMetric]:
         """Accumulate metrics for a given aggregate over a duration.
 
         Args:
-            aggregate (DataPoint[Aggregated]): Input aggregated data.
+            aggregate (DataTable[Aggregated]): Input aggregated data.
             duration (int): Duration over which to accumulate.
 
         Returns:
-            DataPoint[AccumulatedMetric]: Accumulated metrics.
+            DataTable[AccumulatedMetric]: Accumulated metrics.
         """
         ...
 
     @abstractmethod
     def expected_acc_metrics(self,
                              aggregate_statistics: Statistics[Aggregated]
-                             ) -> DataPoint[AccumulatedMetric]:
+                             ) -> DataTable[AccumulatedMetric]:
         """Compute expected accumulated metrics given aggregate statistics.
 
         Args:
@@ -44,7 +44,7 @@ class MetricsAccumulation(Component):
             duration (int): Duration over which to accumulate.
 
         Returns:
-            DataPoint[AccumulatedMetric]: Expected accumulated metrics.
+            DataTable[AccumulatedMetric]: Expected accumulated metrics.
         """
         ...
 
@@ -100,7 +100,7 @@ class DiscountedIntegration(Component):
 
     @Component.with_validation
     def acc_metrics(self,
-                     aggregate: DataPoint[Aggregated]) -> DataPoint[AccumulatedMetric]:
+                     aggregate: DataTable[Aggregated]) -> DataTable[AccumulatedMetric]:
         accumulated_metrics = {}
         for acc_metric, mapping in self._integration_mappings.items():
             discount_rate = mapping.discount_rate
@@ -113,10 +113,10 @@ class DiscountedIntegration(Component):
                 accumulated_metrics[acc_metric] = value * duration_discount_factor
             if mapping.collapse:
                 accumulated_metrics[acc_metric] = np.array(np.sum(accumulated_metrics[acc_metric]))
-        return DataPoint(accumulated_metrics)
+        return DataTable(accumulated_metrics)
 
     def expected_acc_metrics(self,
-                              aggregate_statistics: Statistics[Aggregated]) -> DataPoint[AccumulatedMetric]:
+                              aggregate_statistics: Statistics[Aggregated]) -> DataTable[AccumulatedMetric]:
         aggregate_expectation = aggregate_statistics.expected_value()
         return self.acc_metrics(aggregate=aggregate_expectation)
     

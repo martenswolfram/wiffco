@@ -10,7 +10,7 @@ from twain_wifco.control_policy import DiscreteControlPolicy
 from twain_wifco.statistics import Statistics
 from twain_wifco.interface import (
     Control,
-    DataPoint)
+    DataTable)
 from twain_wifco.optimization import (
     ControlEvaluationSystem,
     GridSearch,

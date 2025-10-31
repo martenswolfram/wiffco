@@ -115,11 +115,11 @@ def get_abs_tol(data_var: DataVariable) -> float:
 # DATA COLLECTION CLASSES
 # ======================================================================
 
-@dataclass
-class DataCollection(Generic[DataType]):
+@dataclass(eq=False, repr=False)
+class DataTable(Generic[DataType]):
     """Base container class for mapping variables to numpy arrays.
 
-    This class handles shared functionality between `DataPoint` and `DataTable`.
+    This class handles shared functionality between `DataTable` and `DataTable`.
     """
 
     data: dict[DataType, np.ndarray]
@@ -136,12 +136,19 @@ class DataCollection(Generic[DataType]):
             if self.abs_tols is None:
                 self.abs_tols = {dv: get_abs_tol(dv) for dv in self.order}
 
-    def shapes(self):
-        """Must be implemented by subclasses to return variable shapes."""
-        raise NotImplementedError(
-            f"{self.__class__.__name__} must implement `shapes()`."
-        )
+    def __len__(self) -> int:
+        """Return the number of rows (data points) in the table."""
+        return self.data[self.order[0]].shape[0]
 
+    def __iter__(self):
+        """Iterate over individual DataTable instances."""
+        for i in range(len(self)):
+            yield self.get_point(i)
+    
+    def __getitem__(self, key: DataType) -> np.ndarray:
+        """Access the array corresponding to a given variable."""
+        return self.data[key]
+    
     def keys(self):
         """Return the variable keys of this collection."""
         return self.data.keys()
@@ -150,9 +157,9 @@ class DataCollection(Generic[DataType]):
         """Return key-value pairs of data variables and arrays."""
         return self.data.items()
 
-    def __getitem__(self, key: DataType) -> np.ndarray:
-        """Access the array corresponding to a given variable."""
-        return self.data[key]
+    def shapes(self) -> Dict[DataType, Tuple[int, ...]]:
+        """Return shapes of the per-variable data arrays (excluding leading row dimension)."""
+        return {k: v.shape[1:] for k, v in self.data.items()}
 
     def abs_tols_vec(self) -> np.ndarray:
         """Concatenate absolute tolerances into a flat vector."""
@@ -201,7 +208,7 @@ class DataCollection(Generic[DataType]):
 
     def __eq__(self, other: object) -> bool:
         """Compare two DataCollections elementwise within tolerance."""
-        if not isinstance(other, DataCollection):
+        if not isinstance(other, DataTable):
             return False
         if set(self.data.keys()) != set(other.data.keys()):
             return False
@@ -216,66 +223,6 @@ class DataCollection(Generic[DataType]):
             out += f"{var.value}:\n{data}\n"
         return out
 
-@dataclass(eq=False, repr=False)
-class DataPoint(DataCollection[DataType]):
-    """Represents a single data point."""
-
-    def shapes(self):
-        """Return the shape of each variable array."""
-        return {k: v.shape for k, v in self.data.items()}
-
-    def __sub__(self, other: "DataPoint[DataType]") -> "DataPoint[DataType]":
-        """Subtract two DataPoint objects elementwise."""
-        if set(self.data.keys()) != set(other.data.keys()):
-            raise KeyError("DataPoint instances must have identical keys for subtraction.")
-
-        new_data = {}
-        for k in self.data.keys():
-            if self.data[k].shape != other.data[k].shape:
-                raise ValueError(f"Shape mismatch for key {k}: "
-                                 f"{self.data[k].shape} vs {other.data[k].shape}")
-            new_data[k] = np.subtract(self.data[k], other.data[k])
-
-        return DataPoint(new_data, self.order)
-
-    @classmethod
-    def from_vector(cls,
-                    data_vector: np.ndarray,
-                    order: List[DataVariable],
-                    shapes_dict: Dict[DataType, Tuple[int, ...]]) -> "DataPoint[DataType]":
-        """Construct a DataPoint instance from a flat vector."""
-        data_dict = {}
-        offset = 0
-        for var in order:
-            numel = np.prod(shapes_dict[var], dtype=int)
-            data_dict[var] = np.reshape(data_vector[offset:(offset + numel)], shape=shapes_dict[var])
-            offset += numel
-        return cls(data_dict, order)
-    
-    def __repr__(self):
-        table = [list(k.value for k in self.order),
-                 list(np.array2string(self.data[k],
-                                      precision=3,
-                                      separator=", ") for k in self.order)]
-        return print_table(table)
-
-@dataclass(eq=False, repr=False)
-class DataTable(DataCollection[DataType]):
-    """Represents a table of multiple data points (2D structure)."""
-
-    def __len__(self) -> int:
-        """Return the number of rows (data points) in the table."""
-        return self.data[self.order[0]].shape[0]
-
-    def __iter__(self):
-        """Iterate over individual DataPoint instances."""
-        for i in range(len(self)):
-            yield self.get_point(i)
-
-    def shapes(self) -> Dict[DataType, Tuple[int, ...]]:
-        """Return shapes of the per-variable data arrays (excluding leading row dimension)."""
-        return {k: v.shape[1:] for k, v in self.data.items()}
-
     def to_matrix(self) -> np.ndarray:
         """Flatten all variable arrays and combine into a single 2D matrix.
         Each row corresponds to one data point"""
@@ -283,19 +230,16 @@ class DataTable(DataCollection[DataType]):
         flattened = [self.data[k].reshape(n_points, -1) for k in self.order]
         return np.concatenate(flattened, axis=1)
 
-    def get_point(self, idx: int) -> DataPoint[DataType]:
-        """Extract a single DataPoint (row) by index."""
-        return DataPoint({k: self.data[k][idx] for k in self.order}, self.order)
-
     def get_points(self, ids: np.ndarray) -> "DataTable[DataType]":
         """Extract multiple rows by index array."""
         return DataTable({k: self.data[k][ids] for k in self.order}, self.order)
 
-    def find_matching_point(self, data_point: DataPoint[DataType]) -> int:
-        """Find the row index corresponding to a given DataPoint."""
+    def find_matching_points(self, data_table: "DataTable[DataType]") -> int:
+        """Find the row indices corresponding to a given DataTable."""
+        #TODO: Fix this
         mask = np.all(np.isclose(
             self.to_matrix(),
-            data_point.to_vector(),
+            data_table.to_matrix(),
             atol=self.abs_tols_vec()),
             axis=1)
         row_index = np.where(mask)[0]
@@ -345,18 +289,6 @@ class DataTable(DataCollection[DataType]):
             offset += numel
         return cls(data_dict, order)
 
-    @classmethod
-    def from_data_points(cls, data_points: List[DataPoint]):
-        """Combine a list of DataPoint objects into a single DataTable."""
-        if not data_points:
-            return cls({})
-        order = data_points[0].order
-        data_dict = {
-            var: np.stack([dp[var] for dp in data_points])
-            for var in order
-        }
-        return cls(data_dict, order)
-    
     def __repr__(self):
         
         table = [list(k.value for k in self.order)]
@@ -461,7 +393,7 @@ class Component(ABC):
                 component_name=self.component_name
             )
 
-    def validate_input(self, *args: DataCollection):
+    def validate_input(self, *args: DataTable):
         
         # Collect the external data shapes for validation
         external_shapes = {

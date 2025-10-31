@@ -6,7 +6,7 @@ from floris import FlorisModel
 from twain_wifco.interface import (
     Component,
     Interface,
-    DataPoint,
+    DataTable,
     Ambient,
     Control,
     ModelOutput)
@@ -35,9 +35,9 @@ class FlorisWindFarmModel(PlantModel):
     @Component.with_validation
     def evaluate(
         self,
-        meteorological_condition: DataPoint[Ambient],
-        control_input: DataPoint[Control],
-    ) -> DataPoint[ModelOutput]:
+        meteorological_condition: DataTable[Ambient],
+        control_input: DataTable[Control],
+    ) -> DataTable[ModelOutput]:
         
         # Assume all ambient conditions are scalar, all control inputs are per turbine
         kwargs = {wifco2floris(amb): np.expand_dims(val, 0) for amb, val in meteorological_condition.items()} | \
@@ -57,7 +57,7 @@ class FlorisWindFarmModel(PlantModel):
                 case _:
                     raise ValueError(f"Model output {output.value} not provided by FLORIS model at this point")
 
-        return DataPoint(output_data)
+        return DataTable(output_data)
     
 def floris_model_from_dict(param_dict: Dict[str, Any]):
     name = param_dict.get("name", "FLORIS wind farm model")

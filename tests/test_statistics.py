@@ -64,9 +64,15 @@ def test_statistics():
     assert small_support_data == sys_sample_smaller.support_data
     assert small_support_data
     assert sys_sample_smaller.probability_covered == pytest.approx(probability_covered)
+
+    # Sample with minimum probability
+    for min_prob in [0.2, 0.4, 0.6, 0.8]:
+        sys_sample_min_prob = discrete_ambient_statistics.systematic_sample(min_prob=min_prob)
+        assert sys_sample_min_prob.probability_covered >= min_prob
     
     # Expected value
     computed = discrete_ambient_statistics.expected_value()
     for var in ordered_support_data.keys():
         expected_value = ordered_prevalence @ ordered_support_data[var]
         assert expected_value == pytest.approx(computed[var])
+

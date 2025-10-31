@@ -6,7 +6,7 @@ from twain_wifco.interface import (
     Component,
     DataType,
     DataTable,
-    DataPoint,
+    DataTable,
     Interface,
     data_type_from_string
 )
@@ -68,11 +68,11 @@ class Statistics(Component, Generic[DataType]):
         pass
 
     @abstractmethod
-    def expected_value(self) -> DataPoint[DataType]:
+    def expected_value(self) -> DataTable[DataType]:
         """Compute the expected value of the data.
 
         Returns:
-            DataPoint[DataType]: Expected value for each variable.
+            DataTable[DataType]: Expected value for each variable.
         """
         pass
 
@@ -145,13 +145,13 @@ class DiscreteStatistics(Statistics):
         )
 
 
-    def expected_value(self) -> DataPoint[DataType]:
+    def expected_value(self) -> DataTable[DataType]:
         """Compute expected value of the discrete distribution.
 
         Returns:
-            DataPoint[DataType]: Expected value per variable.
+            DataTable[DataType]: Expected value per variable.
         """
-        return DataPoint({
+        return DataTable({
             var: self._ordered_probabilities @ supp
             for var, supp in self._ordered_support_data.data.items()
         })

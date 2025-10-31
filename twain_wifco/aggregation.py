@@ -11,7 +11,7 @@ from twain_wifco.interface import (
     ModelOutput,
     Control,
     Aggregated,
-    DataPoint,
+    DataTable,
     Interface,
 )
 
@@ -31,10 +31,10 @@ class Aggregation(Component):
     @Component.with_validation
     def compute_aggregate(
         self,
-        model_output: DataPoint[ModelOutput],
-        ambient_condition: DataPoint[Ambient],
-        control_setpoints: DataPoint[Control],
-    ) -> DataPoint[Aggregated]:
+        model_output: DataTable[ModelOutput],
+        ambient_condition: DataTable[Ambient],
+        control_setpoints: DataTable[Control],
+    ) -> DataTable[Aggregated]:
         """Compute aggregated outputs from model, ambient, and control data.
 
         This method performs input validation before delegating the actual
@@ -46,7 +46,7 @@ class Aggregation(Component):
             control_setpoints: Control input data (e.g. yaw steering, power regulation).
 
         Returns:
-            DataPoint[Aggregated]: Computed aggregated outputs.
+            DataTable[Aggregated]: Computed aggregated outputs.
         """
         ...
 
@@ -113,11 +113,11 @@ class SimpleProduct(Component):
             }
         )
 
-    def _prod_values(self, data_point: DataPoint, variables: Set) -> float:
+    def _prod_values(self, data_point: DataTable, variables: Set) -> float:
         """Compute the product of all variable values in a given data point.
 
         Args:
-            data_point: DataPoint containing variable arrays.
+            data_point: DataTable containing variable arrays.
             variables: Set of variables whose values should be multiplied.
 
         Returns:
@@ -128,10 +128,10 @@ class SimpleProduct(Component):
     @Component.with_validation
     def compute_aggregate(
         self,
-        model_output: DataPoint[ModelOutput],
-        ambient_condition: DataPoint[Ambient],
-        control_setpoints: DataPoint[Control],
-    ) -> DataPoint[Aggregated]:
+        model_output: DataTable[ModelOutput],
+        ambient_condition: DataTable[Ambient],
+        control_setpoints: DataTable[Control],
+    ) -> DataTable[Aggregated]:
         """Compute aggregated outputs using the defined variable mappings.
 
         Args:
@@ -140,7 +140,7 @@ class SimpleProduct(Component):
             control_setpoints: Control data.
 
         Returns:
-            DataPoint[Aggregated]: Aggregated output data.
+            DataTable[Aggregated]: Aggregated output data.
         """
         aggregated_output: Dict[Aggregated, np.ndarray] = {}
 
@@ -154,7 +154,7 @@ class SimpleProduct(Component):
                 res *= control_setpoints[control_in]
             aggregated_output[out_var] = res
 
-        return DataPoint(data=aggregated_output)
+        return DataTable(data=aggregated_output)
 
 # ======================================================================
 # Helper: Construct from Dictionary

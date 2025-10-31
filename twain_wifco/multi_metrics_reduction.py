@@ -5,7 +5,7 @@ from enum import Enum
 from twain_wifco.interface import (
     Component,
     AccumulatedMetric,
-    DataPoint,
+    DataTable,
     Interface
 )
 
@@ -28,11 +28,11 @@ class MultiMetricsReduction(Component):
 
     @abstractmethod
     @Component.with_validation
-    def evaluate(self, acc_metrics: DataPoint[AccumulatedMetric]) -> float:
+    def evaluate(self, acc_metrics: DataTable[AccumulatedMetric]) -> float:
         """Evaluate the multi-metrics reduction for given accumulated metrics.
 
         Args:
-            acc_metrics (DataPoint[AccumulatedMetric]): Accumulated metrics to reduce.
+            acc_metrics (DataTable[AccumulatedMetric]): Accumulated metrics to reduce.
 
         Returns:
             float: Scalar reduction of the metrics.
@@ -68,12 +68,12 @@ class ScalarWeighting(MultiMetricsReduction):
     """Parameters for ScalarWeighting reduction.
 
     Attributes:
-        metric_weights (DataPoint[AccumulatedMetric]): Weights for each accumulated metric, component-wise.
+        metric_weights (DataTable[AccumulatedMetric]): Weights for each accumulated metric, component-wise.
     """
     def __init__(self,
                  name: str,
                  maximize: bool,
-                 metric_weights: DataPoint[AccumulatedMetric]):
+                 metric_weights: DataTable[AccumulatedMetric]):
         super().__init__(maximize=maximize)
         self.component_name = name
         self._metric_weights = metric_weights
@@ -86,11 +86,11 @@ class ScalarWeighting(MultiMetricsReduction):
         self.output_interface = Interface()
 
     @Component.with_validation
-    def evaluate(self, acc_metrics: DataPoint[AccumulatedMetric]) -> float:
+    def evaluate(self, acc_metrics: DataTable[AccumulatedMetric]) -> float:
         """Compute scalar weighted sum of accumulated metrics.
 
         Args:
-            acc_metrics (DataPoint[AccumulatedMetric]): Accumulated metrics to reduce.
+            acc_metrics (DataTable[AccumulatedMetric]): Accumulated metrics to reduce.
 
         Returns:
             float: Weighted sum of metrics.
