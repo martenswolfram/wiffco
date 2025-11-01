@@ -7,6 +7,10 @@ from typing import Dict
 from twain_wifco.interface import (
     DataTable,
     DataType)
+from twain_wifco.symbolic import (
+    symbolic_function_from_dict,
+    SymbolicFunction
+)
 from twain_wifco.plant_model import (
     ModelType,
     factorized_scattered_interp_from_dict,
@@ -81,6 +85,10 @@ def discrete_statistics_from_csv(csv_path: pathlib.Path,
     else:
         raise ValueError("Could not parse CSV data to statistics")
         
+def symbolic_function_from_json(json_path: pathlib.Path):
+    param_dict = parse_json_file(path=json_path)
+    return symbolic_function_from_dict(param_dict=param_dict)
+
 def statistics_from_json(json_path: pathlib.Path):
     param_dict = parse_json_file(path=json_path)
     statistics_type = StatisticsType(param_dict["statistics_type"])

@@ -8,7 +8,7 @@ from twain_wifco.interface import (
     DataTable,
     DataTable,
     Interface,
-    data_type_from_string
+    MAP_STR_TO_ENUM
 )
 
 
@@ -166,7 +166,7 @@ def discrete_statistics_from_dict(param_dict: Dict[str, Any]) -> DiscreteStatist
         DiscreteStatistics: Constructed DIscreteStatistics object.
     """
     name = param_dict["name"]
-    data_type = data_type_from_string(param_dict["data_type"])
+    data_type = MAP_STR_TO_ENUM[param_dict["data_type"]]
     support_data = DataTable({data_type(var): np.array(supp) for var, supp in param_dict["support_data"].items()})
     prevalence = np.array(param_dict["prevalence"])
     probabilities = prevalence / np.sum(prevalence)

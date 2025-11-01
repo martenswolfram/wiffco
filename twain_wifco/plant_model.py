@@ -35,8 +35,8 @@ class PlantModel(Component):
     @Component.with_validation
     def evaluate(
         self,
-        meteorological_conditions: DataTable[Ambient],
-        control_inputs: DataTable[Control],
+        meteorological_condition: DataTable[Ambient],
+        control_input: DataTable[Control],
     ) -> DataTable[ModelOutput]:
         """Evaluate the model for given ambient and control inputs.
 
@@ -91,12 +91,12 @@ class FactorizedScatteredInterp(PlantModel):
     @Component.with_validation
     def evaluate(
         self,
-        meteorological_conditions: DataTable[Ambient],
-        control_inputs: DataTable[Control],
+        meteorological_condition: DataTable[Ambient],
+        control_input: DataTable[Control],
     ) -> DataTable[ModelOutput]:
         """Evaluate the factorized model."""
-        ambient_eval = self._ambient_interp.evaluate(query=meteorological_conditions)
-        control_eval = self._control_interp.evaluate(query=control_inputs)
+        ambient_eval = self._ambient_interp.evaluate(query=meteorological_condition)
+        control_eval = self._control_interp.evaluate(query=control_input)
 
         result = {
             out_var: ambient_eval[out_var] * control_eval[out_var]
@@ -177,14 +177,14 @@ class SymbolicModel(Component):
     @Component.with_validation
     def evaluate(
         self,
-        meteorological_conditions: DataTable[Ambient],
-        control_inputs: DataTable[Control],
+        meteorological_condition: DataTable[Ambient],
+        control_input: DataTable[Control],
     ) -> DataTable[ModelOutput]:
                 
         # Input values in correct order for arguments of output function
-        values = [meteorological_conditions[amb_var] for amb_var in self._ambient_list] + \
-            [control_inputs[ctrl_var] for ctrl_var in self._control_list]
-        num_points = len(meteorological_conditions)
+        values = [meteorological_condition[amb_var] for amb_var in self._ambient_list] + \
+            [control_input[ctrl_var] for ctrl_var in self._control_list]
+        num_points = len(meteorological_condition)
         out_data = {out_var: np.empty(shape=((num_points, ) + shape)) for \
                     out_var, shape in self.output_interface.shapes[ModelOutput].items()}
         for pt in np.arange(num_points):

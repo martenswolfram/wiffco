@@ -5,7 +5,7 @@ from scipy.optimize import NonlinearConstraint, Bounds
 from enum import Enum
 from twain_wifco.interface import (
     Component,
-    data_type_from_string,
+    MAP_STR_TO_ENUM,
     DataVariable,
     DataType,
     DataTable,
@@ -213,7 +213,7 @@ def separate_constraints_from_dict(param_dict: Dict[str, Any]) -> SeparateConstr
         SeparateConstraints: Constructed Separate Constraints object.
     """
     name = param_dict["name"]
-    data_type = data_type_from_string(param_dict["data_type"])
+    data_type = MAP_STR_TO_ENUM[param_dict["data_type"]]
 
     upper_bound_data = {}
     lower_bound_data = {}

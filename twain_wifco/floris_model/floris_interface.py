@@ -10,7 +10,7 @@ def wifco2floris(data_var: DataVariable):
         case Ambient.WIND_DIRECTION: return "wind_directions"
         case Ambient.TURBULENCE_INTENSITY: return "turbulence_intensities"
         case Control.YAW_ANGLE: return "yaw_angles"
-    raise ValueError(f"Data variable {data_var.value} cannot be converted to Floris name.")
+    raise ValueError(f"Data variable {data_var} cannot be converted to Floris name.")
 
 def floris2wifco(var_str: str):
     match var_str:

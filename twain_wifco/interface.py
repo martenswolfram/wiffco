@@ -52,19 +52,17 @@ class AccumulatedMetric(DataEnum):
     REVENUE = "revenue"
     ACCRUED_DAMAGE = "accrued_damage"
 
-def data_type_from_string(data_type_string: str):
-    match data_type_string:
-        case "ambient":
-            return Ambient
-        case "control":
-            return Control
-        case "model_output":
-            return ModelOutput
-        case "aggregate":
-            return Aggregated
-        case "accumulated_metric":
-            return AccumulatedMetric
-    raise ValueError(f"'{data_type_string}' is not a valid data type string.")
+MAP_STR_TO_ENUM = {"ambient": Ambient,
+                   "control": Control,
+                   "model_output": ModelOutput,
+                   "aggregate": Aggregated,
+                   "accumulated_metric": AccumulatedMetric}
+
+MAP_ENUM_TO_STR = {Ambient: "ambient",
+                   Control: "control",
+                   ModelOutput: "model_output",
+                   Aggregated: "aggregate",
+                   AccumulatedMetric: "accumulated_metric"}
 
 
 # ======================================================================
@@ -75,12 +73,7 @@ def data_type_from_string(data_type_string: str):
 DataVariable = Ambient | Control | ModelOutput | Aggregated | AccumulatedMetric
 
 # Generic type variables for class parameterization
-DataType = TypeVar("DataType",
-                   Ambient,
-                   Control,
-                   ModelOutput,
-                   Aggregated,
-                   AccumulatedMetric)
+DataType = TypeVar("DataType", bound=DataEnum)
 
 # ======================================================================
 # HELPER FUNCTIONS
@@ -235,7 +228,7 @@ class DataTable(Generic[DataType]):
     def __repr__(self):
         out = ""
         for var, data in self.data.items():
-            out += f"{var.value}:\n{data}\n"
+            out += f"{var}:\n{data}\n"
         return out
 
     def get_points(self, ids: np.ndarray) -> "DataTable[DataType]":
