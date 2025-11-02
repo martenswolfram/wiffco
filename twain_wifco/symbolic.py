@@ -26,12 +26,12 @@ class SymbolicFunction:
         output_shapes: Dict[Type[DataEnum], Dict[DataEnum, Tuple[int, ...]]],
     ):
         
-        self._input_lists = input_lists
-        if not len(self._input_lists):
+        self.input_lists = input_lists
+        if not len(self.input_lists):
             raise ValueError("At least one input must be specified for symbolic function.")
-        self._input_shapes = input_shapes
-        self._output_functions = output_functions
-        self._output_shapes = output_shapes
+        self.input_shapes = input_shapes
+        self.output_functions = output_functions
+        self.output_shapes = output_shapes
 
     def evaluate(
         self,
@@ -41,16 +41,16 @@ class SymbolicFunction:
         # Input values in correct order for arguments of output function
         values = []
         for data_enum in ENUM_ORDER:
-            if data_enum in self._input_lists:
+            if data_enum in self.input_lists:
                 values.extend(input_data[data_enum][input_var] for \
-                              input_var in self._input_lists[data_enum] if input_var in self._input_shapes[data_enum])
+                              input_var in self.input_lists[data_enum] if input_var in self.input_shapes[data_enum])
         num_points = len(values[0])
         out_data = {out_data_enum: DataTable(
             data={out_var: np.empty(shape=((num_points, ) + shape)) for \
             out_var, shape in output_shapes.items()}) for \
-            out_data_enum, output_shapes in self._output_shapes.items()}
+            out_data_enum, output_shapes in self.output_shapes.items()}
         for pt in np.arange(num_points):
-            for out_data_enum, output_functions in self._output_functions.items():
+            for out_data_enum, output_functions in self.output_functions.items():
                 for out_var, func in output_functions.items():
                     out_data[out_data_enum][out_var][pt, ...] = \
                         func(*[value[pt, ...] for value in values])

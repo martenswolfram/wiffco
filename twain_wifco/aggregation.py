@@ -32,8 +32,8 @@ class Aggregation(Component):
     def compute_aggregate(
         self,
         model_output: DataTable[ModelOutput],
-        ambient_condition: DataTable[Ambient],
-        control_setpoints: DataTable[Control],
+        ambient: DataTable[Ambient],
+        control: DataTable[Control],
     ) -> DataTable[Aggregated]:
         """Compute aggregated outputs from model, ambient, and control data.
 
@@ -42,8 +42,8 @@ class Aggregation(Component):
 
         Args:
             model_output: Model output data (e.g. electrical power, damage rate).
-            ambient_condition: Ambient condition data (e.g. wind speed, direction).
-            control_setpoints: Control input data (e.g. yaw steering, power regulation).
+            ambient: Ambient condition data (e.g. wind speed, direction).
+            control: Control input data (e.g. yaw steering, power regulation).
 
         Returns:
             DataTable[Aggregated]: Computed aggregated outputs.
@@ -68,13 +68,13 @@ class ProductAggregateMapping:
     """Defines which input variables contribute to a given aggregated output.
 
     Attributes:
-        model_input: Set of model output variables used in the product.
-        ambient_input: Set of ambient condition variables used in the product.
-        control_input: Set of control variables used in the product.
+        model: Set of model output variables used in the product.
+        ambient: Set of ambient condition variables used in the product.
+        control: Set of control variables used in the product.
     """
-    model_input: Set[ModelOutput] = field(default_factory=set)
-    ambient_input: Set[Ambient] = field(default_factory=set)
-    control_input: Set[Control] = field(default_factory=set)
+    model_output: Set[ModelOutput] = field(default_factory=set)
+    ambient: Set[Ambient] = field(default_factory=set)
+    control: Set[Control] = field(default_factory=set)
 
 class SimpleProduct(Component):
     """Defines parameters and interface structure for simple product aggregation."""
@@ -94,9 +94,9 @@ class SimpleProduct(Component):
         model_shapes, ambient_shapes, control_shapes = {}, {}, {}
 
         for mapping in self._aggregate_mappings.values():
-            model_shapes.update({var: None for var in mapping.model_input})
-            ambient_shapes.update({var: None for var in mapping.ambient_input})
-            control_shapes.update({var: None for var in mapping.control_input})
+            model_shapes.update({var: None for var in mapping.model_output})
+            ambient_shapes.update({var: None for var in mapping.ambient})
+            control_shapes.update({var: None for var in mapping.control})
 
         self.input_interface = Interface(
             all_shapes={
@@ -129,15 +129,15 @@ class SimpleProduct(Component):
     def compute_aggregate(
         self,
         model_output: DataTable[ModelOutput],
-        ambient_condition: DataTable[Ambient],
-        control_setpoints: DataTable[Control],
+        ambient: DataTable[Ambient],
+        control: DataTable[Control],
     ) -> DataTable[Aggregated]:
         """Compute aggregated outputs using the defined variable mappings.
 
         Args:
             model_output: Model output data.
-            ambient_condition: Ambient data.
-            control_setpoints: Control data.
+            ambient: Ambient data.
+            control: Control data.
 
         Returns:
             DataTable[Aggregated]: Aggregated output data.
@@ -146,12 +146,12 @@ class SimpleProduct(Component):
 
         for out_var, mapping in self._aggregate_mappings.items():
             res = 1
-            for model_in in mapping.model_input:
+            for model_in in mapping.model_output:
                 res *= model_output[model_in]
-            for ambient_in in mapping.ambient_input:
-                res *= ambient_condition[ambient_in]
-            for control_in in mapping.control_input:
-                res *= control_setpoints[control_in]
+            for ambient_in in mapping.ambient:
+                res *= ambient[ambient_in]
+            for control_in in mapping.control:
+                res *= control[control_in]
             aggregated_output[out_var] = res
 
         return DataTable(data=aggregated_output)
@@ -177,9 +177,9 @@ def simple_product_from_dict(param_dict: Dict[str, Any]) -> SimpleProduct:
 
     for agg_key, mapping_def in param_dict["aggregate_mappings"].items():
         aggregate_mappings[Aggregated(agg_key)] = ProductAggregateMapping(
-            model_input={ModelOutput(m) for m in mapping_def["from_model"]},
-            ambient_input={Ambient(a) for a in mapping_def["from_ambient"]},
-            control_input={Control(c) for c in mapping_def["from_control"]},
+            model_output={ModelOutput(m) for m in mapping_def["from_model"]},
+            ambient={Ambient(a) for a in mapping_def["from_ambient"]},
+            control={Control(c) for c in mapping_def["from_control"]},
         )
 
     return SimpleProduct(name=name, 

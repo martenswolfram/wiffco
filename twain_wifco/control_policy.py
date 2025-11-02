@@ -36,9 +36,9 @@ class DiscreteControlPolicy(Component):
 
     @Component.with_validation
     def get_control_setpoints(
-        self, ambient_condition: DataTable[Ambient]
+        self, ambient: DataTable[Ambient]
     ) -> DataTable[Control]:
-        point_indices = self._ambient_support_data.find_matching_points(data_table=ambient_condition)
+        point_indices = self._ambient_support_data.find_matching_points(data_table=ambient)
         return self._control_out_data.get_points(ids=point_indices)
 
     def random_perturbation(self,

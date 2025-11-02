@@ -35,14 +35,14 @@ class FlorisWindFarmModel(PlantModel):
     @Component.with_validation
     def evaluate(
         self,
-        meteorological_condition: DataTable[Ambient],
-        control_input: DataTable[Control],
+        meteorological: DataTable[Ambient],
+        control: DataTable[Control],
     ) -> DataTable[ModelOutput]:
         
-        num_points = len(meteorological_condition)
+        num_points = len(meteorological)
         # Assume all ambient conditions are scalar, all control inputs are per turbine
-        kwargs = {wifco2floris(amb): val for amb, val in meteorological_condition.items()} | \
-                {wifco2floris(ctrl): val for ctrl, val in control_input.items()}
+        kwargs = {wifco2floris(amb): val for amb, val in meteorological.items()} | \
+                {wifco2floris(ctrl): val for ctrl, val in control.items()}
         
         self._floris_model.set(**kwargs)
         self._floris_model.run()

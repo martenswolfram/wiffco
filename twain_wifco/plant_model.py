@@ -1,8 +1,6 @@
-from typing import Dict, Any, Callable, Tuple, List
+from typing import Dict, Any
 from abc import abstractmethod
 from enum import Enum
-import numpy as np
-import sympy as sp
 
 from twain_wifco.interface import (
     DataTable,
@@ -11,12 +9,15 @@ from twain_wifco.interface import (
     Control,
     ModelOutput,
     Interface,
-    get_default_value,
 )
 from twain_wifco.scattered_interpolation import (
     ScatteredInterpolatorParams,
     ScatteredInterpolator,
     scattered_interpolator_params_from_dict,
+)
+from twain_wifco.symbolic import (
+    symbolic_function_from_dict,
+    SymbolicFunction
 )
 
 # ======================================================================
@@ -35,14 +36,14 @@ class PlantModel(Component):
     @Component.with_validation
     def evaluate(
         self,
-        meteorological_condition: DataTable[Ambient],
-        control_input: DataTable[Control],
+        meteorological: DataTable[Ambient],
+        control: DataTable[Control],
     ) -> DataTable[ModelOutput]:
         """Evaluate the model for given ambient and control inputs.
 
         Args:
-            meteorological_condition: Ambient conditions such as wind speed or direction.
-            control_input: Control variables such as yaw or power regulation.
+            meteorological: Ambient conditions such as wind speed or direction.
+            control: Control variables such as yaw or power regulation.
 
         Returns:
             DataTable[ModelOutput]: Model output quantities.
@@ -91,12 +92,12 @@ class FactorizedScatteredInterp(PlantModel):
     @Component.with_validation
     def evaluate(
         self,
-        meteorological_condition: DataTable[Ambient],
-        control_input: DataTable[Control],
+        meteorological: DataTable[Ambient],
+        control: DataTable[Control],
     ) -> DataTable[ModelOutput]:
         """Evaluate the factorized model."""
-        ambient_eval = self._ambient_interp.evaluate(query=meteorological_condition)
-        control_eval = self._control_interp.evaluate(query=control_input)
+        ambient_eval = self._ambient_interp.evaluate(query=meteorological)
+        control_eval = self._control_interp.evaluate(query=control)
 
         result = {
             out_var: ambient_eval[out_var] * control_eval[out_var]
@@ -135,109 +136,44 @@ class SymbolicModel(Component):
     def __init__(
         self,
         name: str,
-        ambient_list: List[Ambient],
-        control_list: List[Control],
-        ambient_shapes: Dict[Ambient, Tuple[int, ...]],
-        control_shapes: Dict[Control, Tuple[int, ...]],
-        output_functions: Dict[ModelOutput, Callable[..., np.ndarray]]
+        symbolic_function: SymbolicFunction
     ):
         self.component_name = name
-        self._ambient_list = ambient_list
-        self._control_list = control_list
-        self._output_functions = output_functions
+        self._symbolic_function = symbolic_function
         
         self.input_interface = Interface(
             all_shapes={
-                Ambient: ambient_shapes,
-                Control: control_shapes,
+                Ambient: self._symbolic_function.input_shapes[Ambient],
+                Control: self._symbolic_function.input_shapes[Control],
             }
         )
-
-        # Determine output shapes via default computation
-        default_ambient = list(
-            get_default_value(data_var=amb_var, shape=shape) for \
-            amb_var, shape in ambient_shapes.items())
-        default_control = list(
-            get_default_value(data_var=ctrl_var, shape=shape) for \
-            ctrl_var, shape in control_shapes.items())
-        default_result = {
-            model_output: func(*(default_ambient + default_control))
-            for model_output, func in self._output_functions.items()
-        }
-
-        output_shapes = {output: res.shape for \
-                         output, res in default_result.items()}
-
         self.output_interface = Interface(
             all_shapes={
-                ModelOutput: output_shapes
+                ModelOutput: self._symbolic_function.output_shapes[ModelOutput]
             }
         )
 
     @Component.with_validation
     def evaluate(
         self,
-        meteorological_condition: DataTable[Ambient],
-        control_input: DataTable[Control],
+        meteorological: DataTable[Ambient],
+        control: DataTable[Control],
     ) -> DataTable[ModelOutput]:
                 
-        # Input values in correct order for arguments of output function
-        values = [meteorological_condition[amb_var] for amb_var in self._ambient_list] + \
-            [control_input[ctrl_var] for ctrl_var in self._control_list]
-        num_points = len(meteorological_condition)
-        out_data = {out_var: np.empty(shape=((num_points, ) + shape)) for \
-                    out_var, shape in self.output_interface.shapes[ModelOutput].items()}
-        for pt in np.arange(num_points):
-            for out_var, func in self._output_functions.items():
-                out_data[out_var][pt, ...] = \
-                    func(*[value[pt, ...] for value in values])
-        return DataTable(data=out_data)
+        function_output = self._symbolic_function.evaluate(
+            {
+                Ambient: meteorological,
+                Control: control
+            }
+        )
+        return function_output[ModelOutput]
 
 def symbolic_model_from_dict(param_dict: Dict[str, Any]) -> SymbolicModel:
     """Construct `SymbolicModel` from a dictionary definition."""
     name = param_dict["name"]
-    symbol_mapping_dict: Dict[str, Dict] = param_dict["symbol_mappings"]
-    str_to_symbol: Dict[str, sp.Symbol] = {}
-    ambient_list: List[Ambient] = [] 
-    ambient_shapes: Dict[Ambient, Tuple[int, ...]] = {}
-    control_list: List[Control] = []
-    control_shapes: Dict[Control, Tuple[int, ...]] = {}
-    symbols_list = []
-    # Define symbols and mappings for ambient conditions
-    for amb_var_str, sym_mapping in symbol_mapping_dict["ambient"].items():
-        amb_var = Ambient(amb_var_str)
-        sym_str = sym_mapping["name"]
-        amb_sym = sp.Symbol(sym_str)
-        str_to_symbol[sym_str] = amb_sym
-        symbols_list.append(amb_sym)
-        ambient_list.append(amb_var)
-        ambient_shapes[amb_var] = tuple(sym_mapping["shape"])
-    # Define symbols and mappings for control inputs
-    for ctrl_var_str, sym_mapping in symbol_mapping_dict["control"].items():
-        ctrl_var = Control(ctrl_var_str)
-        sym_str = sym_mapping["name"]
-        ctrl_sym = sp.Symbol(sym_str)
-        str_to_symbol[sym_str] = ctrl_sym
-        symbols_list.append(ctrl_sym)        
-        control_list.append(ctrl_var)
-        control_shapes[ctrl_var] = tuple(sym_mapping["shape"])
-    
-    # Define output functions
-    output_functions: Dict[ModelOutput, Callable[..., np.ndarray]] = {}
-    for output, expr_str in param_dict["output_functions"].items():
-        expr = sp.sympify(expr_str, locals=str_to_symbol)
-        # The output functions are defined for a single data point
-        output_functions[ModelOutput(output)] = sp.lambdify(
-            symbols_list,
-            expr,
-            "numpy"
-        )
+    symbolic_function = symbolic_function_from_dict(param_dict=param_dict)
 
     return SymbolicModel(
         name=name,
-        ambient_list=ambient_list,
-        control_list=control_list,
-        ambient_shapes=ambient_shapes,
-        control_shapes=control_shapes,
-        output_functions=output_functions
+        symbolic_function=symbolic_function
     )
