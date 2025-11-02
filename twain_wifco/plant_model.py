@@ -131,7 +131,7 @@ def factorized_scattered_interp_from_dict(
 # ======================================================================
 
 class SymbolicModel(Component):
-    """Parameters for a symbolic model defined by symbolic expressions."""
+    """Symbolic model defined by symbolic expressions."""
 
     def __init__(
         self,
@@ -140,19 +140,9 @@ class SymbolicModel(Component):
     ):
         self.component_name = name
         self._symbolic_function = symbolic_function
+        self.input_interface = self._symbolic_function.input_interface()
+        self.output_interface = self._symbolic_function.output_interface()
         
-        self.input_interface = Interface(
-            all_shapes={
-                Ambient: self._symbolic_function.input_shapes[Ambient],
-                Control: self._symbolic_function.input_shapes[Control],
-            }
-        )
-        self.output_interface = Interface(
-            all_shapes={
-                ModelOutput: self._symbolic_function.output_shapes[ModelOutput]
-            }
-        )
-
     @Component.with_validation
     def evaluate(
         self,

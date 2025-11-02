@@ -1,5 +1,5 @@
 from typing import List
-from twain_wifco.interface import Ambient, Control, ModelOutput, Aggregated
+from twain_wifco.interface import Ambient, Control, ModelOutput, Aggregate
 from twain_wifco.statistics import Statistics
 from twain_wifco.control_policy import DiscreteControlPolicy
 from twain_wifco.plant_model import PlantModel
@@ -35,7 +35,7 @@ def validate_data_graph(ambient_statistics: Statistics,
     # Input for metrics accumulation
     metrics_accumulation.input_interface.validate_shapes(
         external_shapes={
-            Aggregated: aggregation.output_interface.shapes[Aggregated]
+            Aggregate: aggregation.output_interface.shapes[Aggregate]
         },
         component_name=metrics_accumulation.component_name)
     

@@ -41,7 +41,7 @@ class ModelOutput(DataEnum):
     DAMAGE_RATE = "damage_rate"
 
 
-class Aggregated(DataEnum):
+class Aggregate(DataEnum):
     """Enumeration of aggregated variables (derived from outputs and ambient conditions)."""
     REVENUE_RATE = "revenue_rate"
     DAMAGE_RATE = "damage_rate"
@@ -55,13 +55,13 @@ class AccumulatedMetric(DataEnum):
 MAP_STR_TO_ENUM = {"ambient": Ambient,
                    "control": Control,
                    "model_output": ModelOutput,
-                   "aggregate": Aggregated,
+                   "aggregate": Aggregate,
                    "accumulated_metric": AccumulatedMetric}
 
 MAP_ENUM_TO_STR = {Ambient: "ambient",
                    Control: "control",
                    ModelOutput: "model_output",
-                   Aggregated: "aggregate",
+                   Aggregate: "aggregate",
                    AccumulatedMetric: "accumulated_metric"}
 
 
@@ -70,7 +70,7 @@ MAP_ENUM_TO_STR = {Ambient: "ambient",
 # ======================================================================
 
 # Union of all possible data variable types
-DataVariable = Ambient | Control | ModelOutput | Aggregated | AccumulatedMetric
+DataVariable = Ambient | Control | ModelOutput | Aggregate | AccumulatedMetric
 
 # Generic type variables for class parameterization
 DataType = TypeVar("DataType", bound=DataEnum)
@@ -80,9 +80,14 @@ DataType = TypeVar("DataType", bound=DataEnum)
 # ======================================================================
 
 def get_default_value(data_var: DataVariable,
-                      shape: Tuple[int]) -> np.ndarray:
+                      shape: Tuple[int] | None) -> np.ndarray:
     """Return a default numpy array for a given data variable."""
-    if data_var == Control.POWER_REGULATION:
+    if shape is None:
+        # Cannot provide default for variable shape
+        return None
+    if data_var == Ambient.ELECTRICITY_PRICE:
+        return np.zeros(shape=shape)
+    elif data_var == Control.POWER_REGULATION:
         return np.ones(shape=shape)
     elif data_var == Control.YAW_ANGLE:
         return np.zeros(shape=shape)
@@ -98,7 +103,7 @@ def get_abs_tol(data_var: DataVariable) -> float:
         Ambient.WIND_SPEED: 0.001,
         Ambient.ELECTRICITY_PRICE: 0.001,
         Control.POWER_REGULATION: 0.1,
-        Aggregated.DAMAGE_RATE: 0.1,
+        Aggregate.DAMAGE_RATE: 0.1,
         AccumulatedMetric.ACCRUED_DAMAGE: 0.1
     }
     return mapping.get(data_var, 0.0)
@@ -396,11 +401,10 @@ class Component(ABC):
                 f"Component '{self.component_name}' called with inconsistent number of data points."
                 )
 
-
         # Collect the external data shapes for validation
         external_shapes = {
-            data_collection.data_type: data_collection.shapes()
-            for data_collection in args
+            data_table.data_type: data_table.shapes()
+            for data_table in args
         }
         
         # Validate consistency with the declared input interface

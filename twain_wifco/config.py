@@ -8,8 +8,7 @@ from twain_wifco.interface import (
     DataTable,
     DataType)
 from twain_wifco.symbolic import (
-    symbolic_function_from_dict,
-    SymbolicFunction
+    symbolic_function_from_dict
 )
 from twain_wifco.plant_model import (
     ModelType,
@@ -26,7 +25,7 @@ from twain_wifco.control_policy import (
     discrete_control_policy_from_dict)
 from twain_wifco.aggregation import (
     AggregationType,
-    simple_product_from_dict)
+    symbolic_aggregation_from_dict)
 from twain_wifco.metrics_accumulation import (
     MetricsAccumulationType,
     discounted_integrator_from_dict)
@@ -120,10 +119,10 @@ def control_policy_from_json(json_path: pathlib.Path):
 def aggregation_from_json(json_path: pathlib.Path):
     param_dict = parse_json_file(path=json_path)
     aggregation_type = AggregationType(param_dict["aggregation_type"])
-    if aggregation_type == AggregationType.SIMPLE_PRODUCT:
-        return simple_product_from_dict(param_dict=param_dict)
+    if aggregation_type == AggregationType.SYMBOLIC:
+        return symbolic_aggregation_from_dict(param_dict=param_dict)
     else:
-        raise NotImplementedError("Only simple_product aggregation implemented.")
+        raise NotImplementedError("Only symbolic aggregation implemented.")
 
 def metrics_accumulation_from_json(json_path: pathlib.Path):
     param_dict = parse_json_file(path=json_path)

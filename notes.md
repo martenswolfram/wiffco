@@ -3,6 +3,7 @@ TODO:
     - units
 - refactor:
     - reorganize component-params functionality
+    - move evaluate function into component
 - type hints:
     - return types
 

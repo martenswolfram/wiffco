@@ -9,111 +9,130 @@ from twain_wifco.interface import (
     Ambient,
     Control,
     ModelOutput,
-    Aggregated,
+    Aggregate,
     AccumulatedMetric,
-    get_default_value,
+    Interface,
 )
 
-ENUM_ORDER = [Ambient, Control, ModelOutput, Aggregated, AccumulatedMetric]
+ENUM_ORDER = [Ambient, Control, ModelOutput, Aggregate, AccumulatedMetric]
 
 class SymbolicFunction:
 
     def __init__(
         self,
         input_lists: Dict[Type[DataEnum], List[DataEnum]],
-        input_shapes: Dict[Type[DataEnum], Dict[DataEnum, Tuple[int, ...]]],
         output_functions: Dict[Type[DataEnum], Dict[DataEnum, Callable[..., np.ndarray]]],
-        output_shapes: Dict[Type[DataEnum], Dict[DataEnum, Tuple[int, ...]]],
     ):
         
         self.input_lists = input_lists
         if not len(self.input_lists):
             raise ValueError("At least one input must be specified for symbolic function.")
-        self.input_shapes = input_shapes
         self.output_functions = output_functions
-        self.output_shapes = output_shapes
 
     def evaluate(
         self,
-        input_data: Dict[Type[DataEnum], DataTable[DataEnum]]
+        input_data: Dict[Type[DataEnum], DataTable[DataEnum] | None]
     ) -> Dict[Type[DataEnum], DataTable[DataEnum]]:
                 
         # Input values in correct order for arguments of output function
         values = []
         for data_enum in ENUM_ORDER:
-            if data_enum in self.input_lists:
+            if data_enum in self.input_lists and input_data[data_enum] is not None:
                 values.extend(input_data[data_enum][input_var] for \
-                              input_var in self.input_lists[data_enum] if input_var in self.input_shapes[data_enum])
+                              input_var in self.input_lists[data_enum] if input_var in self.input_lists[data_enum])
         num_points = len(values[0])
-        out_data = {out_data_enum: DataTable(
-            data={out_var: np.empty(shape=((num_points, ) + shape)) for \
-            out_var, shape in output_shapes.items()}) for \
-            out_data_enum, output_shapes in self.output_shapes.items()}
+        # First compute numpy arrays
+        out_data_arrays = {out_data_enum: 
+            {out_var: None for \
+            out_var in output_functions} for \
+            out_data_enum, output_functions in self.output_functions.items()}
         for pt in np.arange(num_points):
             for out_data_enum, output_functions in self.output_functions.items():
                 for out_var, func in output_functions.items():
-                    out_data[out_data_enum][out_var][pt, ...] = \
-                        func(*[value[pt, ...] for value in values])
-        return out_data
+                    res = func(*[value[pt, ...] for value in values])
+                    if out_data_arrays[out_data_enum][out_var] is None:
+                        # Infer shape from first output
+                        out_data_arrays[out_data_enum][out_var] = np.empty(shape=((num_points, ) + res.shape))
+                    out_data_arrays[out_data_enum][out_var][pt, ...] = res
+        # Make DataTable
+        return {out_data_enum: DataTable(data=data_arrays) for out_data_enum, data_arrays in out_data_arrays.items()}
+    
+    def input_interface(self):
+        return Interface(
+            all_shapes={data_enum: {in_var: None for \
+                                    in_var in in_vars} for \
+                                        data_enum, in_vars in self.input_lists.items()}
+        )
+
+    def output_interface(self):
+        return Interface(
+            all_shapes={data_enum: {out_var: None for \
+                                    out_var in out_functions} for \
+                        data_enum, out_functions in self.output_functions.items()}
+        )
+
+def sym_input_mappings(data_enum: Type[DataEnum],
+                       sym_mappings_dict: Dict[str, Any]):
+    str_to_symbol = {}
+    input_list = []
+    symbols_list = []
+    for input_var_str, sym_name in sym_mappings_dict.items():
+        input_var = data_enum(input_var_str)
+        var_sym = sp.Symbol(sym_name)
+        str_to_symbol[sym_name] = var_sym
+        symbols_list.append(var_sym)
+        input_list.append(input_var)
+    return str_to_symbol, input_list, symbols_list
+
+def output_function(data_enum: Type[DataEnum],
+                    str_to_symbol: Dict[str, sp.Symbol],
+                    symbols_list: List[sp.Symbol],
+                    output_function_dict: Dict[str, Any]):
+    output_functions = {}
+    for out_var_str, out_function_str in output_function_dict.items():
+        expr = sp.sympify(out_function_str, locals=str_to_symbol)
+        # Note that the output functions are defined for a single data point,
+        # and need to be cast over the data table
+        output_functions[data_enum(out_var_str)] = sp.lambdify(
+            symbols_list,
+            expr,
+            "numpy"
+        )
+    return output_functions
 
 def symbolic_function_from_dict(param_dict: Dict[str, Any]) -> SymbolicFunction:
-    """Construct `SymbolicFunction` from a dictionary definition."""
     str_to_symbol: Dict[str, sp.Symbol] = {}
     input_lists: Dict[Type[DataEnum], List[DataEnum]] = {}
-    input_shapes: Dict[Type[DataEnum], Dict[DataEnum, Tuple[int, ...]]] = {}
     symbols_list = []
 
     # Define input symbols and mappings
-    symbol_mapping_dict: Dict[str, Dict] = param_dict["symbol_mappings"]
+    input_sym_mappings_dict: Dict[str, Dict] = param_dict["input_symbol_mappings"]
     for data_enum in ENUM_ORDER:
-        if MAP_ENUM_TO_STR[data_enum] not in symbol_mapping_dict:
-            continue        
-        input_lists[data_enum] = []
-        input_shapes[data_enum] = {}
-        for input_var_str, sym_mapping in symbol_mapping_dict[MAP_ENUM_TO_STR[data_enum]].items():
-            input_var = data_enum(input_var_str)
-            sym_str = sym_mapping["name"]
-            var_sym = sp.Symbol(sym_str)
-            str_to_symbol[sym_str] = var_sym
-            symbols_list.append(var_sym)
-            input_lists[data_enum].append(input_var)
-            input_shapes[data_enum][input_var] = tuple(sym_mapping["shape"])
-    
+        data_enum_str = MAP_ENUM_TO_STR[data_enum]
+        if data_enum_str not in input_sym_mappings_dict:
+            continue
+        enum_str_to_symbol, enum_input_list, enum_symbols_list = sym_input_mappings(
+            data_enum=data_enum,
+            sym_mappings_dict=input_sym_mappings_dict[data_enum_str])
+        str_to_symbol |= enum_str_to_symbol
+        input_lists[data_enum] = enum_input_list
+        symbols_list += enum_symbols_list
+            
     output_functions: Dict[Type[DataEnum], Dict[DataEnum, Callable[..., np.ndarray]]] = {}
     output_functions_dict: Dict[str, Dict] = param_dict["output_functions"]
     # Define output functions
     for data_enum in ENUM_ORDER:
-        if MAP_ENUM_TO_STR[data_enum] not in output_functions_dict:
+        data_enum_str = MAP_ENUM_TO_STR[data_enum]
+        if data_enum_str not in output_functions_dict:
             continue        
-        output_functions[data_enum] = {}
-        for out_var_str, out_function_str in output_functions_dict[MAP_ENUM_TO_STR[data_enum]].items():
-            expr = sp.sympify(out_function_str, locals=str_to_symbol)
-            # Note that the output functions are defined for a single data point,
-            # and need to be cast over the data table
-            output_functions[data_enum][data_enum(out_var_str)] = sp.lambdify(
-                symbols_list,
-                expr,
-                "numpy"
-            )
-
-    # Determine output shapes via default computation
-    default_inputs = [get_default_value(data_var=in_var, shape=shape) for \
-        data_enum in ENUM_ORDER if data_enum in input_shapes for \
-            in_var, shape in input_shapes[data_enum].items()] 
-
-    default_result = {
-        data_enum: {
-            out_var: func(*default_inputs) for \
-                out_var, func in output_functions[data_enum].items()} for \
-                    data_enum in ENUM_ORDER if data_enum in output_functions}
-    output_shapes = {
-        data_enum: {
-            out_var: res.shape for out_var, res in default_result[data_enum].items()} for \
-            data_enum in ENUM_ORDER if data_enum in default_result}
+        output_functions[data_enum] = output_function(
+            data_enum=data_enum,
+            str_to_symbol=str_to_symbol,
+            symbols_list=symbols_list,
+            output_function_dict=output_functions_dict[data_enum_str]
+        )
     
     return SymbolicFunction(
         input_lists=input_lists,
-        input_shapes=input_shapes,
         output_functions=output_functions,
-        output_shapes=output_shapes,
     )

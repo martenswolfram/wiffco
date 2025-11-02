@@ -1,18 +1,12 @@
 {
     "name": "power_damage_symbolic",
     "model_type": "symbolic",
-    "symbol_mappings": {
+    "input_symbol_mappings": {
         "control": {
-            "power_regulation": {
-                "name": "pr",
-                "shape": [2]
-            }
+            "power_regulation": "pr"            
         },
         "ambient": {
-            "wind_speed": {
-                "name":  "ws",
-                "shape": []
-            }   
+            "wind_speed": "ws"
         }
     },
     "output_functions": {
