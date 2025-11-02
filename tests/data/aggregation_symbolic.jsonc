@@ -1,0 +1,19 @@
+{
+    "name": "symbolic_aggregation",
+    "aggregation_type": "symbolic",
+    "input_symbol_mappings": {
+        "ambient": {
+            "electricity_price": "epr"
+        },
+        "model_output": {
+            "electrical_power": "epw",
+            "damage_rate": "dr"
+        }
+    },
+    "output_functions": {
+        "aggregate": {
+            "revenue_rate": "epw * epr",
+            "damage_rate": "dr"
+        }
+    }
+}
