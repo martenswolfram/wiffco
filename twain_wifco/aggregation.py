@@ -10,7 +10,6 @@ from twain_wifco.interface import (
     Control,
     Aggregate,
     DataTable,
-    Interface,
 )
 
 from twain_wifco.symbolic import (
@@ -30,28 +29,27 @@ class Aggregation(Component):
     aggregated quantities (e.g., revenue rate or damage rate).
     """
 
-    @abstractmethod
-    @Component.with_validation
     def compute_aggregate(
         self,
         ambient: DataTable[Ambient] | None = None,
         control: DataTable[Control] | None = None,
         model_output: DataTable[ModelOutput] | None = None,
     ) -> DataTable[Aggregate]:
-        """Compute aggregated outputs from model, ambient, and control data.
-
-        This method performs input validation before delegating the actual
-        computation to the subclass-specific implementation `_compute()`.
-
-        Args:
-            model_output: Model output data (e.g. electrical power, damage rate).
-            ambient: Ambient condition data (e.g. wind speed, direction).
-            control: Control input data (e.g. yaw steering, power regulation).
-
-        Returns:
-            DataTable[Aggregated]: Computed aggregated outputs.
-        """
+        input_tables = [table for table in [ambient, control, model_output] if table is not None]
+        self.validate_input(input_tables=input_tables)
+        return self._compute_aggregate(ambient=ambient,
+                                       control=control,
+                                       model_output=model_output)
+        
+    @abstractmethod
+    def _compute_aggregate(
+        self,
+        ambient: DataTable[Ambient] | None = None,
+        control: DataTable[Control] | None = None,
+        model_output: DataTable[ModelOutput] | None = None,
+    ) -> DataTable[Aggregate]:
         ...
+    
 
 # ======================================================================
 # Aggregation Type Enum
@@ -61,7 +59,7 @@ class AggregationType(Enum):
     """Enumeration of available aggregation types."""
     SYMBOLIC = "symbolic"
 
-class SymbolicAggregation(Component):
+class SymbolicAggregation(Aggregation):
     """Symbolic aggregation defined by symbolic expressions."""
 
     def __init__(self,
@@ -72,16 +70,12 @@ class SymbolicAggregation(Component):
         self.input_interface = self._symbolic_function.input_interface()
         self.output_interface = self._symbolic_function.output_interface()
 
-    @Component.with_validation
-    def compute_aggregate(
+    def _compute_aggregate(
         self,
         ambient: DataTable[Ambient] | None = None,
         control: DataTable[Control] | None = None,
         model_output: DataTable[ModelOutput] | None = None,
     ) -> DataTable[Aggregate]:
-        
-        if ambient is None and control is None and model_output is None:
-            raise ValueError("At least one input must be not None for symbolic aggregation computation.")
         function_output = self._symbolic_function.evaluate(
             {
                 Ambient: ambient,

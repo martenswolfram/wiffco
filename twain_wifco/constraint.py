@@ -48,10 +48,22 @@ class Constraint(Component, Generic[DataType]):
 
     """
 
-    @abstractmethod
-    @Component.with_validation
     def evaluate_satisfied(self,
                            constr_input_data: DataTable[DataType]) -> bool:
+        """Check whether the constraint is satisfied for the given input.
+
+        Args:
+            constr_input_data (DataTable[DataType]): Input data to evaluate.
+
+        Returns:
+            bool: True if constraint is satisfied, False otherwise.
+        """
+        self.validate_input([constr_input_data])
+        return self._evaluate_satisfied(constr_input_data=constr_input_data)
+
+    @abstractmethod
+    def _evaluate_satisfied(self,
+                            constr_input_data: DataTable[DataType]) -> bool:
         """Check whether the constraint is satisfied for the given input.
 
         Args:
@@ -109,8 +121,7 @@ class SeparateConstraints(Component):
     
         self.output_interface = Interface()
 
-    @Component.with_validation
-    def evaluate_satisfied(self,
+    def _evaluate_satisfied(self,
                            constr_input_data: DataTable[DataVariable]) -> bool:
         """Check if all constraints are satisfied for the given input.
 

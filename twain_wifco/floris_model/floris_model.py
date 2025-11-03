@@ -32,8 +32,7 @@ class FlorisWindFarmModel(PlantModel):
         self.output_interface = Interface(
             all_shapes={ModelOutput: {out_var: (self._n_turbines,) for out_var in output_variables}})
 
-    @Component.with_validation
-    def evaluate(
+    def _evaluate(
         self,
         meteorological: DataTable[Ambient],
         control: DataTable[Control],

@@ -14,6 +14,7 @@ from twain_wifco.interface import (
     Interface,
 )
 
+NUMPY_FUNC_MAPPINGS = {"sum": np.sum}
 ENUM_ORDER = [Ambient, Control, ModelOutput, Aggregate, AccumulatedMetric]
 
 class SymbolicFunction:
@@ -88,15 +89,19 @@ def output_function(data_enum: Type[DataEnum],
                     str_to_symbol: Dict[str, sp.Symbol],
                     symbols_list: List[sp.Symbol],
                     output_function_dict: Dict[str, Any]):
+        
     output_functions = {}
     for out_var_str, out_function_str in output_function_dict.items():
-        expr = sp.sympify(out_function_str, locals=str_to_symbol)
+        expr = sp.sympify(
+            out_function_str, locals=(
+                str_to_symbol |
+                {name: sp.Function(name) for name in NUMPY_FUNC_MAPPINGS.keys()}))
         # Note that the output functions are defined for a single data point,
         # and need to be cast over the data table
         output_functions[data_enum(out_var_str)] = sp.lambdify(
             symbols_list,
             expr,
-            "numpy"
+            modules=[NUMPY_FUNC_MAPPINGS, "numpy"]
         )
     return output_functions
 

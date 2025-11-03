@@ -28,7 +28,7 @@ from twain_wifco.aggregation import (
     symbolic_aggregation_from_dict)
 from twain_wifco.metrics_accumulation import (
     MetricsAccumulationType,
-    discounted_integrator_from_dict)
+    discounted_integration_from_dict)
 from twain_wifco.constraint import (
     ConstraintType,
     separate_constraints_from_dict)
@@ -128,7 +128,7 @@ def metrics_accumulation_from_json(json_path: pathlib.Path):
     param_dict = parse_json_file(path=json_path)
     accumulation_type = MetricsAccumulationType(param_dict["accumulation_type"])
     if accumulation_type == MetricsAccumulationType.DISCOUNTED_INTEGRATION:
-        return discounted_integrator_from_dict(param_dict=param_dict)
+        return discounted_integration_from_dict(param_dict=param_dict)
     else:
         raise NotImplementedError("Only discounted-integration metrics accumulation implemented.")
 

@@ -32,23 +32,23 @@ class PlantModel(Component):
     and control setpoints.
     """
 
-    @abstractmethod
-    @Component.with_validation
     def evaluate(
         self,
         meteorological: DataTable[Ambient],
         control: DataTable[Control],
     ) -> DataTable[ModelOutput]:
-        """Evaluate the model for given ambient and control inputs.
+        self.validate_input(input_tables=[meteorological, control])
+        return self._evaluate(meteorological=meteorological,
+                              control=control)
 
-        Args:
-            meteorological: Ambient conditions such as wind speed or direction.
-            control: Control variables such as yaw or power regulation.
-
-        Returns:
-            DataTable[ModelOutput]: Model output quantities.
-        """
+    @abstractmethod
+    def _evaluate(
+        self,
+        meteorological: DataTable[Ambient],
+        control: DataTable[Control],
+    ) -> DataTable[ModelOutput]:
         ...
+        
 
 # ======================================================================
 # Model Type Enum
@@ -89,8 +89,7 @@ class FactorizedScatteredInterp(PlantModel):
             all_shapes={ModelOutput: self._ambient_interp.out_shapes}
         )
 
-    @Component.with_validation
-    def evaluate(
+    def _evaluate(
         self,
         meteorological: DataTable[Ambient],
         control: DataTable[Control],
@@ -130,7 +129,7 @@ def factorized_scattered_interp_from_dict(
 # Symbolic Model
 # ======================================================================
 
-class SymbolicModel(Component):
+class SymbolicModel(PlantModel):
     """Symbolic model defined by symbolic expressions."""
 
     def __init__(
@@ -143,8 +142,7 @@ class SymbolicModel(Component):
         self.input_interface = self._symbolic_function.input_interface()
         self.output_interface = self._symbolic_function.output_interface()
         
-    @Component.with_validation
-    def evaluate(
+    def _evaluate(
         self,
         meteorological: DataTable[Ambient],
         control: DataTable[Control],

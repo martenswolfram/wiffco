@@ -124,7 +124,7 @@ class DataTable(Generic[DataType]):
     data_type: Type[DataType] | None = None
     order: list[DataType] | None = None
     abs_tols: dict[DataType, float] | None = None
-    size: int = None
+    size: int = 0
 
     def __post_init__(self):
         """Validate and initialize derived attributes."""
@@ -134,10 +134,10 @@ class DataTable(Generic[DataType]):
             self.data_type = type(self.order[0])
             if self.abs_tols is None:
                 self.abs_tols = {dv: get_abs_tol(dv) for dv in self.order}
-        num_points = [key_data.shape[0] for key_data in self.data.values()]
-        if len(set(num_points)) != 1:
-            raise ValueError("Inconsistent number of data entries.")
-        self.size = num_points[0]
+            num_points = [key_data.shape[0] for key_data in self.data.values()]
+            if len(set(num_points)) != 1:
+                raise ValueError("Inconsistent number of data entries.")
+            self.size = num_points[0]
 
     def __len__(self) -> int:
         """Return the number of rows (data points) in the table."""
@@ -151,6 +151,10 @@ class DataTable(Generic[DataType]):
     def __getitem__(self, key: DataType) -> np.ndarray:
         """Access the array corresponding to a given variable."""
         return self.data[key]
+
+    # def __setitem__(self, key: DataType, data: np.array) -> np.ndarray:
+    #     """Access the array corresponding to a given variable."""
+    #     self.data[key] = data
     
     def keys(self):
         """Return the variable keys of this collection."""
@@ -299,6 +303,41 @@ class DataTable(Generic[DataType]):
                                      separator=", ") \
                                         for k in self.order))
         return print_table(table)
+    
+    def expected_value(self, probabilities: np.ndarray):
+        if probabilities.shape != (self.size,):
+            raise ValueError(
+                f"Expected probabilities of shape ({self.size},), got {probabilities.shape}."
+            )
+        # Normalize probabilities in case they don't sum exactly to 1
+        p = probabilities / np.sum(probabilities)
+
+        expected_data = {}
+        for key, values in self.data.items():
+            # Compute weighted sum along axis 0
+            if values.ndim == 1:
+                exp_val = np.sum(values * p)
+            else:
+                exp_val = np.sum(values * p[:, np.newaxis], axis=0)
+            expected_data[key] = exp_val[np.newaxis, ...]  # make it 1-row table
+
+        return DataPoint(expected_data, self.order)
+
+@dataclass(eq=False, repr=False)
+class DataPoint(DataTable[DataType]):
+    """A specialization of DataTable that contains exactly one data point."""
+    
+    def __post_init__(self):
+        super().__post_init__()
+        if self.size != 1:
+            raise ValueError("DataPoint must contain exactly one row (size == 1).")
+    
+    @classmethod
+    def from_table(cls, table: "DataTable[DataType]", index: int) -> "DataPoint[DataType]":
+        """Create a DataPoint from one row of a DataTable."""
+        if index < 0 or index >= len(table):
+            raise IndexError("Index out of range for DataTable.")
+        return cls({k: table.data[k][index:index+1] for k in table.order}, table.order)
 
 # ======================================================================
 # INTERFACE AND COMPONENT CLASSES
@@ -393,10 +432,10 @@ class Component(ABC):
                 component_name=self.component_name
             )
 
-    def validate_input(self, *args: DataTable):
+    def validate_input(self, input_tables: List[DataTable]):
         
         # Check consistent number of data points
-        if not len({len(arg) for arg in args}) == 1:
+        if not len({len(table) for table in input_tables}) == 1:
             raise ValueError(
                 f"Component '{self.component_name}' called with inconsistent number of data points."
                 )
@@ -404,7 +443,7 @@ class Component(ABC):
         # Collect the external data shapes for validation
         external_shapes = {
             data_table.data_type: data_table.shapes()
-            for data_table in args
+            for data_table in input_tables
         }
         
         # Validate consistency with the declared input interface
@@ -412,12 +451,12 @@ class Component(ABC):
             input_shapes=external_shapes
         )
 
-    @staticmethod
-    def with_validation(func: Callable[..., Any]) -> Callable[..., Any]:
-        def wrapper(self: T, **kwargs: Any) -> Any:
-            self.validate_input(*kwargs.values())
-            return func(self, **kwargs)
-        return wrapper
+    # @staticmethod
+    # def with_validation(func: Callable[..., Any]) -> Callable[..., Any]:
+    #     def wrapper(self: T, **kwargs: Any) -> Any:
+    #         self.validate_input(*[value for value in kwargs.values() if isinstance(value, DataTable)])
+    #         return func(self, **kwargs)
+    #     return wrapper
     
     def __repr__(self):
         out = f"{self.__class__.__name__} '{self.component_name}'"

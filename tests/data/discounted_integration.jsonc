@@ -4,12 +4,10 @@
     "integration_mappings":{
         "revenue": {
             "aggregate": "revenue_rate",
-            "collapse": true,
             "discount_rate": 0.05
         },
         "accrued_damage": {
             "aggregate": "damage_rate",
-            "collapse": false,
             "discount_rate": 0.0
         }
     },

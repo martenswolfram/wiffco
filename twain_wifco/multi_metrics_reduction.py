@@ -26,8 +26,6 @@ class MultiMetricsReduction(Component):
     def maximize(self):
         return self._maximize
 
-    @abstractmethod
-    @Component.with_validation
     def evaluate(self, acc_metrics: DataTable[AccumulatedMetric]) -> float:
         """Evaluate the multi-metrics reduction for given accumulated metrics.
 
@@ -37,7 +35,21 @@ class MultiMetricsReduction(Component):
         Returns:
             float: Scalar reduction of the metrics.
         """
+        self.validate_input(input_tables=[acc_metrics])
+        return self._evaluate(acc_metrics=acc_metrics)
+
+    @abstractmethod
+    def _evaluate(self, acc_metrics: DataTable[AccumulatedMetric]) -> float:
+        """Evaluate the multi-metrics reduction for given accumulated metrics.
+
+        Args:
+            acc_metrics (DataTable[AccumulatedMetric]): Accumulated metrics to reduce.
+
+        Returns:
+            float: Scalar reduction of the metrics.
+        """
         ...
+
 
     def cost_function(self, eval_acc_metrics_from_x):
         """Return a cost function suitable for optimization routines.
@@ -85,8 +97,7 @@ class ScalarWeighting(MultiMetricsReduction):
 
         self.output_interface = Interface()
 
-    @Component.with_validation
-    def evaluate(self, acc_metrics: DataTable[AccumulatedMetric]) -> float:
+    def _evaluate(self, acc_metrics: DataTable[AccumulatedMetric]) -> float:
         """Compute scalar weighted sum of accumulated metrics.
 
         Args:

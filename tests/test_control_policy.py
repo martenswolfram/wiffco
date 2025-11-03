@@ -18,7 +18,7 @@ def test_discrete_control_policy():
     invalid_amb_conditions = DataTable({Ambient.WIND_SPEED: np.array([20, 10])})
     
     with pytest.raises(ValueError) as excinfo:
-        simple_control_policy.get_control_setpoints(ambient_conditions=invalid_amb_conditions)
+        simple_control_policy.get_control_setpoints(ambient=invalid_amb_conditions)
         assert "missing required variables of type Ambient" in str(excinfo.value)
 
     # Valid ambient condition
@@ -29,5 +29,5 @@ def test_discrete_control_policy():
     expected_output =  DataTable({Control.POWER_REGULATION: np.array([4, 2]),
                                   Control.YAW_ANGLE: np.array([8, 6])})
 
-    control_setpoints = simple_control_policy.get_control_setpoints(ambient_conditions=valid_ambient_conditions)
+    control_setpoints = simple_control_policy.get_control_setpoints(ambient=valid_ambient_conditions)
     assert control_setpoints == expected_output

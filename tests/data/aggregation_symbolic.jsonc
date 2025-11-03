@@ -12,7 +12,7 @@
     },
     "output_functions": {
         "aggregate": {
-            "revenue_rate": "epw * epr",
+            "revenue_rate": "sum(epw) * epr", // `sum` has been added to be interpreted as `np.sum`
             "damage_rate": "dr"
         }
     }

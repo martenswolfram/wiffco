@@ -79,7 +79,7 @@ def test_floris_model():
     invalid_ctrl_input =  DataTable({Control.POWER_REGULATION: np.array([2., 3.])})
     with pytest.raises(ValueError) as excinfo: 
         floris_power_model.evaluate(meteorological=valid_met_conditions,
-                                        control=invalid_ctrl_input)
+                                    control=invalid_ctrl_input)
     assert "missing required variables of type Control" in str(excinfo.value)
 
     # Valid input

@@ -34,10 +34,11 @@ class DiscreteControlPolicy(Component):
     def control_out_data(self):
         return self._control_out_data
 
-    @Component.with_validation
     def get_control_setpoints(
         self, ambient: DataTable[Ambient]
     ) -> DataTable[Control]:
+        
+        self.validate_input(input_tables=[ambient])
         point_indices = self._ambient_support_data.find_matching_points(data_table=ambient)
         return self._control_out_data.get_points(ids=point_indices)
 
