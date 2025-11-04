@@ -52,17 +52,19 @@ class AccumulatedMetric(DataEnum):
     REVENUE = "revenue"
     ACCRUED_DAMAGE = "accrued_damage"
 
-MAP_STR_TO_ENUM = {"ambient": Ambient,
-                   "control": Control,
-                   "model_output": ModelOutput,
-                   "aggregate": Aggregate,
-                   "accumulated_metric": AccumulatedMetric}
+MAP_STR_TO_ENUM: Dict[str, Type[DataEnum]] = {
+    "ambient": Ambient,
+    "control": Control,
+    "model_output": ModelOutput,
+    "aggregate": Aggregate,
+    "accumulated_metric": AccumulatedMetric}
 
-MAP_ENUM_TO_STR = {Ambient: "ambient",
-                   Control: "control",
-                   ModelOutput: "model_output",
-                   Aggregate: "aggregate",
-                   AccumulatedMetric: "accumulated_metric"}
+MAP_ENUM_TO_STR: Dict[Type[DataEnum], str] = {
+    Ambient: "ambient",
+    Control: "control",
+    ModelOutput: "model_output",
+    Aggregate: "aggregate",
+    AccumulatedMetric: "accumulated_metric"}
 
 
 # ======================================================================

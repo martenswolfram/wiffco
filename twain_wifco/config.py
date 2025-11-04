@@ -7,40 +7,21 @@ from typing import Dict
 from twain_wifco.interface import (
     DataTable,
     DataType)
-from twain_wifco.symbolic import (
-    symbolic_function_from_dict
-)
-from twain_wifco.plant_model import (
-    ModelType,
-    factorized_scattered_interp_from_dict,
-    symbolic_model_from_dict)
-from twain_wifco.floris_model.floris_model import (
-    floris_model_from_dict
-)
-from twain_wifco.statistics import (
-    StatisticsType,
-    discrete_statistics_from_dict,
-    DiscreteStatistics)
-from twain_wifco.control_policy import (
-    discrete_control_policy_from_dict)
-from twain_wifco.aggregation import (
-    AggregationType,
-    symbolic_aggregation_from_dict)
-from twain_wifco.metrics_accumulation import (
-    MetricsAccumulationType,
-    discounted_integration_from_dict)
-from twain_wifco.constraint import (
-    ConstraintType,
-    separate_constraints_from_dict)
-from twain_wifco.multi_metrics_reduction import (
-    MultiMetricsReductionType,
-    scalar_weighting_from_dict)
+from twain_wifco.symbolic import symbolic_function_from_dict
+from twain_wifco.plant_model import plant_model_from_dict
+from twain_wifco.statistics import  statistics_from_dict, DiscreteStatistics
+from twain_wifco.control_policy import discrete_control_policy_from_dict
+from twain_wifco.aggregation import aggregation_from_dict
+from twain_wifco.metrics_accumulation import metrics_accumulation_from_dict
+from twain_wifco.constraint import constraint_from_dict
+from twain_wifco.multi_metrics_reduction import multi_metrics_reduction_from_dict
 from twain_wifco.optimization import (
     ControlEvaluationSystem,
     OptimizationMethod,
     grid_search_from_dict,
     simultaneous_optimization_from_dict,
-    lagrangian_relaxation_from_dict)
+    lagrangian_relaxation_from_dict
+)
 
 
 def parse_json_file(path):
@@ -90,27 +71,11 @@ def symbolic_function_from_json(json_path: pathlib.Path):
 
 def statistics_from_json(json_path: pathlib.Path):
     param_dict = parse_json_file(path=json_path)
-    statistics_type = StatisticsType(param_dict["statistics_type"])
-    if statistics_type == StatisticsType.DISCRETE_STATISTICS:
-        return discrete_statistics_from_dict(param_dict=param_dict)
-    else:
-        raise NotImplementedError("Only discrete_statistics implemented.")
-
+    return statistics_from_dict(param_dict=param_dict)
+    
 def plant_model_from_json(json_path: pathlib.Path):
     param_dict = parse_json_file(path=json_path)
-    model_type = ModelType(param_dict["model_type"])
-    if model_type == ModelType.FACTORIZED_SCATTERED_INTERPOLATOR:
-        return factorized_scattered_interp_from_dict(
-            param_dict=param_dict)
-    elif model_type == ModelType.SYMBOLIC:
-        return symbolic_model_from_dict(
-            param_dict=param_dict)
-    elif model_type == ModelType.FLORIS:
-        return floris_model_from_dict(
-            param_dict=param_dict)
-    else:
-        raise NotImplementedError(f"Only factorized_scattered_interpolator and symbolic"
-                                  f" models implemented.")
+    return plant_model_from_dict(param_dict=param_dict)
 
 def control_policy_from_json(json_path: pathlib.Path):
     param_dict = parse_json_file(path=json_path)
@@ -118,36 +83,16 @@ def control_policy_from_json(json_path: pathlib.Path):
     
 def aggregation_from_json(json_path: pathlib.Path):
     param_dict = parse_json_file(path=json_path)
-    aggregation_type = AggregationType(param_dict["aggregation_type"])
-    if aggregation_type == AggregationType.SYMBOLIC:
-        return symbolic_aggregation_from_dict(param_dict=param_dict)
-    else:
-        raise NotImplementedError("Only symbolic aggregation implemented.")
-
+    return aggregation_from_dict(param_dict=param_dict)
+    
 def metrics_accumulation_from_json(json_path: pathlib.Path):
     param_dict = parse_json_file(path=json_path)
-    accumulation_type = MetricsAccumulationType(param_dict["accumulation_type"])
-    if accumulation_type == MetricsAccumulationType.DISCOUNTED_INTEGRATION:
-        return discounted_integration_from_dict(param_dict=param_dict)
-    else:
-        raise NotImplementedError("Only discounted-integration metrics accumulation implemented.")
-
-def constraint_from_json(json_path: pathlib.Path):
-    param_dict = parse_json_file(path=json_path)
-    constraint_type = ConstraintType(param_dict["constraint_type"])
-    if constraint_type == ConstraintType.SEPARATE_CONSTRAINTS:
-        return separate_constraints_from_dict(param_dict=param_dict)
-    else:
-        raise NotImplementedError("Only separate-linear constraints implemented.")
-
+    return metrics_accumulation_from_dict(param_dict=param_dict)
+    
 def multi_metrics_reduction_from_json(json_path: pathlib.Path):
     param_dict = parse_json_file(path=json_path)
-    multi_metrics_reduction_type = MultiMetricsReductionType(param_dict["multi_metrics_reduction_type"])
-    if multi_metrics_reduction_type == MultiMetricsReductionType.SCALAR_WEIGHTING:
-        return scalar_weighting_from_dict(param_dict=param_dict)
-    else:
-        raise NotImplementedError("Only scalar weighting implemented.")
-
+    return multi_metrics_reduction_from_dict(param_dict=param_dict)
+    
 def control_evaluation_system_from_json(json_path: pathlib.Path):
     
     param_dict = parse_json_file(path=json_path)

@@ -89,12 +89,16 @@ class SymbolicAggregation(Aggregation):
 # Helper: Construct from Dictionary
 # ======================================================================
 
-def symbolic_aggregation_from_dict(param_dict: Dict[str, Any]) -> SymbolicAggregation:
+def aggregation_from_dict(param_dict: Dict[str, Any]) -> Aggregation:
     """Construct `SymbolicAggregation` from a dictionary definition."""
     name = param_dict["name"]
-    symbolic_function = symbolic_function_from_dict(param_dict=param_dict)
+    aggregation_type = AggregationType(param_dict["aggregation_type"])
+    if aggregation_type == AggregationType.SYMBOLIC:
+        symbolic_function = symbolic_function_from_dict(param_dict=param_dict)
 
-    return SymbolicAggregation(
-        name=name,
-        symbolic_function=symbolic_function
-    )
+        return SymbolicAggregation(
+            name=name,
+            symbolic_function=symbolic_function
+        )
+    else:
+        raise NotImplementedError("Only symbolic aggregation implemented.")

@@ -113,22 +113,17 @@ class ScalarWeighting(MultiMetricsReduction):
         return result
 
 
-def scalar_weighting_from_dict(param_dict: Dict[str, Any]) -> ScalarWeighting:
-    """Create ScalarWeighting from a dictionary.
-
-    Args:
-        param_dict (Dict[str, Any]): Dictionary containing 'metric_weights'.
-
-    Returns:
-        ScalarWeighting: Constructed ScalarWeighting metrics reduction object.
-    """
+def multi_metrics_reduction_from_dict(param_dict: Dict[str, Any]) -> MultiMetricsReduction:
     name = param_dict["name"]
+    multi_metrics_reduction_type = MultiMetricsReductionType(param_dict["multi_metrics_reduction_type"])
     maximize = param_dict["maximize"]
-    metric_weights = {AccumulatedMetric(k): float(v) for \
-                      k, v in param_dict["metric_weights"].items()}
-    return ScalarWeighting(
-        name=name,
-        maximize=maximize,
-        metric_weights=metric_weights)
-
+    if multi_metrics_reduction_type == MultiMetricsReductionType.SCALAR_WEIGHTING:
+        metric_weights = {AccumulatedMetric(k): float(v) for \
+                          k, v in param_dict["metric_weights"].items()}
+        return ScalarWeighting(
+            name=name,
+            maximize=maximize,
+            metric_weights=metric_weights)
+    else:
+        raise NotImplementedError("Only scalar-weighting multi-metrics reduction implemented.")
     

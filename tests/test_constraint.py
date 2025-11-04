@@ -1,51 +1,76 @@
 import pathlib
-import pytest
+import json5 as json
 import numpy as np
-from twain_wifco.config import constraint_from_json
+from twain_wifco.config import parse_json_file
+from twain_wifco.constraint import constraint_from_dict
 from twain_wifco.interface import (
     Control,
+    Aggregate,
     AccumulatedMetric,
     DataTable)
 
-# TODO: Add test for aggregate constraint
     
-def test_linear_control_constraint():
+def test_control_constraint():
     test_data_folder = pathlib.Path(__file__).parent / "data"
     json_path = test_data_folder / "constraint_control.jsonc"
-    linear_control_constraint = constraint_from_json(json_path=json_path)
+    param_dict = parse_json_file(path=json_path)
+    control_constraint = constraint_from_dict(param_dict=param_dict)
         
     # Constraint evaluation
-    constraint_satisfied = linear_control_constraint.evaluate_satisfied(
-        constr_input_data=DataTable(
+    constraint_satisfied = control_constraint.evaluate_satisfied(
+        constraint_input=DataTable(
             {
-                Control.YAW_ANGLE: np.array(0),
-                Control.POWER_REGULATION: np.array([0, 0])
+                Control.YAW_ANGLE: np.array([0,
+                                             0]),
+                Control.POWER_REGULATION: np.array([[0, 0],
+                                                    [5, 5]])
             }
         ))
     assert constraint_satisfied is not True
     
-    constraint_satisfied = linear_control_constraint.evaluate_satisfied(
-        constr_input_data=DataTable(
+    constraint_satisfied = control_constraint.evaluate_satisfied(
+        constraint_input=DataTable(
             {
-                Control.YAW_ANGLE: np.array(0),
-                Control.POWER_REGULATION: np.array([2, 2])
+                Control.YAW_ANGLE: np.array([0,
+                                             0]),
+                Control.POWER_REGULATION: np.array([[2, 2],
+                                                    [3, 3]])
             }
         ))
     assert constraint_satisfied is True
 
+def test_aggregate_constraint():
+    test_data_folder = pathlib.Path(__file__).parent / "data"
+    json_path = test_data_folder / "constraint_aggregate.jsonc"
+    param_dict = parse_json_file(path=json_path)
+    aggregate_constraint = constraint_from_dict(param_dict=param_dict)
+        
+    # Constraint evaluation
+    constraint_satisfied = aggregate_constraint.evaluate_satisfied(
+        constraint_input=DataTable({Aggregate.DAMAGE_RATE: np.array([[40], [40]]),
+                                    Aggregate.REVENUE_RATE: np.array([0, 0])})
+    )
+    assert constraint_satisfied is False
+    
+    constraint_satisfied = aggregate_constraint.evaluate_satisfied(
+        constraint_input=DataTable({Aggregate.DAMAGE_RATE: np.array([[30], [30]]),
+                                    Aggregate.REVENUE_RATE: np.array([0, 0])})
+    )
+    assert constraint_satisfied is True
 
 def test_acc_metrics_constraint():
     test_data_folder = pathlib.Path(__file__).parent / "data"
     json_path = test_data_folder / "constraint_accumulated.jsonc"
-    linear_accumulated_constraint = constraint_from_json(json_path=json_path)
+    param_dict = parse_json_file(path=json_path)
+    accumulated_constraint = constraint_from_dict(param_dict=param_dict)
         
     # Constraint evaluation
-    constraint_satisfied = linear_accumulated_constraint.evaluate_satisfied(
-        constr_input_data=DataTable({AccumulatedMetric.ACCRUED_DAMAGE: np.array([700, 700]),
-                                     AccumulatedMetric.REVENUE: np.array(0)}))
+    constraint_satisfied = accumulated_constraint.evaluate_satisfied(
+        constraint_input=DataTable({AccumulatedMetric.ACCRUED_DAMAGE: np.array([[700], [700]]),
+                                    AccumulatedMetric.REVENUE: np.array([0, 0])}))
     assert constraint_satisfied is False
     
-    constraint_satisfied = linear_accumulated_constraint.evaluate_satisfied(
-        constr_input_data=DataTable({AccumulatedMetric.ACCRUED_DAMAGE: np.array([300, 300]),
-                                     AccumulatedMetric.REVENUE: np.array(0)}))
+    constraint_satisfied = accumulated_constraint.evaluate_satisfied(
+        constraint_input=DataTable({AccumulatedMetric.ACCRUED_DAMAGE: np.array([[300], [300]]),
+                                    AccumulatedMetric.REVENUE: np.array([0, 0])}))
     assert constraint_satisfied is True

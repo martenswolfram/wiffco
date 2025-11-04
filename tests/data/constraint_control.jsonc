@@ -1,13 +1,14 @@
 {
-    "name": "linear_control_constraint",
-    "constraint_type": "separate_constraints",
-    "data_type": "control",
-    "upper_bound": {
-        "power_regulation": [3.5, 3.5],
-        "yaw_angle": null
-    },
-    "lower_bound": {
-        "power_regulation": [1, 1],
-        "yaw_angle": null
+    "name": "control_constraint",
+    "constraint_type": "control",
+    "bounds": {
+        "power_regulation": {
+            "upper": 3.5,
+            "lower": 1
+        },
+        "yaw_angle": { // null-constraint only for testing
+            "upper": null,
+            "lower": null
+        }
     }
 }

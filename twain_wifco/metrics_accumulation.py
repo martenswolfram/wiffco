@@ -107,17 +107,20 @@ class DiscountedIntegration(MetricsAccumulation):
                 accumulated_metrics[acc_metric] = value * duration_discount_factor
         return DataTable(data=accumulated_metrics)
     
-def discounted_integration_from_dict(param_dict: Dict[str, Any | Dict[str, Any]]) -> DiscountedIntegration:
+def metrics_accumulation_from_dict(param_dict: Dict[str, Any | Dict[str, Any]]) -> MetricsAccumulation:
     
     name = param_dict["name"]
-    integration_mappings = {}
-    for acc_metric, mapping_dict in param_dict["integration_mappings"].items():
-        integration_mappings[AccumulatedMetric(acc_metric)] = IntegrationMapping(
-            aggregate=Aggregate(mapping_dict["aggregate"]),
-            discount_rate=float(mapping_dict["discount_rate"])
-        )
-    duration = param_dict["duration"]
-    return DiscountedIntegration(name=name,
-                                 integration_mappings=integration_mappings,
-                                 duration=duration)
-
+    accumulation_type = MetricsAccumulationType(param_dict["accumulation_type"])
+    if accumulation_type == MetricsAccumulationType.DISCOUNTED_INTEGRATION:
+        integration_mappings = {}
+        for acc_metric, mapping_dict in param_dict["integration_mappings"].items():
+            integration_mappings[AccumulatedMetric(acc_metric)] = IntegrationMapping(
+                aggregate=Aggregate(mapping_dict["aggregate"]),
+                discount_rate=float(mapping_dict["discount_rate"])
+            )
+        duration = param_dict["duration"]
+        return DiscountedIntegration(name=name,
+                                    integration_mappings=integration_mappings,
+                                    duration=duration)
+    else:
+        raise NotImplementedError("Only discounted-integration metrics accumulation implemented.")

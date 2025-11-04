@@ -1,0 +1,24 @@
+{
+    "control": {
+        "power_regulation": {
+            "upper": 4,
+            "lower": 1
+        },
+        "yaw_angle": {
+            "upper": -20,
+            "lower": 20
+        }
+    },
+    "aggregate": {
+        "damage_rate": {
+            "upper": 35,
+            "lower": null
+        }
+    },
+    "accumulated": {
+        "accrued_damage": {
+            "upper": 500,
+            "lower": null
+        }
+    }
+}

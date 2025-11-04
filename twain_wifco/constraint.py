@@ -1,258 +1,168 @@
-from typing import Dict, Any, List, Generic, Callable, Tuple
+from typing import Dict, Any, List, Generic, Callable, Tuple, Type
 from abc import abstractmethod
 import numpy as np
 from scipy.optimize import NonlinearConstraint, Bounds
 from enum import Enum
+from dataclasses import dataclass
 from twain_wifco.interface import (
     Component,
+    Control,
+    Aggregate,
+    AccumulatedMetric,
     MAP_STR_TO_ENUM,
     DataVariable,
     DataType,
     DataTable,
-    DataTable,
+    DataPoint,
     Interface
 )
 
+@dataclass
+class TwoSidedBound:
+    lower: float = None
+    upper: float = None
+        
+    def __post_init__(self):
+        if self.lower is None:
+            self.lower = -np.inf
+        if self.upper is None:
+            self.upper = np.inf
 
-class UpperBoundConstraint:
-    """Represents a single upper-bound constraint.
-
-    Attributes:
-        upper_bound (np.ndarray): Upper bound values for the constraint.
-        constraint_fun (Callable): Function that evaluates the constraint.
-    """
-    def __init__(self,
-                 upper_bound: np.ndarray,
-                 constraint_fun: Callable[[Dict[DataVariable, np.ndarray]], np.ndarray]):
-        self.upper_bound = upper_bound
-        self.constraint_fun = constraint_fun
-
-class TwoSidedBounds:
-    """Container for upper and lower bounds for multiple variables of the same type.
-
-    Attributes:
-        upper_bound (DataTable[DataType]): Upper bounds.
-        lower_bound (DataTable[DataType]): Lower bounds.
-        data_type (Type[DataType]): Type of data stored.
-    """
-    def __init__(self,
-                 upper_bound: DataTable[DataType],
-                 lower_bound: DataTable[DataType]):
-        self.data_type = upper_bound.data_type
-        self.upper_bound = upper_bound
-        self.lower_bound = lower_bound
-        self.order = upper_bound.order
-
-class Constraint(Component, Generic[DataType]):
-    """Abstract base class for all constraints.
-
-    """
-
-    def evaluate_satisfied(self,
-                           constr_input_data: DataTable[DataType]) -> bool:
-        """Check whether the constraint is satisfied for the given input.
-
-        Args:
-            constr_input_data (DataTable[DataType]): Input data to evaluate.
-
-        Returns:
-            bool: True if constraint is satisfied, False otherwise.
-        """
-        self.validate_input([constr_input_data])
-        return self._evaluate_satisfied(constr_input_data=constr_input_data)
-
-    @abstractmethod
-    def _evaluate_satisfied(self,
-                            constr_input_data: DataTable[DataType]) -> bool:
-        """Check whether the constraint is satisfied for the given input.
-
-        Args:
-            constr_input_data (DataTable[DataType]): Input data to evaluate.
-
-        Returns:
-            bool: True if constraint is satisfied, False otherwise.
-        """
-        ...
-
-    @abstractmethod
-    def scipy_object(self,
-                     x_order: List[DataType],
-                     x_shapes_dict: Dict[DataType, Tuple[int, ...]],
-                     num_points: int | None = None,
-                     x_constraint_evaluation: Callable | None = None):
-        """ Creates SciPy objects for constraint evaluation.
-
-        Args:
-            x_order (List[DataType]) : 
-            x_shapes_dict (Dict[DataType, Tuple[int, ...]]): 
-            num_points (int | None): 
-            x_constraint_evaluation (Callable | None): Function to be evaluated on input (decision) variables
-
-        """
-        pass
+class Constraint(Component):
     
-    @abstractmethod
-    def upper_bound_constraints(self) -> List[UpperBoundConstraint]:
-        """Convert all constraints into upper-bound constraints.
-
-        Returns:
-            List[UpperBoundConstraint]: List of upper-bound constraints.
-        """
-        pass
-
-class ConstraintType(Enum):
-    SEPARATE_CONSTRAINTS = "separate_constraints"
-
-class SeparateConstraints(Component):
-    """Parameter container for SeparateConstraints.
-
-    Attributes:
-        bounds (TwoSidedBounds): Upper and lower bounds for the constraint.
-    """
     def __init__(self,
                  name: str,
-                 two_sided_bounds: TwoSidedBounds):
+                 two_sided_bounds: Dict[DataType, TwoSidedBound]):
         self.component_name = name
         self._bounds = two_sided_bounds
-
-        self.input_interface = Interface(all_shapes={
-            self._bounds.data_type: self._bounds.upper_bound.shapes()
-        })
-    
+        # input_interface is defined in chilc classes
         self.output_interface = Interface()
 
-    def _evaluate_satisfied(self,
-                           constr_input_data: DataTable[DataVariable]) -> bool:
-        """Check if all constraints are satisfied for the given input.
-
-        Args:
-            constr_input_data (DataTable[DataVariable]): Input data.
-
-        Returns:
-            bool: True if all constraints are satisfied.
-        """
-
-        lb = self._bounds.lower_bound.to_vector()
-        ub = self._bounds.upper_bound.to_vector()
+    def evaluate_satisfied(self,
+                           constraint_input: DataTable[DataType]) -> bool:
         
-        lower_diff = constr_input_data.to_vector(order=self._bounds.order) - lb
-        upper_diff = constr_input_data.to_vector(order=self._bounds.order) - ub
-        
-        return all(lower_diff >= -self._bounds.lower_bound.abs_tols_vec()) and \
-               all(upper_diff <=  self._bounds.upper_bound.abs_tols_vec())
-
-    def scipy_object(self,
-                     x_order: List[DataType],
-                     x_shapes_dict: Dict[DataType, Tuple[int, ...]],
-                     num_points: int | None = None,
-                     x_constraint_evaluation: Callable | None = None):
-        """ Creates SciPy objects for constraint evaluation"""
-        if x_constraint_evaluation is None:
-            # If x is only passed through, create a SciPy-Bounds object, based on the external variable order
-            # Bounds for unconstrained variables are filled with corresponding (pos/neg) infinite bounds 
-            lb = self._bounds.lower_bound.to_vector(order=x_order,
-                                                    fill_shapes=x_shapes_dict,
-                                                    fill_value=-np.inf,
-                                                    batch_multiply=num_points)
-            ub = self._bounds.upper_bound.to_vector(order=x_order,
-                                                    fill_shapes=x_shapes_dict,
-                                                    fill_value=np.inf,
-                                                    batch_multiply=num_points)
-            return Bounds(lb=lb, ub=ub)
-        else:
-            # Otherwise create a SciPy-NonlinearConstraint object
-            if num_points is None:
-                # Single-point evaluation
-                def eval_constraint(x):
-                    constr_evaluation = x_constraint_evaluation(x)                    
-                    return np.concatenate([constr_evaluation[var].ravel() for \
-                                           var in self._bounds.order])    
-                lb = self._bounds.lower_bound.to_vector(order=self._bounds.order)
-                ub = self._bounds.upper_bound.to_vector(order=self._bounds.order)
-                return NonlinearConstraint(fun=eval_constraint, lb=lb, ub=ub)
-            else:
-                # Batch-constraint evaluation
-                def eval_constraints(x):
-                    # Note: The constraint-evaluation function is interpreted such that 
-                    # both input data and output data represents a flat concatenation over 
-                    # all points.
-                    constr_evaluation: DataTable = x_constraint_evaluation(x)
-                    return constr_evaluation.to_vector(order=self._bounds.order) 
-                # The bounds are defined for each point, hence need to be tiled/extruded.
-                lb = self._bounds.lower_bound.to_vector(order=self._bounds.order,
-                                                        batch_multiply=num_points)
-                ub = self._bounds.upper_bound.to_vector(order=self._bounds.order,
-                                                        batch_multiply=num_points)
-                return NonlinearConstraint(fun=eval_constraints, lb=lb, ub=ub)
+        self.validate_input([constraint_input])
+        for var, bound in self._bounds.items():
+            if np.any(constraint_input[var] < bound.lower):
+                return False
+            if np.any(constraint_input[var] > bound.upper):
+                return False
+        return True
     
-    def upper_bound_constraints(self) -> List[UpperBoundConstraint]:
-        """Convert to a list of upper-bound constraints for optimization.
+    def get_flat_bounds(self,
+                        var_order: List[DataType],
+                        var_shapes_dict: Dict[DataType, Tuple[int, ...]],
+                        num_points: int = 1):
+        flat_lower_bounds = [[self._bounds[var].lower] * \
+                             np.prod(var_shapes_dict[var]) for \
+                             var in var_order]
+        flat_upper_bounds = [[self._bounds[var].upper] * \
+                             np.prod(var_shapes_dict[var]) for \
+                             var in var_order]
+        lb = np.concatenate(flat_lower_bounds * num_points)
+        ub = np.concatenate(flat_upper_bounds * num_points)
+        return lb, ub
 
-        Returns:
-            List[UpperBoundConstraint]: List of upper-bound constraints.
-        """
-        ub_constraints = []
+class ControlConstraint(Constraint):
 
-        for var in self._bounds.upper_bound.keys():
-            # Lower bound as upper-bound constraint
-            if (self._bounds.lower_bound[var] > -np.inf).any():
-                def constraint_fun(values, v=var):
-                    return -values[v]
-                ub_constraints.append(UpperBoundConstraint(
-                    upper_bound=-self._bounds.lower_bound[var],
-                    constraint_fun=constraint_fun
-                ))
+    def __init__(self,
+                 name: str,
+                 two_sided_bounds: Dict[Control, TwoSidedBound]):
+        super().__init__(name=name,
+                         two_sided_bounds=two_sided_bounds)
+        
+        self.input_interface = Interface(all_shapes={
+            Control: {
+                var: None for var in two_sided_bounds
+            }
+        })
 
-            # Upper bound as upper-bound constraint
-            if (self._bounds.upper_bound[var] < np.inf).any():
-                def constraint_fun(values, v=var):
-                    return values[v]
-                ub_constraints.append(UpperBoundConstraint(
-                    upper_bound=self._bounds.upper_bound[var],
-                    constraint_fun=constraint_fun
-                ))
+    def scipy_bounds(self,
+                     control_order: List[Control],
+                     control_shapes_dict: Dict[Control, Tuple[int, ...]],
+                     num_points: int):
+        
+        lb, ub = self.get_flat_bounds(var_order=control_order,
+                                      var_shapes_dict=control_shapes_dict,
+                                      num_points=num_points)
+        return Bounds(lb=lb, ub=ub)
 
-        return ub_constraints
+class AggregateConstraint(Constraint):
 
-def separate_constraints_from_dict(param_dict: Dict[str, Any]) -> SeparateConstraints:
-    """Create SeparateConstraints from a parameter dictionary.
+    def __init__(self,
+                 name: str,
+                 two_sided_bounds: Dict[Aggregate, TwoSidedBound]):
+        super().__init__(name=name,
+                         two_sided_bounds=two_sided_bounds)
+        
+        self.input_interface = Interface(all_shapes={
+            Aggregate: {
+                var: None for var in two_sided_bounds
+            }
+        })
 
-    Args:
-        param_dict (Dict[str, Any]): Dictionary containing upper/lower bounds and data type.
+    def scipy_constraint(self,
+                         aggregate_order: List[Aggregate],
+                         aggregate_shapes_dict: Dict[Aggregate, Tuple[int, ...]],
+                         aggregate_evaluation: Callable,
+                         num_points: int):
+        
+        def eval_constraints(x):
+            aggregate_table: DataTable[Aggregate] = aggregate_evaluation(x)
+            return aggregate_table.to_vector(order=aggregate_order) 
+        lb, ub = self.get_flat_bounds(var_order=aggregate_order,
+                                      var_shapes_dict=aggregate_shapes_dict,
+                                      num_points=num_points)
+        return NonlinearConstraint(fun=eval_constraints, lb=lb, ub=ub)
 
-    Returns:
-        SeparateConstraints: Constructed Separate Constraints object.
+class AccumulatedConstraint(Constraint):
+
+    def __init__(self,
+                 name: str,
+                 two_sided_bounds: Dict[AccumulatedMetric, TwoSidedBound]):
+        super().__init__(name=name,
+                         two_sided_bounds=two_sided_bounds)
+        
+        self.input_interface = Interface(all_shapes={
+            AccumulatedMetric: {
+                var: None for var in two_sided_bounds
+            }
+        })
+
+    def scipy_constraint(self,
+                         accumulated_order: List[Aggregate],
+                         accumulated_shapes_dict: Dict[Aggregate, Tuple[int, ...]],
+                         accumulated_evaluation: Callable):
+        
+        def eval_constraints(x):
+            accumulated_table: DataPoint[AccumulatedMetric] = accumulated_evaluation(x)
+            return accumulated_table.to_vector(order=accumulated_order) 
+        lb, ub = self.get_flat_bounds(var_order=accumulated_order,
+                                      var_shapes_dict=accumulated_shapes_dict)
+        return NonlinearConstraint(fun=eval_constraints, lb=lb, ub=ub)
+
+def constraint_from_dict(param_dict: Dict[str, str | Dict[str, Dict]]) -> Constraint:
+    """Create Constraint from a parameter dictionary.
+
     """
     name = param_dict["name"]
-    data_type = MAP_STR_TO_ENUM[param_dict["data_type"]]
-
-    upper_bound_data = {}
-    lower_bound_data = {}
-    upper_bound_params = param_dict["upper_bound"]
-    lower_bound_params = param_dict["lower_bound"]
-
-    for constr_var in upper_bound_params.keys():
-        upper_bound = np.array(upper_bound_params[constr_var])
-        upper_bound = np.where(upper_bound == None, np.inf, upper_bound)
-        upper_bound = np.array(upper_bound, dtype=float)
-        lower_bound = np.array(lower_bound_params[constr_var])
-        lower_bound = np.where(lower_bound == None, -np.inf, lower_bound)
-        lower_bound = np.array(lower_bound, dtype=float)
-
-        # ignore null constraints
-        if all(np.atleast_1d(np.isposinf(upper_bound))) and \
-            all(np.atleast_1d(np.isneginf(lower_bound))):
-            continue
-        
-        upper_bound_data[data_type(constr_var)] = upper_bound
-        lower_bound_data[data_type(constr_var)] = lower_bound
-
-    two_sided_bounds = TwoSidedBounds(
-        upper_bound=DataTable(data=upper_bound_data),
-        lower_bound=DataTable(data=lower_bound_data)
-    )
-
-    return SeparateConstraints(
-        name=name,
-        two_sided_bounds=two_sided_bounds)
-
+    two_sided_bounds = {}
+    
+    data_enum = MAP_STR_TO_ENUM.get(param_dict["constraint_type"], None)
+    if data_enum not in {Control, Aggregate, AccumulatedMetric}:
+        raise ValueError(f"Invalid constraint type: {param_dict['constraint_type']}.")
+    
+    for var_str, bounds in param_dict["bounds"].items():
+        lb = bounds.get("lower", None)
+        ub = bounds.get("upper", None)
+        two_sided_bounds[data_enum(var_str)] = TwoSidedBound(lower=lb, upper=ub)
+    
+    if data_enum is Control:
+        return ControlConstraint(name=name,
+                                    two_sided_bounds=two_sided_bounds)
+    elif data_enum is Aggregate:
+        return AggregateConstraint(name=name,
+                                   two_sided_bounds=two_sided_bounds)
+    else:
+        return AccumulatedConstraint(name=name,
+                                     two_sided_bounds=two_sided_bounds)

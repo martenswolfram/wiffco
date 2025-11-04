@@ -6,7 +6,7 @@ from twain_wifco.interface import (
     Component,
     DataType,
     DataTable,
-    DataTable,
+    DataPoint,
     Interface,
     MAP_STR_TO_ENUM
 )
@@ -151,12 +151,12 @@ class DiscreteStatistics(Statistics):
         Returns:
             DataTable[DataType]: Expected value per variable.
         """
-        return DataTable({
-            var: self._ordered_probabilities @ supp
+        return DataPoint({
+            var: self._ordered_probabilities[np.newaxis, :] @ supp
             for var, supp in self._ordered_support_data.data.items()
         })
 
-def discrete_statistics_from_dict(param_dict: Dict[str, Any]) -> DiscreteStatistics:
+def statistics_from_dict(param_dict: Dict[str, Any]) -> Statistics:
     """Construct DiscreteStatistics from a dictionary.
 
     Args:
@@ -166,13 +166,18 @@ def discrete_statistics_from_dict(param_dict: Dict[str, Any]) -> DiscreteStatist
         DiscreteStatistics: Constructed DIscreteStatistics object.
     """
     name = param_dict["name"]
+    statistics_type = StatisticsType(param_dict["statistics_type"])
     data_type = MAP_STR_TO_ENUM[param_dict["data_type"]]
-    support_data = DataTable({data_type(var): np.array(supp) for var, supp in param_dict["support_data"].items()})
-    prevalence = np.array(param_dict["prevalence"])
-    probabilities = prevalence / np.sum(prevalence)
-        
-    return DiscreteStatistics(
-        name=name,
-        support_data=support_data,
-        probabilities=probabilities
-    )
+    
+    if statistics_type == StatisticsType.DISCRETE_STATISTICS:
+        support_data = DataTable({data_type(var): np.array(supp) for var, supp in param_dict["support_data"].items()})
+        prevalence = np.array(param_dict["prevalence"])
+        probabilities = prevalence / np.sum(prevalence)
+            
+        return DiscreteStatistics(
+            name=name,
+            support_data=support_data,
+            probabilities=probabilities
+        )
+    else:
+        raise NotImplementedError("Only discrete_statistics implemented.")
