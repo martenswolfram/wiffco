@@ -59,7 +59,7 @@ def scattered_interpolator_params_from_dict(param_dict: Dict[str, Any],
     """
     scattered_interp_type = ScatteredInterpolatorType(param_dict["scattered_interp_type"])
     support_data = DataTable({support_data_type(var): np.array(vals)
-                              for var, vals in param_dict["support_data"].items()})
+                              for var, vals in param_dict["ambient_support"].items()})
     out_data = DataTable({out_data_type(var): np.array(vals)
                           for var, vals in param_dict["out_data"].items()})
     return ScatteredInterpolatorParams(

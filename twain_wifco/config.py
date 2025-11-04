@@ -9,7 +9,7 @@ from twain_wifco.interface import (
     DataType)
 from twain_wifco.symbolic import symbolic_function_from_dict
 from twain_wifco.plant_model import plant_model_from_dict
-from twain_wifco.statistics import  statistics_from_dict, DiscreteStatistics
+from twain_wifco.statistics import  statistics_from_dict, DiscreteAmbientStatistics
 from twain_wifco.control_policy import discrete_control_policy_from_dict
 from twain_wifco.aggregation import aggregation_from_dict
 from twain_wifco.metrics_accumulation import metrics_accumulation_from_dict
@@ -58,9 +58,9 @@ def discrete_statistics_from_csv(csv_path: pathlib.Path,
     if prevalence is not None and len(data):
         probabilities = prevalence / np.sum(prevalence)
         support_data = DataTable(data, order)
-        return DiscreteStatistics(
+        return DiscreteAmbientStatistics(
             name=statistics_name,
-            support_data=support_data,
+            ambient_support=support_data,
             probabilities=probabilities)
     else:
         raise ValueError("Could not parse CSV data to statistics")
@@ -110,24 +110,27 @@ def control_evaluation_system_from_json(json_path: pathlib.Path):
     # Control constraint
     control_constraint_file = param_dict.get("constraint_control_file", None)
     if control_constraint_file is not None:
-        control_constraint = constraint_from_json(
-        json_path=(config_folder / control_constraint_file))
+        control_constraint_dict = parse_json_file(
+            path=(config_folder / control_constraint_file))
+        control_constraint = constraint_from_dict(param_dict=control_constraint_dict)
     else:
         control_constraint = None
     
-    # Aggregated constraint
-    aggregated_constraint_file = param_dict.get("constraint_aggregated_file", None)
-    if aggregated_constraint_file is not None:
-        aggregated_constraint = constraint_from_json(
-        json_path=(config_folder / aggregated_constraint_file))
+    # Aggregate constraint
+    aggregate_constraint_file = param_dict.get("constraint_aggregate_file", None)
+    if aggregate_constraint_file is not None:
+        aggregate_constraint_dict = parse_json_file(
+            path=(config_folder / aggregate_constraint_file))
+        aggregate_constraint = constraint_from_dict(param_dict=aggregate_constraint_dict)
     else:
-        aggregated_constraint = None
+        aggregate_constraint = None
 
     # Accumulated constraint
     accumulated_constraint_file = param_dict.get("constraint_accumulated_file", None)
     if accumulated_constraint_file is not None:
-        accumulated_constraint = constraint_from_json(
-        json_path=(config_folder / accumulated_constraint_file))
+        accumulated_constraint_dict = parse_json_file(
+            path=(config_folder / accumulated_constraint_file))
+        accumulated_constraint = constraint_from_dict(param_dict=accumulated_constraint_dict)
     else:
         accumulated_constraint = None
 
@@ -144,7 +147,7 @@ def control_evaluation_system_from_json(json_path: pathlib.Path):
         plant_model=plant_model,
         aggregation=aggregation,
         constraint_control=control_constraint,
-        constraint_aggregated=aggregated_constraint,
+        constraint_aggregate=aggregate_constraint,
         constraint_accumulated=accumulated_constraint,
         metrics_accumulation=metrics_accumulation,
         multi_metrics_reduction=multi_metrics_reduction)

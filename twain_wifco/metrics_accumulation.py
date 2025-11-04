@@ -3,7 +3,7 @@ from abc import abstractmethod
 from enum import Enum
 import numpy as np 
 from twain_wifco.statistics import (
-    Statistics)
+    AmbientStatistics)
 from twain_wifco.interface import (
     Component,
     Aggregate,
@@ -19,22 +19,12 @@ class MetricsAccumulation(Component):
     """Abstract base class for accumulation of aggregate variables over time."""
 
     def acc_metrics(self,
-                    aggregate: DataTable[Aggregate],
-                    probabilities: np.ndarray) -> DataPoint[AccumulatedMetric]:
-        """Accumulate metrics for a given aggregate over a duration.
-
-        Args:
-            aggregate (DataTable[Aggregated]): Input aggregated data.
-        
-        Returns:
-            DataTable[AccumulatedMetric]: Accumulated metrics.
-        """
+                    aggregate: DataTable[Aggregate]) -> DataTable[AccumulatedMetric]:
         self.validate_input(input_tables=[aggregate])
-        acc_metrics_table = self._acc_metrics_table(aggregate=aggregate)
-        return acc_metrics_table.expected_value(probabilities=probabilities)
-
+        return self._acc_metrics(aggregate=aggregate)
+        
     @abstractmethod
-    def _acc_metrics_table(self,
+    def _acc_metrics(self,
                            aggregate: DataTable[Aggregate]) -> DataTable[AccumulatedMetric]:
         """Accumulate metrics for a given aggregate over a duration.
 
@@ -93,7 +83,7 @@ class DiscountedIntegration(MetricsAccumulation):
         accumulated_metric_shapes = {metric: None for metric in self._integration_mappings.keys()}
         self.output_interface = Interface(all_shapes={AccumulatedMetric: accumulated_metric_shapes})
 
-    def _acc_metrics_table(self,
+    def _acc_metrics(self,
                            aggregate: DataTable[Aggregate]) -> DataTable[AccumulatedMetric]:
         accumulated_metrics = {}
         for acc_metric, mapping in self._integration_mappings.items():

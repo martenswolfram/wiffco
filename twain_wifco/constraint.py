@@ -42,12 +42,15 @@ class Constraint(Component):
                            constraint_input: DataTable[DataType]) -> bool:
         
         self.validate_input([constraint_input])
+        constraints_satisfied = np.full(shape=(len(constraint_input),), fill_value=True)
         for var, bound in self._bounds.items():
-            if np.any(constraint_input[var] < bound.lower):
-                return False
-            if np.any(constraint_input[var] > bound.upper):
-                return False
-        return True
+            trailing_axes = tuple(range(1, constraint_input[var].ndim))
+            constraints_satisfied &= np.all(bound.lower < constraint_input[var],
+                                            axis=trailing_axes)
+            constraints_satisfied &= np.all(constraint_input[var] < bound.upper,
+                                            axis=trailing_axes)
+            
+        return constraints_satisfied
     
     def get_flat_bounds(self,
                         var_order: List[DataType],
@@ -155,7 +158,8 @@ def constraint_from_dict(param_dict: Dict[str, str | Dict[str, Dict]]) -> Constr
     for var_str, bounds in param_dict["bounds"].items():
         lb = bounds.get("lower", None)
         ub = bounds.get("upper", None)
-        two_sided_bounds[data_enum(var_str)] = TwoSidedBound(lower=lb, upper=ub)
+        if lb is not None or ub is not None:
+            two_sided_bounds[data_enum(var_str)] = TwoSidedBound(lower=lb, upper=ub)
     
     if data_enum is Control:
         return ControlConstraint(name=name,

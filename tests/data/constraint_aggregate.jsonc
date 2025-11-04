@@ -3,7 +3,7 @@
     "constraint_type": "aggregate",
     "bounds": {
         "damage_rate": {
-            "upper": 35,
+            "upper": 40,
             "lower": null
         }
     }   

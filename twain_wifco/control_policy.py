@@ -34,7 +34,7 @@ class DiscreteControlPolicy(Component):
     def control_out_data(self):
         return self._control_out_data
 
-    def get_control_setpoints(
+    def get_control(
         self, ambient: DataTable[Ambient]
     ) -> DataTable[Control]:
         

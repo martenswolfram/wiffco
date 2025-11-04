@@ -36,7 +36,7 @@ def test_statistics():
     assert sys_sample_default.normalized_weights == \
         pytest.approx(ordered_prevalence)
     assert ordered_support_data == \
-        sys_sample_default.support_data
+        sys_sample_default.ambient_support
     assert sys_sample_default.probability_covered == \
         pytest.approx(1)
 
@@ -50,7 +50,7 @@ def test_statistics():
     sys_sample_larger = discrete_ambient_statistics.systematic_sample(N_max=N)
     assert sys_sample_larger.normalized_weights == \
         pytest.approx(ordered_prevalence)
-    assert ordered_support_data == sys_sample_larger.support_data
+    assert ordered_support_data == sys_sample_larger.ambient_support
     assert sys_sample_larger.probability_covered == \
         pytest.approx(1)
 
@@ -61,7 +61,7 @@ def test_statistics():
     assert sys_sample_smaller.normalized_weights == pytest.approx(ordered_prevalence[:N] / probability_covered)
     small_support_data = DataTable({var: supp[:N, ...] for \
                                     var, supp in ordered_support_data.data.items()})
-    assert small_support_data == sys_sample_smaller.support_data
+    assert small_support_data == sys_sample_smaller.ambient_support
     assert small_support_data
     assert sys_sample_smaller.probability_covered == pytest.approx(probability_covered)
 
@@ -70,9 +70,3 @@ def test_statistics():
         sys_sample_min_prob = discrete_ambient_statistics.systematic_sample(min_prob=min_prob)
         assert sys_sample_min_prob.probability_covered >= min_prob
     
-    # Expected value
-    computed = discrete_ambient_statistics.expected_value()
-    for var in ordered_support_data.keys():
-        expected_value = ordered_prevalence @ ordered_support_data[var]
-        assert expected_value == pytest.approx(computed[var])
-

@@ -4,7 +4,7 @@
     "bounds": {
         "power_regulation": {
             "upper": 3.5,
-            "lower": 1
+            "lower": 1.5
         },
         "yaw_angle": { // null-constraint only for testing
             "upper": null,

@@ -3,7 +3,7 @@
     "model_type": "factorized_scattered_interpolator",
     "control": {
         "scattered_interp_type": "linear",
-        "support_data": {
+        "ambient_support": {
             "power_regulation": [0,
                                  1,
                                  2,
@@ -25,7 +25,7 @@
     },                
     "ambient": {
         "scattered_interp_type": "linear",
-        "support_data": {
+        "ambient_support": {
             "wind_speed": [ 0,
                             10,
                             20,

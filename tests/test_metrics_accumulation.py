@@ -18,7 +18,8 @@ def test_simple_product_accumulation():
     aggregate = DataTable({Aggregate.REVENUE_RATE: np.array([[15, 15], [3, 3]]),
                            Aggregate.DAMAGE_RATE: np.array([[4, 4], [2, 2]])})
     # Output accumulation
-    accumulated_metrics = symbolic_damage_accumulation.acc_metrics(aggregate=aggregate,
-                                                                   probabilities=np.array([0.25, 0.75]))
-    assert np.all(accumulated_metrics[AccumulatedMetric.REVENUE] > 0)
-    assert np.array_equal(accumulated_metrics[AccumulatedMetric.ACCRUED_DAMAGE], np.array([[50, 50]])) 
+    accumulated_metrics = symbolic_damage_accumulation.acc_metrics(aggregate=aggregate)
+
+    expected_acc_metrics = accumulated_metrics.expected_value(probabilities=np.array([0.25, 0.75]))
+    assert np.all(expected_acc_metrics[AccumulatedMetric.REVENUE] > 0)
+    assert np.array_equal(expected_acc_metrics[AccumulatedMetric.ACCRUED_DAMAGE], np.array([[50, 50]])) 

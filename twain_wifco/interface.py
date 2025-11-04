@@ -324,6 +324,26 @@ class DataTable(Generic[DataType]):
             expected_data[key] = exp_val[np.newaxis, ...]  # make it 1-row table
 
         return DataPoint(expected_data, self.order)
+    
+    def tile(self, reps: int):
+        tiled_data = {key: np.tile(
+            key_data,
+            reps=(reps,) + (1,)*(key_data.ndim - 1)) for \
+                key, key_data in self.data.items()}
+        return DataTable(data=tiled_data)
+
+    def repeat(self, reps: int):
+        repeated_data = {key: np.repeat(self.data[key],
+                                        repeats=reps,
+                                        axis=0) for key in self.order}
+        return DataTable(data=repeated_data)
+    
+    def extract(self, indices: np.ndarray | List[int]):
+        if not any(indices):
+            raise ValueError("Need at least one index to extract from DataTable.")
+        
+        extracted_data = {key: self.data[key][indices] for key in self.order}
+        return DataTable(data=extracted_data)
 
 @dataclass(eq=False, repr=False)
 class DataPoint(DataTable[DataType]):

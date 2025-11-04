@@ -26,7 +26,7 @@ def test_control_constraint():
                                                     [5, 5]])
             }
         ))
-    assert constraint_satisfied is not True
+    assert np.all(constraint_satisfied) == False
     
     constraint_satisfied = control_constraint.evaluate_satisfied(
         constraint_input=DataTable(
@@ -37,7 +37,7 @@ def test_control_constraint():
                                                     [3, 3]])
             }
         ))
-    assert constraint_satisfied is True
+    assert np.all(constraint_satisfied) == True
 
 def test_aggregate_constraint():
     test_data_folder = pathlib.Path(__file__).parent / "data"
@@ -50,13 +50,13 @@ def test_aggregate_constraint():
         constraint_input=DataTable({Aggregate.DAMAGE_RATE: np.array([[40], [40]]),
                                     Aggregate.REVENUE_RATE: np.array([0, 0])})
     )
-    assert constraint_satisfied is False
+    assert np.all(constraint_satisfied) == False
     
     constraint_satisfied = aggregate_constraint.evaluate_satisfied(
         constraint_input=DataTable({Aggregate.DAMAGE_RATE: np.array([[30], [30]]),
                                     Aggregate.REVENUE_RATE: np.array([0, 0])})
     )
-    assert constraint_satisfied is True
+    assert np.all(constraint_satisfied) == True
 
 def test_acc_metrics_constraint():
     test_data_folder = pathlib.Path(__file__).parent / "data"
@@ -68,9 +68,9 @@ def test_acc_metrics_constraint():
     constraint_satisfied = accumulated_constraint.evaluate_satisfied(
         constraint_input=DataTable({AccumulatedMetric.ACCRUED_DAMAGE: np.array([[700], [700]]),
                                     AccumulatedMetric.REVENUE: np.array([0, 0])}))
-    assert constraint_satisfied is False
+    assert np.all(constraint_satisfied) == False
     
     constraint_satisfied = accumulated_constraint.evaluate_satisfied(
         constraint_input=DataTable({AccumulatedMetric.ACCRUED_DAMAGE: np.array([[300], [300]]),
                                     AccumulatedMetric.REVENUE: np.array([0, 0])}))
-    assert constraint_satisfied is True
+    assert np.all(constraint_satisfied) == True

@@ -1,7 +1,7 @@
 {
     "optimization_method": "grid_search",
     "max_num_ambient_conditions": 6,
-    "control_setpoint_vectors": {
+    "control_grid_vectors": {
         "power_regulation": {
             "shape": [2],
             "data": [[1, 2, 3],

@@ -2,7 +2,7 @@
     "name": "discrete_ambient_statistics",
     "statistics_type": "discrete_statistics",
     "data_type": "ambient",
-    "support_data": {
+    "ambient_support": {
         "wind_speed": [10,
                         20,
                         30,

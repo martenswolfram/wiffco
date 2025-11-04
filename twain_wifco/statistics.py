@@ -4,121 +4,93 @@ from enum import Enum
 import numpy as np
 from twain_wifco.interface import (
     Component,
-    DataType,
+    Ambient,
     DataTable,
-    DataPoint,
     Interface,
     MAP_STR_TO_ENUM
 )
 
 
-class SystematicSample:
-    """A systematic sample of data points with optional weights.
+class SystematicAmbientSample:
+    """A systematic sample of ambient data points with weights.
 
     Attributes:
-        support_data (DataTable[DataType]): Support data for sampling.
+        support_data (DataTable[Ambient]): Support data for sampling.
         normalized_weights (np.ndarray): Normalized weights of each data point.
         probability_covered (float): Total probability covered by the sample.
         N (int): Number of samples.
     """
     def __init__(self,
-                 support_data: DataTable[DataType],
+                 ambient_support: DataTable[Ambient],
                  normalized_weights: np.ndarray,
                  probability_covered: float = 1.0):
-        self.support_data = support_data
+        self.ambient_support = ambient_support
         self.normalized_weights = normalized_weights
         self.probability_covered = probability_covered
         self.N = len(self.normalized_weights)
-
-    def variables_iter(self):
-        """Iterate over all data points in the sample."""
-        for i in range(self.N):
-            yield self.support_data.get_point(i)
-
-    def weighted_variables_iter(self):
-        """Iterate over all data points with their corresponding weights."""
-        for i in range(self.N):
-            yield self.normalized_weights[i], self.support_data.get_point(i)
-
-    def discrete_statistics(self):
-        return DiscreteStatistics(
-            name="discrete_stats_from_sample",
-            support_data=self.support_data,
-            probabilities=self.normalized_weights
-        )
-
-
-class Statistics(Component, Generic[DataType]):
-    """Abstract base class for statistics computations.
+        
+class AmbientStatistics(Component):
+    """Abstract base class for ambient statistics computations.
 
     """
     @abstractmethod
     def systematic_sample(self,
                           N_max: int = None,
-                          min_prob: float = None) -> SystematicSample:
-        """Return a systematic sample of the underlying data.
+                          min_prob: float = None) -> SystematicAmbientSample:
+        """Return a systematic ambient sample.
 
         Args:
             N_max (int, optional): Maximum number of points to include.
             min_prob (float, optional): Minimum probability to be covered.
 
         Returns:
-            SystematicSample: The generated sample.
+            SystematicAmbientSample: The generated sample.
         """
         pass
 
-    @abstractmethod
-    def expected_value(self) -> DataTable[DataType]:
-        """Compute the expected value of the data.
-
-        Returns:
-            DataTable[DataType]: Expected value for each variable.
-        """
-        pass
-
-class StatisticsType(Enum):
+class AmbientStatisticsType(Enum):
     DISCRETE_STATISTICS = "discrete_statistics"
 
-class DiscreteStatistics(Statistics):
+class DiscreteAmbientStatistics(AmbientStatistics):
     """Concrete implementation of Statistics for discrete distributions."""
 
     def __init__(self,
                  name: str,
-                 support_data: DataTable[DataType],
+                 ambient_support: DataTable[Ambient],
                  probabilities: np.ndarray):
         
         self.component_name = name
     
         # Discard zero-probability points
         probabilities_reduced = probabilities[probabilities > 0]
-        support_data_reduced = {key: key_data[probabilities > 0, ...] for \
-                                key, key_data in support_data.data.items()}
+        ambient_support_reduced = {key: key_data[probabilities > 0, ...] for \
+                                   key, key_data in ambient_support.data.items()}
         
         #  Order support data by prevalence descending
         sorted_index = np.argsort(probabilities_reduced)[::-1]
         ordered_support = {}
-        for var, data in support_data_reduced.items():
+        for var, data in ambient_support_reduced.items():
             ordered_support[var] = data[sorted_index, ...]
         self._ordered_probabilities = probabilities_reduced[sorted_index]
-        self._ordered_support_data = DataTable(data=ordered_support,
-                                              order=support_data.order)
+        self._ordered_ambient_support = DataTable(data=ordered_support,
+                                                  order=ambient_support.order)
 
         self.input_interface = Interface()
         self.output_interface = Interface(
             all_shapes={
-                self._ordered_support_data.data_type: self._ordered_support_data.shapes()})
+                self._ordered_ambient_support.data_type: self._ordered_ambient_support.shapes()})
     
     def systematic_sample(self,
                           N_max: int = None,
-                          min_prob: float = None) -> SystematicSample:
-        """Return a systematic sample of the data points.
+                          min_prob: float = None) -> SystematicAmbientSample:
+        """Return a systematic ambient sample.
 
         Args:
             N_max (int, optional): Maximum number of samples. If None, include all points.
             min_prob (float, optional): Minimum probability to be covered. If both are specified, N_max has priority
             
         Returns:
-            SystematicSample: Sampled points with normalized weights.
+            SystematicAmbientSample: Sampled ambient points with normalized weights.
 
         Raises:
             ValueError: If N_max < 1.
@@ -136,27 +108,15 @@ class DiscreteStatistics(Statistics):
         weights = self._ordered_probabilities[:N_max]
         probability_covered = np.sum(weights)
         support_data_subset = {var: supp[:N_max, ...] for \
-                               var, supp in self._ordered_support_data.data.items()}
-        return SystematicSample(
-            support_data=DataTable(data=support_data_subset,
-                                   order=self._ordered_support_data.order),
+                               var, supp in self._ordered_ambient_support.data.items()}
+        return SystematicAmbientSample(
+            ambient_support=DataTable(data=support_data_subset,
+                                   order=self._ordered_ambient_support.order),
             normalized_weights=weights / probability_covered,
             probability_covered=probability_covered
         )
 
-
-    def expected_value(self) -> DataTable[DataType]:
-        """Compute expected value of the discrete distribution.
-
-        Returns:
-            DataTable[DataType]: Expected value per variable.
-        """
-        return DataPoint({
-            var: self._ordered_probabilities[np.newaxis, :] @ supp
-            for var, supp in self._ordered_support_data.data.items()
-        })
-
-def statistics_from_dict(param_dict: Dict[str, Any]) -> Statistics:
+def statistics_from_dict(param_dict: Dict[str, Any]) -> AmbientStatistics:
     """Construct DiscreteStatistics from a dictionary.
 
     Args:
@@ -166,18 +126,18 @@ def statistics_from_dict(param_dict: Dict[str, Any]) -> Statistics:
         DiscreteStatistics: Constructed DIscreteStatistics object.
     """
     name = param_dict["name"]
-    statistics_type = StatisticsType(param_dict["statistics_type"])
-    data_type = MAP_STR_TO_ENUM[param_dict["data_type"]]
+    statistics_type = AmbientStatisticsType(param_dict["statistics_type"])
     
-    if statistics_type == StatisticsType.DISCRETE_STATISTICS:
-        support_data = DataTable({data_type(var): np.array(supp) for var, supp in param_dict["support_data"].items()})
+    if statistics_type == AmbientStatisticsType.DISCRETE_STATISTICS:
+        ambient_support = DataTable({Ambient(var): np.array(supp) for \
+                                     var, supp in param_dict["ambient_support"].items()})
         prevalence = np.array(param_dict["prevalence"])
         probabilities = prevalence / np.sum(prevalence)
             
-        return DiscreteStatistics(
+        return DiscreteAmbientStatistics(
             name=name,
-            support_data=support_data,
+            ambient_support=ambient_support,
             probabilities=probabilities
         )
     else:
-        raise NotImplementedError("Only discrete_statistics implemented.")
+        raise NotImplementedError("Only discrete ambient statistics implemented.")

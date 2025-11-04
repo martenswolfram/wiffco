@@ -1,12 +1,12 @@
 from typing import List
 from twain_wifco.interface import Ambient, Control, ModelOutput, Aggregate
-from twain_wifco.statistics import Statistics
+from twain_wifco.statistics import AmbientStatistics
 from twain_wifco.control_policy import DiscreteControlPolicy
 from twain_wifco.plant_model import PlantModel
 from twain_wifco.aggregation import Aggregation
 from twain_wifco.metrics_accumulation import MetricsAccumulation
 
-def validate_data_graph(ambient_statistics: Statistics,
+def validate_data_graph(ambient_statistics: AmbientStatistics,
                         control_policy: DiscreteControlPolicy,
                         plant_model: PlantModel,
                         aggregation: Aggregation,
