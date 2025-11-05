@@ -339,7 +339,7 @@ class DataTable(Generic[DataType]):
         return DataTable(data=repeated_data)
     
     def extract(self, indices: np.ndarray | List[int]):
-        if not any(indices):
+        if not len(indices):
             raise ValueError("Need at least one index to extract from DataTable.")
         
         extracted_data = {key: self.data[key][indices] for key in self.order}
