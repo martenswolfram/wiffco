@@ -1,6 +1,9 @@
 {
     "optimization_method": "simultaneous_optimization", 
-    "max_num_ambient_conditions": 10,
+    "max_num_ambients": 10,
+    "control_shapes": {
+        "power_regulation": [2]
+    },
     "scipy_method": "SLSQP",
     "scipy_options": {}
 }

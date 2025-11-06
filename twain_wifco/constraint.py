@@ -9,6 +9,7 @@ from twain_wifco.interface import (
     Control,
     Aggregate,
     AccumulatedMetric,
+    get_abs_tol,
     MAP_STR_TO_ENUM,
     DataVariable,
     DataType,
@@ -35,27 +36,32 @@ class Constraint(Component):
                  two_sided_bounds: Dict[DataType, TwoSidedBound]):
         self.component_name = name
         self._bounds = two_sided_bounds
-        # input_interface is defined in chilc classes
+        self._var_order = list(self._bounds.keys())
+        # input_interface is defined in child classes
         self.output_interface = Interface()
 
     def evaluate_satisfied(self,
-                           constraint_input: DataTable[DataType]) -> bool:
+                           constraint_input: DataTable[DataType],
+                           ) -> bool:
         
         self.validate_input([constraint_input])
         constraints_satisfied = np.full(shape=(len(constraint_input),), fill_value=True)
         for var, bound in self._bounds.items():
+            abs_tol = get_abs_tol(data_var=var)
             trailing_axes = tuple(range(1, constraint_input[var].ndim))
-            constraints_satisfied &= np.all(bound.lower < constraint_input[var],
+            constraints_satisfied &= np.all(bound.lower < constraint_input[var] + abs_tol,
                                             axis=trailing_axes)
-            constraints_satisfied &= np.all(constraint_input[var] < bound.upper,
+            constraints_satisfied &= np.all(constraint_input[var] < bound.upper + abs_tol,
                                             axis=trailing_axes)
             
         return np.where(constraints_satisfied)[0]
     
     def get_flat_bounds(self,
-                        var_order: List[DataType],
                         var_shapes_dict: Dict[DataType, Tuple[int, ...]],
-                        num_points: int = 1):
+                        num_points: int,
+                        var_order: List[DataType] | None = None):
+        if var_order is None:
+            var_order = self._var_order
         flat_lower_bounds = [[self._bounds[var].lower] * \
                              np.prod(var_shapes_dict[var]) for \
                              var in var_order]
@@ -85,9 +91,9 @@ class ControlConstraint(Constraint):
                      control_shapes_dict: Dict[Control, Tuple[int, ...]],
                      num_points: int):
         
-        lb, ub = self.get_flat_bounds(var_order=control_order,
-                                      var_shapes_dict=control_shapes_dict,
-                                      num_points=num_points)
+        lb, ub = self.get_flat_bounds(var_shapes_dict=control_shapes_dict,
+                                      num_points=num_points,
+                                      var_order=control_order)
         return Bounds(lb=lb, ub=ub)
 
 class AggregateConstraint(Constraint):
@@ -112,9 +118,8 @@ class AggregateConstraint(Constraint):
         
         def eval_constraints(x):
             aggregate_table: DataTable[Aggregate] = aggregate_evaluation(x)
-            return aggregate_table.to_vector(order=aggregate_order) 
-        lb, ub = self.get_flat_bounds(var_order=aggregate_order,
-                                      var_shapes_dict=aggregate_shapes_dict,
+            return aggregate_table.to_vector(order=self._var_order) 
+        lb, ub = self.get_flat_bounds(var_shapes_dict=aggregate_shapes_dict,
                                       num_points=num_points)
         return NonlinearConstraint(fun=eval_constraints, lb=lb, ub=ub)
 
@@ -139,9 +144,9 @@ class AccumulatedConstraint(Constraint):
         
         def eval_constraints(x):
             accumulated_table: DataPoint[AccumulatedMetric] = accumulated_evaluation(x)
-            return accumulated_table.to_vector(order=accumulated_order) 
-        lb, ub = self.get_flat_bounds(var_order=accumulated_order,
-                                      var_shapes_dict=accumulated_shapes_dict)
+            return accumulated_table.to_vector(order=self._var_order) 
+        lb, ub = self.get_flat_bounds(var_shapes_dict=accumulated_shapes_dict,
+                                      num_points=1)
         return NonlinearConstraint(fun=eval_constraints, lb=lb, ub=ub)
 
 def constraint_from_dict(param_dict: Dict[str, str | Dict[str, Dict]]) -> Constraint:

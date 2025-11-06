@@ -372,18 +372,47 @@ def grid_search_from_dict(param_dict: Dict[str, Dict | Any]):
 class ContinuousOptimizationManager:
     def __init__(self,
                  control_eval_system: ControlEvaluationSystem,
+                 control_shapes: Dict[Control, Tuple[int, ...]],
                  ambient_statistics: AmbientStatistics,
                  max_num_amb_cond: int | None = None):
         self._control_eval_system = control_eval_system
         self._ambient_sample = ambient_statistics.systematic_sample(
             N_max=max_num_amb_cond)
+        
+        self.num_ambient = self._ambient_sample.N
+        self._control_shapes = control_shapes
+        
+        # Default evaluation to specify data formats
         self._control_policy = default_discrete_policy(
-            control_shapes=self._control_eval_system.plant_model.input_interface.shapes[Control],
+            control_shapes=self._control_shapes,
             ambient_support=self._ambient_sample.ambient_support
         )
         self._control_order = self._control_policy.control_out_data().order
-        self._control_shapes = self._control_policy.control_out_data().shapes()
-        self._control_len = len(self._control_policy.control_out_data())
+        
+        # default aggregate
+        ambient = self._ambient_sample.ambient_support
+        control = self._control_policy.get_control(ambient=ambient)
+        self._control_order = control.order
+        self._control_shapes = control.shapes()
+
+        model_output = self._control_eval_system.plant_model.evaluate(
+            meteorological=ambient,
+            control=control
+        )
+        aggregate = self._control_eval_system.aggregation.compute_aggregate(
+            ambient=ambient,
+            control=control,
+            model_output=model_output
+        )
+        self._aggregate_order = aggregate.order
+        self._aggregate_shapes = aggregate.shapes()
+
+        # default metrics accumulation
+        acc_metrics = self._control_eval_system.metrics_accumulation.acc_metrics(
+            aggregate=aggregate
+        )
+        self._acc_metrics_order = acc_metrics.order
+        self._acc_metrics_shapes = acc_metrics.shapes()
 
 
     # TODO: Make sure that caching works.
@@ -391,14 +420,14 @@ class ContinuousOptimizationManager:
     def single_aggregate_w_cache(self,
                                  i_ac: int,
                                  ctrl_as_tuple: Tuple[float, ...]):
-        control_setpoints = DataTable.from_vector(
+        control = DataTable.from_vector(
             data_vector=np.array(ctrl_as_tuple),
             order=self._control_order,
             shapes_dict=self._control_shapes)
 
         return self._control_eval_system.aggregate_from_amb(
             ambient=self._ambient_sample.ambient_support.get_point(i_ac),
-            control=control_setpoints)
+            control=control)
         
     @lru_cache(maxsize=None)
     def single_acc_metric_w_cache(self,
@@ -414,43 +443,43 @@ class ContinuousOptimizationManager:
     @lru_cache(maxsize=None)
     def all_aggregates_w_cache(self,
                            ctrl_as_tuple: Tuple[float, ...]):
-        control_setpoints_data = DataTable.from_vector(
+        control = DataTable.from_vector(
             data_vector=np.array(ctrl_as_tuple),
             order=self._control_order,
             shapes_dict=self._control_shapes,
-            num_points=self._control_len)
+            num_points=self.num_ambient)
 
-        aggregate_list = []
-        for i_ac, ambient in enumerate(self._ambient_sample.ambient_support):
-            control_setpoints = control_setpoints_data.get_point(i_ac)
-            aggregate = self._control_eval_system.aggregate_from_amb(
-                ambient=ambient,
-                control=control_setpoints)
-            aggregate_list.append(aggregate)
-        return DataTable.from_data_points(aggregate_list)
+        model_output = self._control_eval_system.plant_model.evaluate(
+            meteorological=self._ambient_sample.ambient_support,
+            control=control
+        )
+        return self._control_eval_system.aggregation.compute_aggregate(
+            ambient=self._ambient_sample.ambient_support,
+            control=control,
+            model_output=model_output
+        )
 
     @lru_cache(maxsize=None)
     def expected_acc_metrics_w_cache(self,
                                      ctrl_as_tuple: Tuple[float, ...]):
-        aggregate_support = self.all_aggregates_w_cache(ctrl_as_tuple=ctrl_as_tuple)
-        discrete_aggregate_statistics = DiscreteAmbientStatistics(
-            name="",
-            ambient_support=aggregate_support,
-            probabilities=self._ambient_sample.normalized_weights)        
-
-        expected_acc_metrics = self._control_eval_system.metrics_accumulation.expected_acc_metrics(
-            aggregate_statistics=discrete_aggregate_statistics)
-        
+        aggregate = self.all_aggregates_w_cache(ctrl_as_tuple=ctrl_as_tuple)
+        acc_metrics = self._control_eval_system.metrics_accumulation.acc_metrics(
+            aggregate=aggregate
+        )
+        expected_acc_metrics = acc_metrics.expected_value(
+            probabilities=self._ambient_sample.normalized_weights[:, np.newaxis])        
         return expected_acc_metrics
 
 class SimultaneousOptimization(ControlPolicyOptimization):
     def __init__(self,
                  max_num_amb_cond: int,
+                 control_shapes: Dict[Control, Tuple[int, ...]], 
                  scipy_method: str,
                  scipy_options: Dict[str, Any]):
-        self.max_num_amb_cond = max_num_amb_cond
-        self.scipy_method = scipy_method
-        self.scipy_options = scipy_options
+        self._max_num_amb_cond = max_num_amb_cond
+        self._control_shapes = control_shapes
+        self._scipy_method = scipy_method
+        self._scipy_options = scipy_options
 
     def optimize_policy(self,
                         control_eval_system: ControlEvaluationSystem,
@@ -459,8 +488,9 @@ class SimultaneousOptimization(ControlPolicyOptimization):
         # OptimizationManager
         opt_mgr = ContinuousOptimizationManager(
             control_eval_system=control_eval_system,
+            control_shapes=self._control_shapes,
             ambient_statistics=ambient_statistics,
-            max_num_amb_cond=self.max_num_amb_cond)
+            max_num_amb_cond=self._max_num_amb_cond)
         
         # Optimization functions with cache
         all_aggregates_w_cache = lambda x : opt_mgr.all_aggregates_w_cache(tuple(x))        
@@ -470,67 +500,58 @@ class SimultaneousOptimization(ControlPolicyOptimization):
         # based on accumulated metrics
         cost_function = \
             opt_mgr._control_eval_system.multi_metrics_reduction.cost_function(
-                eval_acc_metrics_from_x=expected_acc_metrics_w_cache)
-
-        # CONSTRAINTS
-        constraints = []
-        bounds = None
-        # Order and shapes of control variables
-        x_order = opt_mgr._control_order
-        x_shapes_dict=opt_mgr._control_shapes
+                eval_metrics_from_x=expected_acc_metrics_w_cache)
 
         # CONTROL CONSTRAINT
         if opt_mgr._control_eval_system.constraint_control is not None:
-            num_ac = opt_mgr._control_len
-            control_constraint_object = \
-                opt_mgr._control_eval_system.constraint_control.scipy_object(
-                x_order=x_order,
-                x_shapes_dict=x_shapes_dict,
-                num_points=num_ac,
-            )
-            if isinstance(control_constraint_object, Bounds):
-                bounds = control_constraint_object
-            else:
-                constraints.append(control_constraint_object)
-
+            bounds = opt_mgr._control_eval_system.constraint_control.scipy_bounds(
+                control_order=opt_mgr._control_order,
+                control_shapes_dict=opt_mgr._control_shapes,
+                num_points=opt_mgr.num_ambient)
+        else:
+            bounds = None
+        
+        scipy_constraints = []
+        
         # AGGREGATE CONSTRAINT
         if opt_mgr._control_eval_system.constraint_aggregate is not None:
-            aggregate_constraint = \
-                opt_mgr._control_eval_system.constraint_aggregate.scipy_object(
-                x_order=x_order,
-                x_shapes_dict=x_shapes_dict,
-                num_points=num_ac,
-                x_constraint_evaluation=all_aggregates_w_cache
+            scipy_constraints.append(
+                opt_mgr._control_eval_system.constraint_aggregate.scipy_constraint(
+                    aggregate_order=opt_mgr._aggregate_order,
+                    aggregate_shapes_dict=opt_mgr._aggregate_shapes,
+                    aggregate_evaluation=all_aggregates_w_cache,
+                    num_points=opt_mgr.num_ambient)
             )
-            constraints.append(aggregate_constraint)
 
         # ACCUMULATED CONSTRAINT
         if opt_mgr._control_eval_system.constraint_accumulated is not None:
-            acc_metrics_constraint = \
-                opt_mgr._control_eval_system.constraint_accumulated.scipy_object(
-                    x_order=x_order,
-                    x_shapes_dict=x_shapes_dict,                     
-                    x_constraint_evaluation=expected_acc_metrics_w_cache)
-            constraints.append(acc_metrics_constraint)
-        
+            scipy_constraints.append(
+                opt_mgr._control_eval_system.constraint_accumulated.scipy_constraint(
+                    accumulated_order=opt_mgr._acc_metrics_order,
+                    accumulated_shapes_dict=opt_mgr._acc_metrics_shapes,
+                    accumulated_evaluation=expected_acc_metrics_w_cache)
+            )
+            
         # SCIPY-OPTIMIZATION
         x0 = opt_mgr._control_policy.control_out_data().to_vector()
         res = minimize(cost_function,
                        x0,
-                       method=self.scipy_method,
+                       method=self._scipy_method,
                        bounds=bounds,
-                       constraints=constraints,
-                       options=self.scipy_options)
-        # TODO: Fix retrieval of DataTable properties:
-        optimal_control_setpoints = DataTable.from_vector(
+                       constraints=scipy_constraints,
+                       options=self._scipy_options)
+        
+        # Create optimal control policy
+        optimal_control = DataTable.from_vector(
             data_vector=res.x,
             order=opt_mgr._control_order,
             shapes_dict=opt_mgr._control_shapes,
-            num_points=opt_mgr._control_len)
+            num_points=opt_mgr.num_ambient)
+        
         optimal_control_policy = DiscreteControlPolicy(
             name="optimal_policy",
             ambient_support_data=opt_mgr._ambient_sample.ambient_support,
-            control_out_data=optimal_control_setpoints            
+            control_out_data=optimal_control            
         )
         
         final_acc_metrics = opt_mgr._control_eval_system.expected_acc_metrics(
@@ -542,12 +563,14 @@ class SimultaneousOptimization(ControlPolicyOptimization):
                     f"{final_acc_metrics}")
         return optimal_control_policy
      
-def simultaneous_optimization_from_dict(param_dict: Dict[str, Any]):
+def simultaneous_optimization_from_dict(param_dict: Dict[str, Any | Dict]):
     max_num_amb_cond = param_dict["max_num_ambients"]
+    control_shapes = {Control(ctrl_var): tuple(shape) for ctrl_var, shape in param_dict["control_shapes"].items()}
     scipy_method = param_dict["scipy_method"]
     scipy_options = param_dict["scipy_options"]
     return SimultaneousOptimization(
         max_num_amb_cond=max_num_amb_cond,
+        control_shapes=control_shapes,
         scipy_method=scipy_method,
         scipy_options=scipy_options)
 

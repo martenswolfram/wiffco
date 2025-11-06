@@ -185,28 +185,15 @@ class DataTable(Generic[DataType]):
         return self.abs_tols[key]
 
     def to_vector(self,
-                  order: List[DataType] | None = None,
-                  fill_shapes: Dict[DataType, Tuple[int, ...]] | None = None,
-                  fill_value: float | None = None,
-                  batch_multiply: int | None = None) -> np.ndarray:
+                  order: List[DataType] | None = None) -> np.ndarray:
         """
         Flatten and concatenate all variable arrays into a single vector.
         Note that the order can be specified different from own order.
-        Elements for missing variables are filled with fill_value.
         """
-        def fill_vec(shape: Tuple[int, ...]):
-            return np.full(shape=np.prod(shape, dtype=int), fill_value=fill_value)
-
         if order is None:
             order = self.order
-        if batch_multiply is None:
-            return np.concatenate([self.data[k].ravel() \
-                                   if k in self.keys() else fill_vec(fill_shapes[k]) \
-                                    for k in order])
-        else:
-            # For batch evaluation, tile the data for each variable
-            return np.concatenate([np.tile(self.data[k].ravel(), batch_multiply) for k in order])
-
+        return np.concatenate([self.data[k].ravel() for k in order])
+        
     def to_matrix(self,
                   order: List[DataType] | None = None) -> np.ndarray:
         """Flatten all variable arrays and combine into a single 2D matrix.
@@ -217,17 +204,6 @@ class DataTable(Generic[DataType]):
         flattened = [self.data[k].reshape(self.size, -1) for k in order]
         return np.concatenate(flattened, axis=1)
     
-    def update_from_vector(self, vector: np.ndarray):
-        """
-        Update variable data from a flattened vector.
-        Note that this assumes that the vector was created with matching order.
-        """
-        offset = 0
-        for key in self.order:
-            size = self.data[key].size
-            self.data[key] = vector[offset:offset+size].reshape(self.data[key].shape)
-            offset += size
-
     def __eq__(self, other: object) -> bool:
         """Compare two DataCollections elementwise within tolerance."""
         if not isinstance(other, DataTable):
@@ -309,7 +285,7 @@ class DataTable(Generic[DataType]):
                                         for k in self.order))
         return print_table(table)
     
-    def expected_value(self, probabilities: coo_matrix):
+    def expected_value(self, probabilities: np.ndarray | coo_matrix):
         # probabilities: shape [N, M]
         # self.data[.]: [N, ...]
         if probabilities.shape[0] != self.size:

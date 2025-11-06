@@ -51,7 +51,7 @@ class MultiMetricsReduction(Component):
         ...
 
 
-    def cost_function(self, eval_acc_metrics_from_x):
+    def cost_function(self, eval_metrics_from_x):
         """Return a cost function suitable for optimization routines.
 
         Args:
@@ -61,7 +61,7 @@ class MultiMetricsReduction(Component):
             Callable: Cost function that returns a scalar.
         """
         def eval_cost(x):
-            acc_metrics_eval = eval_acc_metrics_from_x(x)
+            acc_metrics_eval = eval_metrics_from_x(x)
             result = self.evaluate(acc_metrics=acc_metrics_eval)
             return -result if self.maximize else result
         return eval_cost

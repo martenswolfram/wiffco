@@ -36,7 +36,7 @@ ambient_statistics = statistics_from_json(json_path=json_path)
 
 def perturbed_control_policy_test(
         control_eval_system: ControlEvaluationSystem,
-        ambient_condition_statistics: AmbientStatistics,
+        ambient_statistics: AmbientStatistics,
         original_policy: DiscreteControlPolicy,
         perturbation_num: int,
         optimality_tol: float = 0,
@@ -44,7 +44,7 @@ def perturbed_control_policy_test(
         discrete_steps: Dict[Control, float] | None = None):
     
     # Validate original result
-    ambient_sample = ambient_condition_statistics.systematic_sample()
+    ambient_sample = ambient_statistics.systematic_sample()
     ambient = ambient_sample.ambient_support
 
     def evaluate_policy(policy: DiscreteControlPolicy):
@@ -110,27 +110,27 @@ def test_grid_search():
     
     # Evaluate result
     perturbed_control_policy_test(control_eval_system=control_evaluation_system,
-                                  ambient_condition_statistics=ambient_statistics,
+                                  ambient_statistics=ambient_statistics,
                                   original_policy=optimal_policy,
                                   perturbation_num=100,
                                   discrete_steps={Control.POWER_REGULATION: 1})
 
-# def test_simultaneous_optimization():
-#     json_path = test_data_folder / "optimization_simultaneous.jsonc"
-#     simultaneous_optimization: SimultaneousOptimization = control_optimization_from_json(json_path=json_path)
+def test_simultaneous_optimization():
+    json_path = test_data_folder / "optimization_simultaneous.jsonc"
+    simultaneous_optimization: SimultaneousOptimization = control_optimization_from_json(json_path=json_path)
     
-#     # Optimization
-#     optimal_policy = simultaneous_optimization.optimize_policy(
-#         control_eval_system=control_evaluation_system,
-#         ambient_condition_statistics=ambient_statistics)
+    # Optimization
+    optimal_policy = simultaneous_optimization.optimize_policy(
+        control_eval_system=control_evaluation_system,
+        ambient_statistics=ambient_statistics)
     
-#     # Evaluate result
-#     perturbed_control_policy_test(control_evaluation_system=control_evaluation_system,
-#                                   ambient_condition_statistics=ambient_statistics,
-#                                   optimal_policy=optimal_policy,
-#                                   perturbation_scale=1,
-#                                   perturbation_num=100,
-#                                   optimality_tol=1e-4)
+    # Evaluate result
+    perturbed_control_policy_test(control_eval_system=control_evaluation_system,
+                                  ambient_statistics=ambient_statistics,
+                                  original_policy=optimal_policy,
+                                  perturbation_num=100,
+                                  optimality_tol=1e-4,
+                                  perturbation_scale=1)
 
 
 # def test_lagrangian_relaxation():
