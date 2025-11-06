@@ -9,6 +9,7 @@ from typing import (
     Any
 )
 import numpy as np
+from scipy.sparse import coo_matrix
 from dataclasses import dataclass
 from abc import ABC
 from enum import Enum
@@ -306,7 +307,7 @@ class DataTable(Generic[DataType]):
                                         for k in self.order))
         return print_table(table)
     
-    def expected_value(self, probabilities: np.ndarray):
+    def expected_value(self, probabilities: coo_matrix):
         # probabilities: shape [N, M]
         # self.data[.]: [N, ...]
         if probabilities.shape[0] != self.size:
@@ -317,9 +318,12 @@ class DataTable(Generic[DataType]):
         p = probabilities / np.sum(probabilities, axis=0)
 
         expected_data = {}
-        for key, values in self.data.items():
+        for key, data in self.data.items():
             # Compute weighted sum along axis 0
-            expected_data[key] = np.tensordot(p, values, axes=(0, 0))
+            data_reshaped = data.reshape(self.size, -1)
+            expected_reshaped = p.T @ data_reshaped
+            expected_data[key] = expected_reshaped.reshape(
+                probabilities.shape[1], *data.shape[1:])
 
         return DataTable(expected_data, self.order)
     

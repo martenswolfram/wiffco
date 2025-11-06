@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 import numpy as np
 import logging
 from scipy.optimize import minimize, Bounds
+from scipy.sparse import coo_matrix
 from functools import lru_cache
 import itertools
 from enum import Enum
@@ -264,27 +265,38 @@ class GridSearch(ControlPolicyOptimization):
         # Admissible ctrl policies based on admissible ctrl settings
         num_admissible_policies = np.prod(admissible_control_settings_shape)
         logger.info(f"Evaluating {num_admissible_policies} control policies.")
-        admissible_policies = itertools.product(*admissible_control_settings)
-
+        
         # Mapping between all scenarios and admissible scenarios
         num_admissible_scenarios = len(admissible_aggregates)
         admissible_range = range(num_admissible_scenarios)
         full_to_admissible_mapping = dict(zip(instant_admissible, admissible_range))
 
         # Prepare probabilities for each policy, mapped onto admissible aggregates  
-        probabilities = np.zeros(shape=(num_admissible_scenarios, num_admissible_policies))
-        for policy_index, policy in enumerate(admissible_policies):
-            # Indices in admissible metrics accumulation
-            full_aggregate_indices = np.ravel_multi_index([ambient_range,
-                                                           policy],
+        # rows = []
+        # cols = []
+        # data = []
+
+        a = np.tile(ambient_range, reps=num_admissible_policies)
+        grid = np.meshgrid(*admissible_control_settings, indexing='ij')
+        c = np.stack(grid, axis=-1).ravel()
+
+        full_aggregate_indices = np.ravel_multi_index([a,
+                                                       c],
                                                            dims=(num_ambients,
                                                                  num_ctrl_settings))
-            scenario_indices = [full_to_admissible_mapping[full_index] for full_index in full_aggregate_indices]
-            probabilities[scenario_indices, policy_index] = ambient_sample.normalized_weights
-
+        max_val = full_aggregate_indices.max()
+        lut = np.arange(max_val + 1, dtype=int)
+        for k, v in full_to_admissible_mapping.items():
+            if k <= max_val:
+                lut[k] = v
+        rows = lut[full_aggregate_indices]
+        cols = np.repeat(np.arange(num_admissible_policies), repeats=num_ambients)
+        data = np.tile(ambient_sample.normalized_weights, reps=num_admissible_policies) 
+        probabilities_coo = coo_matrix((data, (rows, cols)),
+                                       shape=(num_admissible_scenarios, num_admissible_policies))
         # Expected metrics for each policy
         admissible_metrics_accumulations = admissible_metrics_accumulation.expected_value(
-            probabilities=probabilities
+            probabilities=probabilities_coo
         )
         
         # Evaluate acc metrics constraint
