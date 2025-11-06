@@ -34,11 +34,6 @@ control_evaluation_system = control_evaluation_system_from_json(json_path=json_p
 json_path = test_data_folder / "statistics_discrete_ambient.jsonc"
 ambient_statistics = statistics_from_json(json_path=json_path)
 
-# Duration
-duration = 20
-
-
-
 def perturbed_control_policy_test(
         control_eval_system: ControlEvaluationSystem,
         ambient_condition_statistics: AmbientStatistics,
@@ -104,7 +99,7 @@ def perturbed_control_policy_test(
                 
             assert perturbed_is_suboptimal
 
-@pytest.mark.line_profile.with_args(GridSearch.optimize_policy)
+# @pytest.mark.line_profile.with_args(GridSearch.optimize_policy)
 def test_grid_search():
     json_path = test_data_folder / "optimization_grid_search.jsonc"
     grid_search: GridSearch = control_optimization_from_json(json_path=json_path)

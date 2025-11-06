@@ -7,5 +7,5 @@
     "constraint_aggregate_file": "constraint_aggregate.jsonc",
     "constraint_accumulated_file": "constraint_accumulated.jsonc",
     "metrics_accumulation_file": "discounted_integration.jsonc",
-    "metrics_reduction_file": "metrics_reduction_scalar_weighting.jsonc"
+    "metrics_reduction_file": "scalar_weighting.jsonc"
 }

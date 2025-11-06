@@ -137,6 +137,8 @@ class DataTable(Generic[DataType]):
             self.data_type = type(self.order[0])
             if self.abs_tols is None:
                 self.abs_tols = {dv: get_abs_tol(dv) for dv in self.order}
+            if not all([key_data.ndim > 0 for key_data in self.data.values()]):
+                raise ValueError("Input data must have ndim > 0.")
             num_points = [key_data.shape[0] for key_data in self.data.values()]
             if len(set(num_points)) != 1:
                 raise ValueError("Inconsistent number of data entries.")

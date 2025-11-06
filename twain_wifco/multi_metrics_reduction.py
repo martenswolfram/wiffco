@@ -26,7 +26,7 @@ class MultiMetricsReduction(Component):
     def maximize(self):
         return self._maximize
 
-    def evaluate(self, acc_metrics: DataTable[AccumulatedMetric]) -> float:
+    def evaluate(self, acc_metrics: DataTable[AccumulatedMetric]) -> np.array:
         """Evaluate the multi-metrics reduction for given accumulated metrics.
 
         Args:
