@@ -47,8 +47,8 @@ def test_aggregate_constraint():
         
     # Constraint evaluation
     constraint_satisfied = aggregate_constraint.evaluate_satisfied(
-        constraint_input=DataTable({Aggregate.DAMAGE_RATE: np.array([[40],
-                                                                     [40]]),
+        constraint_input=DataTable({Aggregate.DAMAGE_RATE: np.array([[41],
+                                                                     [41]]),
                                     Aggregate.REVENUE_RATE: np.array([0,
                                                                       0])})
     )
