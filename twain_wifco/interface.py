@@ -307,23 +307,21 @@ class DataTable(Generic[DataType]):
         return print_table(table)
     
     def expected_value(self, probabilities: np.ndarray):
-        if probabilities.shape != (self.size,):
+        # probabilities: shape [N, M]
+        # self.data[.]: [N, ...]
+        if probabilities.shape[0] != self.size:
             raise ValueError(
-                f"Expected probabilities of shape ({self.size},), got {probabilities.shape}."
+                f"Expected probabilities of shape ({self.size}, N), got {probabilities.shape}."
             )
         # Normalize probabilities in case they don't sum exactly to 1
-        p = probabilities / np.sum(probabilities)
+        p = probabilities / np.sum(probabilities, axis=0)
 
         expected_data = {}
         for key, values in self.data.items():
             # Compute weighted sum along axis 0
-            if values.ndim == 1:
-                exp_val = np.sum(values * p)
-            else:
-                exp_val = np.sum(values * p[:, np.newaxis], axis=0)
-            expected_data[key] = exp_val[np.newaxis, ...]  # make it 1-row table
+            expected_data[key] = np.tensordot(p, values, axes=(0, 0))
 
-        return DataPoint(expected_data, self.order)
+        return DataTable(expected_data, self.order)
     
     def tile(self, reps: int):
         tiled_data = {key: np.tile(
@@ -338,8 +336,8 @@ class DataTable(Generic[DataType]):
                                         axis=0) for key in self.order}
         return DataTable(data=repeated_data)
     
-    def extract(self, indices: np.ndarray | List[int]):
-        if not len(indices):
+    def extract(self, indices: np.ndarray):
+        if len(indices) == 0:
             raise ValueError("Need at least one index to extract from DataTable.")
         
         extracted_data = {key: self.data[key][indices] for key in self.order}

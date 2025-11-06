@@ -30,23 +30,23 @@ class MultiMetricsReduction(Component):
         """Evaluate the multi-metrics reduction for given accumulated metrics.
 
         Args:
-            acc_metrics (DataTable[AccumulatedMetric]): Accumulated metrics to reduce.
+            acc_metrics (DataTable[AccumulatedMetric]): Accumulated metrics to reduce
 
         Returns:
-            float: Scalar reduction of the metrics.
+            np.array: Scalar reduction of the metrics for each point in acc. metrics DataTable
         """
         self.validate_input(input_tables=[acc_metrics])
         return self._evaluate(acc_metrics=acc_metrics)
 
     @abstractmethod
-    def _evaluate(self, acc_metrics: DataTable[AccumulatedMetric]) -> float:
+    def _evaluate(self, acc_metrics: DataTable[AccumulatedMetric]) -> np.array:
         """Evaluate the multi-metrics reduction for given accumulated metrics.
 
         Args:
             acc_metrics (DataTable[AccumulatedMetric]): Accumulated metrics to reduce.
 
         Returns:
-            float: Scalar reduction of the metrics.
+            np.array: Scalar reduction of the metrics for each point in acc. metrics DataTable
         """
         ...
 
@@ -97,17 +97,18 @@ class ScalarWeighting(MultiMetricsReduction):
 
         self.output_interface = Interface()
 
-    def _evaluate(self, acc_metrics: DataTable[AccumulatedMetric]) -> float:
+    def _evaluate(self, acc_metrics: DataTable[AccumulatedMetric]) -> np.array:
         """Compute scalar weighted sum of accumulated metrics.
 
         Args:
             acc_metrics (DataTable[AccumulatedMetric]): Accumulated metrics to reduce.
 
         Returns:
-            float: Weighted sum of metrics.
+            np.array: Scalar reduction of the metrics for each point in acc. metrics DataTable
         """
         result = sum(
-            weight * np.sum(acc_metrics[metric])
+            weight * np.sum(acc_metrics[metric],
+                            axis=tuple(range(1, acc_metrics[metric].ndim)))
             for metric, weight in self._metric_weights.items()
         )
         return result

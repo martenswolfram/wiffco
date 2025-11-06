@@ -50,7 +50,7 @@ class Constraint(Component):
             constraints_satisfied &= np.all(constraint_input[var] < bound.upper,
                                             axis=trailing_axes)
             
-        return constraints_satisfied
+        return np.where(constraints_satisfied)[0]
     
     def get_flat_bounds(self,
                         var_order: List[DataType],

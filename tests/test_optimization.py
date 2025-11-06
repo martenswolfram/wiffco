@@ -1,5 +1,6 @@
 import pathlib
 import numpy as np
+import pytest
 from typing import Dict
 import logging
 from twain_wifco.config import (
@@ -59,18 +60,18 @@ def perturbed_control_policy_test(
                 ambient=ambient,
                 control=policy.get_control(ambient=ambient))
     
-        if not np.all(instant_constraints_satisfied):
+        if len(instant_constraints_satisfied) < len(ambient):
             return False, None
     
         acc_metrics = control_eval_system.metrics_accumulation.acc_metrics(
             aggregate=aggregate)
         expected_acc_metrics = acc_metrics.expected_value(
-            probabilities=ambient_sample.normalized_weights)
+            probabilities=ambient_sample.normalized_weights[:, np.newaxis])
         acc_constraints_satisfied = \
             control_eval_system.constraint_accumulated.evaluate_satisfied(
             constraint_input=expected_acc_metrics)
         
-        if not acc_constraints_satisfied[0]:
+        if not len(acc_constraints_satisfied) == 1:
             return False, None
 
         multi_metrics_reduction = control_eval_system.multi_metrics_reduction.evaluate(
@@ -103,12 +104,13 @@ def perturbed_control_policy_test(
                 
             assert perturbed_is_suboptimal
 
+# @pytest.mark.line_profile.with_args(GridSearch.optimize_policy)
 def test_grid_search():
     json_path = test_data_folder / "optimization_grid_search.jsonc"
     grid_search: GridSearch = control_optimization_from_json(json_path=json_path)
     
     # Optimization
-    optimal_policy = grid_search.optimize_policy(control_eval_system=control_evaluation_system,
+    optimal_policy = grid_search.optimize_policy(ctrl_eval_sys=control_evaluation_system,
                                                  ambient_statistics=ambient_statistics)
     
     # Evaluate result

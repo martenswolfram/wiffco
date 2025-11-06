@@ -26,7 +26,7 @@ for file_name in ["optimization_grid_search.jsonc",
     
     # Optimization
     optimal_policy = optimization.optimize_policy(
-        control_eval_system=control_evaluation_system,
+        ctrl_eval_system=control_evaluation_system,
         ambient_statistics=ambient_statistics,
         duration=duration)
 

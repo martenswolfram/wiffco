@@ -65,27 +65,33 @@ class ControlEvaluationSystem:
                                        ambient: DataTable[Ambient],
                                        control: DataTable[Control]):
         
-        constraints_satisfied = np.full(shape=(len(ambient),), fill_value=True)
+        # Indices that are admissible w.r.t. to control
+        control_admissible = np.arange(len(ambient))
         if self.constraint_control is not None:
-            constraints_satisfied &= self.constraint_control.evaluate_satisfied(
+            control_admissible = self.constraint_control.evaluate_satisfied(
                 constraint_input=control)
+        if len(control_admissible) == 0:
+            return None, np.array([])
         
-        if not any(constraints_satisfied):
-            return None, constraints_satisfied
+        # Compute aggregates for admissible controls only
+        control_admissible_aggregates = self.aggregate_from_amb(
+            ambient=ambient.extract(indices=control_admissible),
+            control=control.extract(indices=control_admissible))
         
-        aggregate = self.aggregate_from_amb(ambient=ambient.extract(constraints_satisfied),
-                                            control=control.extract(constraints_satisfied))
-        aggregate_satisfied = np.full(shape=(np.count_nonzero(constraints_satisfied),), fill_value=True)
+        # Aggregate-admissible indices among control-admissible
+        aggr_admissible_among_ctrl_admissible = np.arange(len(control_admissible))
         if self.constraint_aggregate is not None:
-            aggregate_satisfied &= self.constraint_aggregate.evaluate_satisfied(
-                constraint_input=aggregate)
+            aggr_admissible_among_ctrl_admissible = self.constraint_aggregate.evaluate_satisfied(
+                constraint_input=control_admissible_aggregates)
 
-        constraints_satisfied[constraints_satisfied] = aggregate_satisfied
-        if not any(constraints_satisfied):
-            return None, constraints_satisfied
+        # Both control and aggregate admissible indices
+        admissible = control_admissible[aggr_admissible_among_ctrl_admissible]
+        if len(admissible) == 0:
+            return None, np.array([])
         
-        feasible_aggregate = aggregate.extract(aggregate_satisfied)
-        return feasible_aggregate, constraints_satisfied
+        # Return admissible aggregates and indices
+        admissible_aggregates = control_admissible_aggregates.extract(indices=aggr_admissible_among_ctrl_admissible)
+        return admissible_aggregates, admissible
                 
     def acc_metrics_from_amb(self,
                              ambient: DataTable[Ambient],
@@ -133,7 +139,8 @@ class ControlEvaluationSystem:
             ambient=ambient,
             control=control)
         acc_metrics = self.metrics_accumulation.acc_metrics(aggregate=aggregate)
-        return acc_metrics.expected_value(probabilities=ambient_sample.normalized_weights)
+        return acc_metrics.expected_value(
+            probabilities=ambient_sample.normalized_weights[:, np.newaxis])
 
     def expected_acc_metrics_constr_eval(self,
                                          ambient_statistics: AmbientStatistics,
@@ -185,9 +192,9 @@ class GridSearch(ControlPolicyOptimization):
                  control_grid_vectors: Dict[Control, ControlGridVectors]):
         self.max_num_amb_cond = max_num_amb_cond
         self.control_grid_vectors = control_grid_vectors
-        
+    
     def optimize_policy(self,
-                        control_eval_system: ControlEvaluationSystem,
+                        ctrl_eval_sys: ControlEvaluationSystem,
                         ambient_statistics: AmbientStatistics):
         
         logger.info(f"GridSearch: Find optimal control policy")
@@ -225,23 +232,25 @@ class GridSearch(ControlPolicyOptimization):
         control = DataTable.from_matrix(data_matrix=control_settings_matrix,
                                         order=ctrl_variables_order,
                                         shapes_dict=ctrl_shapes_dict)
-        # All combinations of ambient conditions and control settings
+        # All scenarios (combinations of ambient conditions and control settings)
         ambient_tiled = ambient.repeat(num_ctrl_settings)
         control_repeated = control.tile(num_ambients)
         
-        # Compute feasible aggregates
-        admissible_aggregates, instant_constraints_satisfied = control_eval_system.aggregate_from_amb_constr_eval(
+        # Find admissible scenarios and their aggregates
+        admissible_aggregates, instant_admissible = \
+            ctrl_eval_sys.aggregate_from_amb_constr_eval(
             ambient=ambient_tiled,
             control=control_repeated)
+        if len(instant_admissible) == 0:
+            raise ValueError("Failed to find admissible policy due to instantaneous constraints-violation.")
         
-        # Mapping between full matrix and feasible control settings
-        num_admissible = len(admissible_aggregates)
-        admissible_range = range(num_admissible)
-        admissible_indices = np.where(instant_constraints_satisfied)[0]
-        full_to_admissible_mapping = dict(zip(admissible_indices, admissible_range))        
+        # Compute acc metrics for admissible aggregates
+        admissible_metrics_accumulation = ctrl_eval_sys.metrics_accumulation.acc_metrics(
+            aggregate=admissible_aggregates)
+        pass
         
-        # Feasible control settings for each ambient condition 
-        ac_indices, ctrl_indices = np.unravel_index(admissible_indices,
+        # Admissible control settings for each ambient condition 
+        ac_indices, ctrl_indices = np.unravel_index(instant_admissible,
                                                     shape=(num_ambients,
                                                            num_ctrl_settings))
         ambient_range = range(num_ambients)
@@ -251,49 +260,63 @@ class GridSearch(ControlPolicyOptimization):
         
         admissible_control_settings_shape = tuple(len(ctrl_settings) for \
                                                   ctrl_settings in admissible_control_settings)
-        num_ctrl_policies = np.prod(admissible_control_settings_shape)
-        logger.info(f"Evaluating {num_ctrl_policies} control policies.")
+        
+        # Admissible ctrl policies based on admissible ctrl settings
+        num_admissible_policies = np.prod(admissible_control_settings_shape)
+        logger.info(f"Evaluating {num_admissible_policies} control policies.")
+        admissible_policies = itertools.product(*admissible_control_settings)
 
-        admissible_ctrl_strategies = itertools.product(*admissible_control_settings)
-        feasible_strategies = {}
-        for strategy_index, ctrl_strategy in enumerate(admissible_ctrl_strategies):
-            # Retrieve pre-computed aggregate results
+        # Mapping between all scenarios and admissible scenarios
+        num_admissible_scenarios = len(admissible_aggregates)
+        admissible_range = range(num_admissible_scenarios)
+        full_to_admissible_mapping = dict(zip(instant_admissible, admissible_range))
+
+        # Prepare probabilities for each policy, mapped onto admissible aggregates  
+        probabilities = np.zeros(shape=(num_admissible_scenarios, num_admissible_policies))
+        for policy_index, policy in enumerate(admissible_policies):
+            # Indices in admissible metrics accumulation
             full_aggregate_indices = np.ravel_multi_index([ambient_range,
-                                                           ctrl_strategy],
+                                                           policy],
                                                            dims=(num_ambients,
                                                                  num_ctrl_settings))
-            aggregate_result = admissible_aggregates.extract(
-                indices=[full_to_admissible_mapping[full_index] for full_index in full_aggregate_indices])
-            # Compute expected metrics
-            acc_metrics = control_eval_system.metrics_accumulation.acc_metrics(
-                aggregate=aggregate_result)
-            expected_acc_metrics = acc_metrics.expected_value(probabilities=ambient_sample.normalized_weights)
-            if control_eval_system.constraint_accumulated is not None:
-                acc_metrics_constraint_satisfied = control_eval_system.constraint_accumulated.evaluate_satisfied(
-                    constraint_input=expected_acc_metrics)
-                if not acc_metrics_constraint_satisfied[0]:
-                    continue
-            multi_metrics_reduction = control_eval_system.multi_metrics_reduction.evaluate(
-                acc_metrics=expected_acc_metrics)
-            feasible_strategies[strategy_index] = multi_metrics_reduction
-                
-        # Find the optimal control strategy that satisfies the constraints
-        if not len(feasible_strategies):
-            raise ValueError("Failed to find feasible policy due to constraints-violation.")
-        if control_eval_system.multi_metrics_reduction.maximize:
-            best_index = max(feasible_strategies, key=feasible_strategies.get)
-        else:
-            best_index = min(feasible_strategies, key=feasible_strategies.get)
+            scenario_indices = [full_to_admissible_mapping[full_index] for full_index in full_aggregate_indices]
+            probabilities[scenario_indices, policy_index] = ambient_sample.normalized_weights
+
+        # Expected metrics for each policy
+        admissible_metrics_accumulations = admissible_metrics_accumulation.expected_value(
+            probabilities=probabilities
+        )
         
+        # Evaluate acc metrics constraint
+        acc_metrics_admissible = np.arange(num_admissible_policies)
+        if ctrl_eval_sys.constraint_accumulated is not None:
+            acc_metrics_admissible = ctrl_eval_sys.constraint_accumulated.evaluate_satisfied(
+                constraint_input=admissible_metrics_accumulations)
+        if len(acc_metrics_admissible) == 0:
+            raise ValueError("Failed to find feasible policy due to acc. constraints-violation.")
+        
+        admissible_multi_metrics_reduction = ctrl_eval_sys.multi_metrics_reduction.evaluate(
+            acc_metrics=admissible_metrics_accumulations.extract(acc_metrics_admissible))
+        
+        # Find the optimal control strategy that satisfies the constraints
+        if ctrl_eval_sys.multi_metrics_reduction.maximize:
+            best_admissible_index = np.argmax(admissible_multi_metrics_reduction)
+        else:
+            best_admissible_index = np.argmax(admissible_multi_metrics_reduction)
+
+
+        best_index = acc_metrics_admissible[best_admissible_index]
+
         # Specify discrete control strategy
-        # best strategy in admissible strategies (flat index)
-        best_admissible_strategy = np.unravel_index(best_index, shape=admissible_control_settings_shape)
-        # Map back to all strategies (flat index)
-        best_strategy = [admissible_control_settings[ac][ind] for ac, ind in enumerate(best_admissible_strategy)]
+        # best strategy among admissible strategies
+        best_strategy_index = np.unravel_index(best_index, shape=admissible_control_settings_shape)
+        # Retrieve control settings (flat index)
+        best_strategy = [admissible_control_settings[ac][ind] for \
+                         ac, ind in enumerate(best_strategy_index)]
         # list of indices for each control input
         ctrl_grid_vector_indices = np.unravel_index(indices=best_strategy,
                                        shape=(tuple(len(vec) for vec in ctrl_grid_vectors_list)))
-        # Transform to matrix: rows -> ambient condition indices, columns -> control input indices
+        # Transform to index-matrix: rows -> ambient condition indices, columns -> control input indices
         ctrl_grid_vector_ind_matrix = np.array(ctrl_grid_vector_indices).T
         # Retrieve control input values from grid vectors
         control_matrix = [[ctrl_grid_vector[ctrl_grid_vector_ind_matrix[amb, ctrl]] for \
@@ -310,7 +333,7 @@ class GridSearch(ControlPolicyOptimization):
             ambient_support_data=ambient,
             control_out_data=control_out_data)
     
-        final_acc_metrics = control_eval_system.expected_acc_metrics(
+        final_acc_metrics = ctrl_eval_sys.expected_acc_metrics(
             ambient_statistics=ambient_statistics,
             control_policy=optimal_policy)
         logger.info(f"Grid-search optimization final control policy:\n"
