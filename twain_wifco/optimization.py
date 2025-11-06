@@ -28,6 +28,7 @@ from twain_wifco.multi_metrics_reduction import MultiMetricsReduction
 logger = logging.getLogger(__name__)
 
 MAX_NUM_EVALS = 1e4
+MAX_NUM_POLICIES = 1e7
 
 class ControlEvaluationSystem:
     def __init__(self,
@@ -221,7 +222,7 @@ class GridSearch(ControlPolicyOptimization):
         
         if num_eval > MAX_NUM_EVALS:
             raise ValueError(f"The number of plant model evaluations {num_eval} is"
-                             f"too large for grdis search optimization.")
+                             f" too large for grdis search optimization.")
 
         logger.info(f"Performing {num_eval} system evaluations.")
         
@@ -264,6 +265,10 @@ class GridSearch(ControlPolicyOptimization):
         
         # Admissible ctrl policies based on admissible ctrl settings
         num_admissible_policies = np.prod(admissible_control_settings_shape)
+        if num_admissible_policies > MAX_NUM_POLICIES:
+            raise ValueError(f"The number of admissible policies {num_admissible_policies} is"
+                             f" too large for grid search optimization.")
+
         logger.info(f"Evaluating {num_admissible_policies} control policies.")
         
         # Mapping between all scenarios and admissible scenarios
@@ -271,29 +276,26 @@ class GridSearch(ControlPolicyOptimization):
         admissible_range = range(num_admissible_scenarios)
         full_to_admissible_mapping = dict(zip(instant_admissible, admissible_range))
 
-        # Prepare probabilities for each policy, mapped onto admissible aggregates  
-        # rows = []
-        # cols = []
-        # data = []
+        ambient_tiled = np.tile(ambient_range, reps=num_admissible_policies)
+        ctrl_settings_grid = np.meshgrid(*admissible_control_settings, indexing='ij')
+        ctrl_settings_stacked = np.stack(ctrl_settings_grid, axis=-1).ravel()
 
-        a = np.tile(ambient_range, reps=num_admissible_policies)
-        grid = np.meshgrid(*admissible_control_settings, indexing='ij')
-        c = np.stack(grid, axis=-1).ravel()
-
-        full_aggregate_indices = np.ravel_multi_index([a,
-                                                       c],
-                                                           dims=(num_ambients,
-                                                                 num_ctrl_settings))
-        max_val = full_aggregate_indices.max()
-        lut = np.arange(max_val + 1, dtype=int)
-        for k, v in full_to_admissible_mapping.items():
-            if k <= max_val:
-                lut[k] = v
+        full_aggregate_indices = np.ravel_multi_index([ambient_tiled,
+                                                       ctrl_settings_stacked],
+                                                       dims=(num_ambients,
+                                                             num_ctrl_settings))
+        
+        # Look-up table to replace full eval indices by admissible aggregate indices
+        lut = np.empty(num_eval, dtype=int)
+        for k, v in enumerate(instant_admissible):
+            lut[v] = k
+        # Sparse probabilities matrix
         rows = lut[full_aggregate_indices]
         cols = np.repeat(np.arange(num_admissible_policies), repeats=num_ambients)
         data = np.tile(ambient_sample.normalized_weights, reps=num_admissible_policies) 
         probabilities_coo = coo_matrix((data, (rows, cols)),
                                        shape=(num_admissible_scenarios, num_admissible_policies))
+        
         # Expected metrics for each policy
         admissible_metrics_accumulations = admissible_metrics_accumulation.expected_value(
             probabilities=probabilities_coo

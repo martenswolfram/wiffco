@@ -104,7 +104,7 @@ def perturbed_control_policy_test(
                 
             assert perturbed_is_suboptimal
 
-# @pytest.mark.line_profile.with_args(GridSearch.optimize_policy)
+@pytest.mark.line_profile.with_args(GridSearch.optimize_policy)
 def test_grid_search():
     json_path = test_data_folder / "optimization_grid_search.jsonc"
     grid_search: GridSearch = control_optimization_from_json(json_path=json_path)
