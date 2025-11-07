@@ -17,7 +17,7 @@ class MultiMetricsReduction(Component):
     """Abstract base class to reduce multiple accumulated metrics to a scalar value.
 
     Args:
-        maximize (bool): Whether the evaluation is to be maximized.
+        maximize (bool): Whether the evaluation is to be maximized or minimized.
     """
     def __init__(self, maximize: bool):
         self._maximize = maximize

@@ -284,8 +284,7 @@ class GridSearch(ControlPolicyOptimization):
         # Mapping between all scenarios and admissible scenarios
         num_admissible_scenarios = len(admissible_aggregates)
         admissible_range = range(num_admissible_scenarios)
-        full_to_admissible_mapping = dict(zip(instant_admissible, admissible_range))
-
+        
         ambient_tiled = np.tile(ambient_range, reps=num_admissible_policies)
         ctrl_settings_grid = np.meshgrid(*admissible_control_settings, indexing='ij')
         ctrl_settings_stacked = np.stack(ctrl_settings_grid, axis=-1).ravel()
@@ -599,11 +598,11 @@ class LagrangianLambda:
         upper_bound_shapes = {}
         lower_bound_shapes = {}
         for acc_metric, bound in bounds.items():
-            if not np.isneginf(bound.lower):
-                lower_bound_shapes[acc_metric] = acc_metrics_shapes[acc_metric]
             if not np.isinf(bound.upper):
                 upper_bound_shapes[acc_metric] = acc_metrics_shapes[acc_metric]
-        
+            if not np.isneginf(bound.lower):
+                lower_bound_shapes[acc_metric] = acc_metrics_shapes[acc_metric]
+            
         # Order of accumulated metrics for vectorization
         self.upper_bound_order = list(upper_bound_shapes.keys())
         self.lower_bound_order = list(lower_bound_shapes.keys())
@@ -670,7 +669,7 @@ class LagrangianLambda:
                 self._lagrangian_lambda[i_constr] = (lam_high + lam_low) / 2
             else:
                 step = np.sign(violation[i_constr])
-                self._lagrangian_lambda[i_constr] += step
+                self._lagrangian_lambda[i_constr] += step * 0.01
         if np.all(violation < self.constraint_tol_vector) and \
             np.all(np.abs(self._lambda_high - self._lambda_low) < \
                    self._lambda_abs_tol):
@@ -785,10 +784,14 @@ class LagrangianRelaxation(ControlPolicyOptimization):
                     vector=res.x)
                                     
             if acc_constraint:
-                # Compute final expected accumulated metrics for optimized control
+                # Compute final expected accumulated metrics for optimized control (without lagrangian multipliers)
                 expected_acc_metric = opt_mgr._control_eval_system.expected_acc_metrics(
                     ambient_statistics=ambient_statistics,
                     control_policy=opt_mgr._control_policy)
+                print('------------------------')
+                print(llambda._lagrangian_lambda)
+                print(control)
+                print(expected_acc_metric)
                 # Evaluate constraint violation and update lagrangian lambdas
                 if llambda.process_constraint_violation(acc_metric=expected_acc_metric):
                     # Converged

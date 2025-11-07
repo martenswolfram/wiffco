@@ -105,9 +105,9 @@ def get_abs_tol(data_var: DataVariable) -> float:
         Ambient.WIND_DIRECTION: 0.001,
         Ambient.WIND_SPEED: 0.001,
         Ambient.ELECTRICITY_PRICE: 0.001,
-        Control.POWER_REGULATION: 0.1,
-        Aggregate.DAMAGE_RATE: 0.1,
-        AccumulatedMetric.ACCRUED_DAMAGE: 0.1
+        Control.POWER_REGULATION: 0.001,
+        Aggregate.DAMAGE_RATE: 0.001,
+        AccumulatedMetric.ACCRUED_DAMAGE: 0.001
     }
     return mapping.get(data_var, 0.0)
 
