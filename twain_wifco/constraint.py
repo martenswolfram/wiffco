@@ -71,6 +71,9 @@ class Constraint(Component):
         lb = np.concatenate(flat_lower_bounds * num_points)
         ub = np.concatenate(flat_upper_bounds * num_points)
         return lb, ub
+    
+    def bounds(self) -> Dict[DataType, TwoSidedBound]:
+        return self._bounds
 
 class ControlConstraint(Constraint):
 
@@ -111,7 +114,6 @@ class AggregateConstraint(Constraint):
         })
 
     def scipy_constraint(self,
-                         aggregate_order: List[Aggregate],
                          aggregate_shapes_dict: Dict[Aggregate, Tuple[int, ...]],
                          aggregate_evaluation: Callable,
                          num_points: int):

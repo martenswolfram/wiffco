@@ -40,7 +40,7 @@ class DiscreteControlPolicy(Component):
         
         self.validate_input(input_tables=[ambient])
         point_indices = self._ambient_support_data.find_matching_points(data_table=ambient)
-        return self._control_out_data.get_points(ids=point_indices)
+        return self._control_out_data.extract(indices=point_indices)
 
     def random_perturbation(self,
                             scale: float = 1.0,

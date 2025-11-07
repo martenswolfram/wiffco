@@ -9,13 +9,12 @@ from twain_wifco.config import (
     statistics_from_json)
 from twain_wifco.control_policy import DiscreteControlPolicy
 from twain_wifco.statistics import AmbientStatistics
-from twain_wifco.interface import (
-    Control,
-    DataTable)
+from twain_wifco.interface import Control
 from twain_wifco.optimization import (
     ControlEvaluationSystem,
     GridSearch,
-    SimultaneousOptimization)
+    SimultaneousOptimization,
+    LagrangianRelaxation)
 
 logger = logging.getLogger(__name__)
 
@@ -62,12 +61,13 @@ def perturbed_control_policy_test(
             aggregate=aggregate)
         expected_acc_metrics = acc_metrics.expected_value(
             probabilities=ambient_sample.normalized_weights[:, np.newaxis])
-        acc_constraints_satisfied = \
-            control_eval_system.constraint_accumulated.evaluate_satisfied(
-            constraint_input=expected_acc_metrics)
-        
-        if not len(acc_constraints_satisfied) == 1:
-            return False, None
+        if control_eval_system.constraint_accumulated is not None:
+            acc_constraints_satisfied = \
+                control_eval_system.constraint_accumulated.evaluate_satisfied(
+                constraint_input=expected_acc_metrics)
+            
+            if not len(acc_constraints_satisfied) == 1:
+                return False, None
 
         multi_metrics_reduction = control_eval_system.multi_metrics_reduction.evaluate(
                 acc_metrics=expected_acc_metrics)
@@ -133,20 +133,20 @@ def test_simultaneous_optimization():
                                   perturbation_scale=1)
 
 
-# def test_lagrangian_relaxation():
-#     json_path = test_data_folder / "optimization_lagrangian_relaxation.jsonc"
-#     lagrangian_relaxation: SimultaneousOptimization = control_optimization_from_json(json_path=json_path)
+def test_lagrangian_relaxation():
+    json_path = test_data_folder / "optimization_lagrangian_relaxation.jsonc"
+    lagrangian_relaxation: LagrangianRelaxation = control_optimization_from_json(json_path=json_path)
     
-#     # Optimization
-#     optimal_policy = lagrangian_relaxation.optimize_policy(
-#         control_eval_system=control_evaluation_system,
-#         ambient_condition_statistics=ambient_statistics)
+    # Optimization
+    optimal_policy = lagrangian_relaxation.optimize_policy(
+        control_eval_system=control_evaluation_system,
+        ambient_statistics=ambient_statistics)
     
-#     # Evaluate result
-#     perturbed_control_policy_test(control_evaluation_system=control_evaluation_system,
-#                                   ambient_condition_statistics=ambient_statistics,
-#                                   optimal_policy=optimal_policy,
-#                                   perturbation_scale=1,
-#                                   perturbation_num=100,
-#                                   optimality_tol=1e-3)
+    # Evaluate result
+    perturbed_control_policy_test(control_eval_system=control_evaluation_system,
+                                  ambient_statistics=ambient_statistics,
+                                  original_policy=optimal_policy,
+                                  perturbation_num=100,
+                                  optimality_tol=1e-3,
+                                  perturbation_scale=1)
     

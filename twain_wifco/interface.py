@@ -185,6 +185,7 @@ class DataTable(Generic[DataType]):
         return self.abs_tols[key]
 
     def to_vector(self,
+                  point_index: int | None = None,
                   order: List[DataType] | None = None) -> np.ndarray:
         """
         Flatten and concatenate all variable arrays into a single vector.
@@ -192,7 +193,12 @@ class DataTable(Generic[DataType]):
         """
         if order is None:
             order = self.order
-        return np.concatenate([self.data[k].ravel() for k in order])
+        if point_index is None:
+            return np.concatenate([self.data[k].ravel() for k in order])
+        else:
+            if point_index >= self.size:
+                raise IndexError("Index out of bounds.")
+            return np.concatenate([self.data[k][point_index].ravel() for k in order])            
         
     def to_matrix(self,
                   order: List[DataType] | None = None) -> np.ndarray:
@@ -221,10 +227,6 @@ class DataTable(Generic[DataType]):
             out += f"{var}:\n{data}\n"
         return out
 
-    def get_points(self, ids: np.ndarray) -> "DataTable[DataType]":
-        """Extract multiple rows by index array."""
-        return DataTable({k: self.data[k][ids] for k in self.order}, self.order)
-
     def find_matching_points(self, data_table: "DataTable[DataType]") -> int:
         """Find the row indices corresponding to a given DataTable."""
         # Find matching row indices
@@ -232,12 +234,15 @@ class DataTable(Generic[DataType]):
             ref_row, query_row, atol=self.abs_tols_vec())), -1) for query_row in data_table.to_matrix()]
         return row_indices
 
-    def update_point_from_vector(self, ind: int, vector: np.ndarray):
+    def update_point_from_vector(self,
+                                 order: List[DataVariable],
+                                 point_index: int,
+                                 vector: np.ndarray):
         """Overwrite a specific row of the table with new flattened data."""
         i = 0
-        for k in self.order:
-            n = self.data[k][ind].size
-            self.data[k][ind] = vector[i:i+n].reshape(self.data[k].shape[1:])
+        for k in order:
+            n = self.data[k][point_index].size
+            self.data[k][point_index] = vector[i:i+n].reshape(self.data[k].shape[1:])
             i += n
 
     @classmethod
@@ -318,11 +323,23 @@ class DataTable(Generic[DataType]):
                                         axis=0) for key in self.order}
         return DataTable(data=repeated_data)
     
-    def extract(self, indices: np.ndarray):
-        if len(indices) == 0:
-            raise ValueError("Need at least one index to extract from DataTable.")
+    def extract(self, indices: np.ndarray | int):
+        if isinstance(indices, int):
+            if indices >= self.size:
+                raise IndexError("Index out of bounds.")
+            extracted_data = {key: self.data[key][indices][np.newaxis, ...] for \
+                              key in self.order}
+        else:
+            if len(indices) == 0:
+                raise ValueError("Need at least one index to extract from DataTable.")
+            if len(indices) == 1:
+                # return a view rather than a copy
+                extracted_data = {key: self.data[key][indices[0]][np.newaxis, ...] for \
+                    key in self.order}
+            else:
+                # fancy indexing -> copy to new array
+                extracted_data = {key: self.data[key][indices] for key in self.order}
         
-        extracted_data = {key: self.data[key][indices] for key in self.order}
         return DataTable(data=extracted_data)
 
 @dataclass(eq=False, repr=False)

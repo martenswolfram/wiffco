@@ -1,6 +1,6 @@
 {
     "optimization_method": "grid_search",
-    "max_num_ambient_conditions": 6,
+    "max_num_ambients": 6,
     "control_grid_vectors": {
         "power_regulation": {
             "shape": [2],

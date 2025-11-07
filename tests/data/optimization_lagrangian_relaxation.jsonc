@@ -1,6 +1,9 @@
 {
     "optimization_method": "lagrangian_relaxation", 
-    "max_num_ambient_conditions": 10,
+    "max_num_ambients": 10,
+    "control_shapes": {
+        "power_regulation": [2]
+    },
     "alpha_0": 0.1,
     "max_iter": 100,
     "constraint_tol": 0.001,
