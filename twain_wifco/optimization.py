@@ -595,59 +595,89 @@ class LagrangianLambda:
                  acc_metrics_shapes: Dict[AccumulatedMetric, Tuple[int, ...]],
                  lambda_abs_tol: float):
         
+        # Shapes of constrained accumulated metrics
         upper_bound_shapes = {}
+        lower_bound_shapes = {}
         for acc_metric, bound in bounds.items():
             if not np.isneginf(bound.lower):
-                raise NotImplementedError("Only upper bounds implemented.")
+                lower_bound_shapes[acc_metric] = acc_metrics_shapes[acc_metric]
             if not np.isinf(bound.upper):
                 upper_bound_shapes[acc_metric] = acc_metrics_shapes[acc_metric]
-        self.upper_order = list(upper_bound_shapes.keys())
+        
+        # Order of accumulated metrics for vectorization
+        self.upper_bound_order = list(upper_bound_shapes.keys())
+        self.lower_bound_order = list(lower_bound_shapes.keys())
+        
+        # Flat sizes for accumulated metrics
         upper_sizes = \
             list(np.prod(shape) for \
                  shape in upper_bound_shapes.values())
-        self.upper_size = np.prod(upper_sizes, dtype=int)
-        self.upper_bound_vector = np.repeat(
-            np.array([bounds[var].upper for var in self.upper_order]),
-            repeats=upper_sizes)
-        self.constraint_tol_vector = np.repeat(
-            np.array([get_abs_tol(var) for var in self.upper_order]),
-            repeats=upper_sizes)
+        lower_sizes = \
+            list(np.prod(shape) for \
+                 shape in lower_bound_shapes.values())
+        upper_size = np.sum(upper_sizes, dtype=int)
+        lower_size = np.sum(lower_sizes, dtype=int)
         
-        self.upper_lambda = np.zeros(shape=(self.upper_size,), dtype=float)
-        self.upper_lambda_low = np.zeros_like(self.upper_lambda)
-        self.upper_lambda_high = np.full_like(self.upper_lambda, fill_value=np.inf)
-        self.lambda_abs_tol = lambda_abs_tol
+        # Vectorize bounds (combine upper and lower bounds)
+        upper_bound_vector = np.repeat(
+            np.array([bounds[var].upper for var in self.upper_bound_order]),
+            repeats=upper_sizes)
+        lower_bound_vector = np.repeat(
+            np.array([bounds[var].lower for var in self.lower_bound_order]),
+            repeats=lower_sizes)
+        # Combine as upper bound vector by inverting sign of lower bound 
+        self.upper_bound_vector = np.hstack([upper_bound_vector, - lower_bound_vector])
+        
+        # Tolerances for vectors (combine upper and lower bounds)
+        upper_constraint_tol_vector = np.repeat(
+            np.array([get_abs_tol(var) for var in self.upper_bound_order]),
+            repeats=upper_sizes)
+        lower_constraint_tol_vector = np.repeat(
+            np.array([get_abs_tol(var) for var in self.lower_bound_order]),
+            repeats=lower_sizes)
+        self.constraint_tol_vector = np.hstack([upper_constraint_tol_vector, lower_constraint_tol_vector])
+        
+        # Lagrangian lambdas, combined for upper and lower bounds
+        self._lagrangian_lambda = np.zeros(shape=(upper_size + lower_size,), dtype=float)
+        self._lambda_low = np.zeros_like(self._lagrangian_lambda)
+        self._lambda_high = np.full_like(self._lagrangian_lambda, fill_value=np.inf)
+        self._lambda_abs_tol = lambda_abs_tol
 
     def vector_eval(self, acc_metric: DataTable[AccumulatedMetric]):
-        return acc_metric.to_vector(order=self.upper_order)
+        # Invert sign for lower bounds 
+        return np.hstack([acc_metric.to_vector(order=self.upper_bound_order),
+                          - acc_metric.to_vector(order=self.lower_bound_order)])
 
     def dot_product(self, acc_metric: DataTable[AccumulatedMetric]):
-        if len(self.upper_order) == 0:
-            return 0
-        else:
-            return self.upper_lambda.dot(
-                self.vector_eval(acc_metric=acc_metric))
+        return self._lagrangian_lambda.dot(
+            self.vector_eval(acc_metric=acc_metric))
         
     def process_constraint_violation(self, acc_metric: DataTable[AccumulatedMetric]):
+        # Compute violation (upper and lower bounds combined)
         violation = self.vector_eval(acc_metric=acc_metric) - self.upper_bound_vector
-        self.upper_lambda_low = np.where(violation > 0,
-                                         self.upper_lambda,
-                                         self.upper_lambda_low)
-        self.upper_lambda_high = np.where(violation < 0,
-                                          self.upper_lambda,
-                                          self.upper_lambda_high)
-        for i_constr, (lam_low, lam_high) in enumerate(zip(self.upper_lambda_low,
-                                                           self.upper_lambda_high)):
+        
+        # Update clipping
+        self._lambda_low = np.where(violation > 0,
+                                         self._lagrangian_lambda,
+                                         self._lambda_low)
+        self._lambda_high = np.where(violation < 0,
+                                          self._lagrangian_lambda,
+                                          self._lambda_high)
+        # Bisection approach
+        for i_constr, (lam_low, lam_high) in enumerate(zip(self._lambda_low,
+                                                           self._lambda_high)):
             if lam_high < np.inf:
-                self.upper_lambda[i_constr] = (lam_high + lam_low) / 2
+                self._lagrangian_lambda[i_constr] = (lam_high + lam_low) / 2
             else:
                 step = np.sign(violation[i_constr])
-                self.upper_lambda[i_constr] += step
+                self._lagrangian_lambda[i_constr] += step
         if np.all(violation < self.constraint_tol_vector) and \
-            np.all(np.abs(self.upper_lambda_high - self.upper_lambda_low) < \
-                   self.lambda_abs_tol):
+            np.all(np.abs(self._lambda_high - self._lambda_low) < \
+                   self._lambda_abs_tol):
+            # Convergence
             return True
         else:
+            # No convergence
             return False
 
 class LagrangianRelaxation(ControlPolicyOptimization):

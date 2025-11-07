@@ -193,6 +193,9 @@ class DataTable(Generic[DataType]):
         """
         if order is None:
             order = self.order
+        if len(order) == 0:
+            # Empty vector
+            return np.array([])
         if point_index is None:
             return np.concatenate([self.data[k].ravel() for k in order])
         else:
