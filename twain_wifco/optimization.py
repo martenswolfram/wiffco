@@ -326,7 +326,7 @@ class GridSearch(ControlPolicyOptimization):
         if ctrl_eval_sys.multi_metrics_reduction.maximize:
             best_admissible_index = np.argmax(admissible_multi_metrics_reduction)
         else:
-            best_admissible_index = np.argmax(admissible_multi_metrics_reduction)
+            best_admissible_index = np.argmin(admissible_multi_metrics_reduction)
 
 
         best_index = acc_metrics_admissible[best_admissible_index]
