@@ -1,7 +1,8 @@
 import pathlib
 import pytest
 import numpy as np
-from twain_wifco.config import plant_model_from_json
+from twain_wifco.config import parse_json_file
+from twain_wifco.plant_model import plant_model_from_dict
 from twain_wifco.interface import (
     Ambient,
     Control,
@@ -12,7 +13,8 @@ test_data_folder = pathlib.Path(__file__).parent / "data"
 
 def test_scattered_plant_model():
     json_path = test_data_folder / "model_scattered.jsonc"
-    power_damage_scattered_model = plant_model_from_json(json_path=json_path)
+    param_dict = parse_json_file(path=json_path)
+    power_damage_scattered_model = plant_model_from_dict(param_dict=param_dict)
             
     # Invalid input
     valid_met_condition = DataTable({Ambient.WIND_SPEED: np.array([20, 10, 20])})
@@ -33,7 +35,8 @@ def test_scattered_plant_model():
 
 def test_symbolic_model():
     json_path = test_data_folder / "model_symbolic.jsonc"
-    power_damage_sybolic_model = plant_model_from_json(json_path=json_path)
+    param_dict = parse_json_file(path=json_path)
+    power_damage_symbolic_model = plant_model_from_dict(param_dict=param_dict)
             
     # Invalid input
     valid_met_condition = DataTable({Ambient.WIND_SPEED: np.array([20,
@@ -43,8 +46,8 @@ def test_symbolic_model():
                                                                   1,
                                                                   2])})
     with pytest.raises(ValueError) as excinfo: 
-        power_damage_sybolic_model.evaluate(meteorological=valid_met_condition,
-                                            control=invalid_ctrl_input)
+        power_damage_symbolic_model.evaluate(meteorological=valid_met_condition,
+                                             control=invalid_ctrl_input)
     assert "missing required variables of type Control" in str(excinfo.value)
 
     # Valid input
@@ -64,13 +67,14 @@ def test_symbolic_model():
         }
     )
 
-    output = power_damage_sybolic_model.evaluate(meteorological=valid_met_condition,
-                                                   control=valid_ctrl_input)
+    output = power_damage_symbolic_model.evaluate(meteorological=valid_met_condition,
+                                                  control=valid_ctrl_input)
     assert output == expected_output
 
 def test_floris_model():
     json_path = test_data_folder / "model_floris.jsonc"
-    floris_power_model = plant_model_from_json(json_path=json_path)
+    param_dict = parse_json_file(path=json_path)
+    floris_power_model = plant_model_from_dict(param_dict=param_dict)
        
     # Invalid input
     valid_met_conditions = DataTable({Ambient.WIND_SPEED: np.array([20., 10.]),

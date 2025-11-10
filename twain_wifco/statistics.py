@@ -7,6 +7,7 @@ from twain_wifco.interface import (
     Ambient,
     DataTable,
     Interface,
+    DataType,
     MAP_STR_TO_ENUM
 )
 
@@ -141,3 +142,28 @@ def statistics_from_dict(param_dict: Dict[str, Any]) -> AmbientStatistics:
         )
     else:
         raise NotImplementedError("Only discrete ambient statistics implemented.")
+
+def statistics_from_table(data_dict: Dict[str, np.ndarray],
+                          support_names: Dict[str, DataType],
+                          prevalence_name: str,
+                          statistics_name: str = "statistics_from_table"):
+
+    table_data = {}
+    prevalence = None
+    for h_str, data in data_dict.items():
+        if h_str in support_names:
+            key = support_names[h_str]
+            table_data[key] = data
+        elif h_str == prevalence_name:
+            prevalence = data
+    order = list(table_data.keys())
+    
+    if prevalence is not None and len(table_data):
+        probabilities = prevalence / np.sum(prevalence)
+        support_data = DataTable(table_data, order)
+        return DiscreteAmbientStatistics(
+            name=statistics_name,
+            ambient_support=support_data,
+            probabilities=probabilities)
+    else:
+        raise ValueError("Could not parse table data to statistics")

@@ -1,13 +1,16 @@
 import pathlib
 import numpy as np
-from twain_wifco.config import multi_metrics_reduction_from_json
+from twain_wifco.config import parse_json_file
+from twain_wifco.multi_metrics_reduction import multi_metrics_reduction_from_dict
 from twain_wifco.interface import AccumulatedMetric, DataTable
 
     
 def test_metrics_reduction():
     test_data_folder = pathlib.Path(__file__).parent / "data"
     json_path = test_data_folder / "scalar_weighting.jsonc"
-    scalar_metrics_weighting = multi_metrics_reduction_from_json(json_path=json_path)
+    param_dict = parse_json_file(path=json_path)
+    scalar_metrics_weighting = multi_metrics_reduction_from_dict(
+        param_dict=param_dict)
         
     acc_metrics = DataTable({AccumulatedMetric.REVENUE: np.array([17,
                                                                   13]),

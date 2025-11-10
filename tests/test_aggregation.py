@@ -1,6 +1,7 @@
 import pathlib
 import numpy as np
-from twain_wifco.config import aggregation_from_json
+from twain_wifco.config import parse_json_file
+from twain_wifco.aggregation import aggregation_from_dict
 from twain_wifco.interface import (
     Ambient,
     ModelOutput,
@@ -11,7 +12,8 @@ from twain_wifco.interface import (
 def test_simple_product_aggregation():
     test_data_folder = pathlib.Path(__file__).parent / "data"
     json_path = test_data_folder / "aggregation_symbolic.jsonc"
-    simple_product_aggregation = aggregation_from_json(json_path=json_path)
+    param_dict = parse_json_file(path=json_path)
+    simple_product_aggregation = aggregation_from_dict(param_dict=param_dict)
     
     # Output aggregation
     aggregated_output = simple_product_aggregation.compute_aggregate(

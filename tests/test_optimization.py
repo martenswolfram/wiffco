@@ -4,13 +4,13 @@ import pytest
 from typing import Dict
 import logging
 from twain_wifco.config import (
-    control_evaluation_system_from_json,
-    control_optimization_from_json,
-    statistics_from_json)
+    parse_json_file,
+    control_evaluation_system_from_json)
 from twain_wifco.control_policy import DiscreteControlPolicy
-from twain_wifco.statistics import AmbientStatistics
+from twain_wifco.statistics import statistics_from_dict, AmbientStatistics
 from twain_wifco.interface import Control
 from twain_wifco.optimization import (
+    control_optimization_from_dict,
     ControlEvaluationSystem,
     GridSearch,
     SimultaneousOptimization,
@@ -31,7 +31,8 @@ control_evaluation_system = control_evaluation_system_from_json(json_path=json_p
 
 # Ambient conditions
 json_path = test_data_folder / "statistics_discrete_ambient.jsonc"
-ambient_statistics = statistics_from_json(json_path=json_path)
+statistics_dict = parse_json_file(path=json_path)
+ambient_statistics = statistics_from_dict(param_dict=statistics_dict)
 
 def perturbed_control_policy_test(
         control_eval_system: ControlEvaluationSystem,
@@ -102,7 +103,9 @@ def perturbed_control_policy_test(
 # @pytest.mark.line_profile.with_args(GridSearch.optimize_policy)
 def test_grid_search():
     json_path = test_data_folder / "optimization_grid_search.jsonc"
-    grid_search: GridSearch = control_optimization_from_json(json_path=json_path)
+    param_dict = parse_json_file(path=json_path)
+    grid_search: GridSearch = control_optimization_from_dict(
+        param_dict=param_dict)
     
     # Optimization
     optimal_policy = grid_search.optimize_policy(ctrl_eval_sys=control_evaluation_system,
@@ -117,7 +120,9 @@ def test_grid_search():
 
 def test_simultaneous_optimization():
     json_path = test_data_folder / "optimization_simultaneous.jsonc"
-    simultaneous_optimization: SimultaneousOptimization = control_optimization_from_json(json_path=json_path)
+    param_dict = parse_json_file(path=json_path)
+    simultaneous_optimization: SimultaneousOptimization = \
+        control_optimization_from_dict(param_dict=param_dict)
     
     # Optimization
     optimal_policy = simultaneous_optimization.optimize_policy(
@@ -135,7 +140,9 @@ def test_simultaneous_optimization():
 
 def test_lagrangian_relaxation():
     json_path = test_data_folder / "optimization_lagrangian_relaxation.jsonc"
-    lagrangian_relaxation: LagrangianRelaxation = control_optimization_from_json(json_path=json_path)
+    param_dict = parse_json_file(path=json_path)
+    lagrangian_relaxation: LagrangianRelaxation = \
+        control_optimization_from_dict(param_dict=param_dict)
     
     # Optimization
     optimal_policy = lagrangian_relaxation.optimize_policy(

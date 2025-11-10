@@ -1,5 +1,4 @@
 import pathlib
-import json5 as json
 import numpy as np
 from twain_wifco.config import parse_json_file
 from twain_wifco.constraint import constraint_from_dict

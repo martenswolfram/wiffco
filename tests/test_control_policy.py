@@ -1,7 +1,8 @@
 import pathlib
 import pytest
 import numpy as np
-from twain_wifco.config import control_policy_from_json
+from twain_wifco.config import parse_json_file
+from twain_wifco.control_policy import discrete_control_policy_from_dict
 from twain_wifco.interface import (
     Ambient,
     Control,
@@ -11,7 +12,9 @@ from twain_wifco.interface import (
 def test_discrete_control_policy():
     test_data_folder = pathlib.Path(__file__).parent / "data"
     json_path = test_data_folder / "discrete_control_policy.jsonc"
-    simple_control_policy = control_policy_from_json(json_path=json_path)
+    param_dict = parse_json_file(path=json_path)
+    simple_control_policy = discrete_control_policy_from_dict(
+        param_dict=param_dict)
         
     # retrieve control setpoints for dicrete ambient conditions
     # Invalid ambient condition keys

@@ -1,7 +1,8 @@
 import pathlib
 import pytest
 import numpy as np
-from twain_wifco.config import symbolic_function_from_json
+from twain_wifco.config import parse_json_file
+from twain_wifco.symbolic import symbolic_function_from_dict
 from twain_wifco.interface import (
     DataTable,
     ModelOutput,
@@ -11,7 +12,8 @@ from twain_wifco.interface import (
 def test_symbolic_function():
     test_data_folder = pathlib.Path(__file__).parent / "data"
     json_path = test_data_folder / "symbolic_function.jsonc"
-    symbolic_function = symbolic_function_from_json(json_path=json_path)
+    param_dict = parse_json_file(path=json_path)
+    symbolic_function = symbolic_function_from_dict(param_dict=param_dict)
     
     met_condition = DataTable({Ambient.WIND_SPEED: np.array([20,
                                                              10,

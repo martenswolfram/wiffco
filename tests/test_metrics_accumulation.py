@@ -1,7 +1,7 @@
 import pathlib
 import numpy as np
-from twain_wifco.config import (
-    metrics_accumulation_from_json)
+from twain_wifco.config import parse_json_file
+from twain_wifco.metrics_accumulation import metrics_accumulation_from_dict
 from twain_wifco.interface import (
     AccumulatedMetric, 
     Aggregate,
@@ -12,8 +12,10 @@ def test_simple_product_accumulation():
     
     test_data_folder = pathlib.Path(__file__).parent / "data"
     # Metrics accumulation
-    symbolic_damage_accumulation = metrics_accumulation_from_json(
-        json_path=(test_data_folder / "discounted_integration.jsonc"))
+    param_dict = parse_json_file(
+        path=test_data_folder / "discounted_integration.jsonc")
+    symbolic_damage_accumulation = metrics_accumulation_from_dict(
+        param_dict=param_dict)
 
     aggregate = DataTable({Aggregate.REVENUE_RATE: np.array([[15, 15],
                                                               [3,  3]]),

@@ -1,13 +1,15 @@
 import pathlib
 import pytest
 import numpy as np
-from twain_wifco.config import statistics_from_json
+from twain_wifco.config import parse_json_file
+from twain_wifco.statistics import statistics_from_dict
 from twain_wifco.interface import Ambient, DataTable
 
 def test_statistics():
     test_data_folder = pathlib.Path(__file__).parent / "data"
     json_path = test_data_folder / "statistics_discrete_ambient.jsonc"
-    discrete_ambient_statistics = statistics_from_json(json_path=json_path)
+    param_dict = parse_json_file(path=json_path)
+    discrete_ambient_statistics = statistics_from_dict(param_dict=param_dict)
     
     ordered_prevalence = np.array([0.4, 0.25, 0.19, 0.1, 0.05, 0.01])
     ordered_support_data = DataTable({

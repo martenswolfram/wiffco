@@ -1,8 +1,8 @@
-from typing import Dict, Any, Tuple, Sequence, List
+from typing import Dict, Any, Tuple, Sequence
 from abc import ABC, abstractmethod
 import numpy as np
 import logging
-from scipy.optimize import minimize, Bounds
+from scipy.optimize import minimize
 from scipy.sparse import coo_matrix
 from functools import lru_cache
 import itertools
@@ -12,8 +12,7 @@ from twain_wifco.interface import (
     Control,
     get_abs_tol,
     AccumulatedMetric,
-    DataTable,
-    DataType
+    DataTable
 )
 from twain_wifco.statistics import (
     AmbientStatistics,
@@ -827,3 +826,14 @@ def lagrangian_relaxation_from_dict(param_dict: Dict[str, Any]):
         scipy_method=scipy_method,
         scipy_options=scipy_options)
 
+def control_optimization_from_dict(
+    param_dict: Dict[str, Any]):
+    optimization_method = OptimizationMethod(param_dict["optimization_method"])
+    if optimization_method == OptimizationMethod.GRID_SEARCH:
+        return grid_search_from_dict(param_dict=param_dict)
+    elif optimization_method == OptimizationMethod.SIMULTANEOUS_OPTIMIZATION:
+        return simultaneous_optimization_from_dict(param_dict=param_dict)
+    elif optimization_method == OptimizationMethod.LAGRANGIAN_RELAXATION:
+        return lagrangian_relaxation_from_dict(param_dict=param_dict)
+    else:
+        raise NotImplementedError("Only grid-search, simultaneous opt. and lagrangian relaxation implemented.")
