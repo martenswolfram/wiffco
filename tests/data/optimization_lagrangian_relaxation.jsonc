@@ -7,7 +7,7 @@
     "alpha_0": 0.1,
     "max_iter": 100,
     "constraint_tol": 0.001,
-    "lagrangian_lambda_tol": 0.001,
+    "lagrangian_lambda_tol": 1e-5,
     "scipy_method": "SLSQP",
     "scipy_options": {
         "disp": false

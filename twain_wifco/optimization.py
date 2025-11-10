@@ -738,7 +738,7 @@ class LagrangianRelaxation(ControlPolicyOptimization):
                     scalar_objective = \
                         opt_mgr._control_eval_system.multi_metrics_reduction.evaluate(
                         acc_metrics=acc_metric)
-                    # First assume that we have an objective function (which we want to maximise),
+                    # First assume that we have an objective function (i.e. which we want to maximise),
                     # and upper-bound constraints which must not be exceded.
                     if not opt_mgr._control_eval_system.multi_metrics_reduction.maximize:
                         scalar_objective *= -1   
@@ -788,10 +788,6 @@ class LagrangianRelaxation(ControlPolicyOptimization):
                 expected_acc_metric = opt_mgr._control_eval_system.expected_acc_metrics(
                     ambient_statistics=ambient_statistics,
                     control_policy=opt_mgr._control_policy)
-                print('------------------------')
-                print(llambda._lagrangian_lambda)
-                print(control)
-                print(expected_acc_metric)
                 # Evaluate constraint violation and update lagrangian lambdas
                 if llambda.process_constraint_violation(acc_metric=expected_acc_metric):
                     # Converged
