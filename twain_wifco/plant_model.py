@@ -23,7 +23,8 @@ from twain_wifco.symbolic import (
 from twain_wifco.floris_model.floris_config import (
     FlorisModel,
     wifco2floris,
-    configure_floris_model
+    configure_floris_model,
+    get_load_channels
     ) 
 
 
@@ -214,6 +215,9 @@ class FlorisWindFarmModel(PlantModel):
                         output_data[output] = self._floris_model.get_farm_power()
                     else:
                         output_data[output] = self._floris_model.get_turbine_powers().reshape((num_points,) + shape)
+                case ModelOutput.DAMAGE_RATE:
+                    get_load_channels(floris_model=self._floris_model)
+                    pass
                 case _:
                     raise ValueError(f"Model output {output} not provided by FLORIS model.")
 

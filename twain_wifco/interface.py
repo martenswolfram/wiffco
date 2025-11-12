@@ -472,13 +472,6 @@ class Component(ABC):
         self.validate_shapes(
             input_shapes=external_shapes
         )
-
-    # @staticmethod
-    # def with_validation(func: Callable[..., Any]) -> Callable[..., Any]:
-    #     def wrapper(self: T, **kwargs: Any) -> Any:
-    #         self.validate_input(*[value for value in kwargs.values() if isinstance(value, DataTable)])
-    #         return func(self, **kwargs)
-    #     return wrapper
     
     def __repr__(self):
         out = f"{self.__class__.__name__} '{self.component_name}'"
