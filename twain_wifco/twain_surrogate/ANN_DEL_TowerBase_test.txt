@@ -1,0 +1,63 @@
+# =================================
+# ===== SOME MINIMAL TESTS ========
+# =================================
+
+# Input vector
+x1 = np.array([10, 10, 10, 10, 0, 0, 0, 0, 0, 100])
+print(f"shape: {x1.shape}")
+res = ANN_DEL_TowerBase(x1=x1) # works
+print(f"result 1: {res}")
+
+# Input matrix, Q = 1
+x1 = np.array([[10],
+               [10],
+               [10],
+               [10],
+               [0],
+               [0],
+               [0],
+               [0],
+               [0],
+               [100]])
+
+print(f"shape: {x1.shape}")
+try:
+    res = ANN_DEL_TowerBase(x1=x1) # fails
+except ValueError as ex:
+    print("Error: ", ex)
+pass
+
+# Input matrix, Q = 1, transposed
+x1 = np.array([[10, 10, 10, 10, 0, 0, 0, 0, 0, 100]])
+
+print(f"shape: {x1.shape}")
+try:
+    res = ANN_DEL_TowerBase(x1=x1) # fails
+except ValueError as ex:
+    print("Error: ", ex)
+pass
+
+# Input matrix, Q = 2
+x1 = np.array([[10, 20],
+               [10, 20],
+               [10, 20],
+               [10, 20],
+               [0, 0],
+               [0, 0],
+               [0, 0],
+               [0, 0],
+               [0, 0],
+               [100, 100]])
+
+print(f"shape: {x1.shape}")
+try:
+    res = ANN_DEL_TowerBase(x1=x1) # fails
+except ValueError as ex:
+    print("Error: ", ex)
+pass
+
+# Input vector, larger inflow-velocities
+x1 = np.array([20, 20, 20, 20, 0, 0, 0, 0, 0, 100])
+print(f"shape: {x1.shape}")
+res = ANN_DEL_TowerBase(x1=x1) # works
+print(f"result 2: {res}")

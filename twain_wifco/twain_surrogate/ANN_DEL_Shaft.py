@@ -108,21 +108,21 @@ def ANN_DEL_Shaft(x1):
     xp1 = mapminmax_apply(x1, x1_step1)
 
     # Layer 1
-    a1 = tansig_apply(b1.reshape(-1, 1).ravel() + IW1_1 @ xp1)
+    a1 = tansig_apply(b1.reshape(-1, 1).ravel() + (IW1_1 @ xp1.T).T)
 
     # Layer 2
-    a2 = tansig_apply(np.tile(b2, (1, Q)) + LW2_1 @ a1)
+    a2 = tansig_apply(np.tile(b2, (1, Q)) + LW2_1 @ a1.T)
 
     # Output 1
     y1 = mapminmax_reverse(a2, y1_step1)
     
-    y1 = y1.T[0]
+    y1 = y1[0]
 
     # re-dimensionalize the output in [0 1]
     minOutput = 296.3901
     maxOutput = 2.4638e+03
 
-    y1 = y1.T * (maxOutput - minOutput) + minOutput
+    y1 = y1 * (maxOutput - minOutput) + minOutput
 
     return y1
 

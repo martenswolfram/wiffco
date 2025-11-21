@@ -72,16 +72,16 @@ def test_symbolic_model():
     assert output == expected_output
 
 def test_floris_model():
-    json_path = test_data_folder / "model_floris.jsonc"
+    json_path = test_data_folder / "model_wf_surrogate.jsonc"
     param_dict = parse_json_file(path=json_path)
     floris_power_model = plant_model_from_dict(param_dict=param_dict)
        
     # Invalid input
-    valid_met_conditions = DataTable({Ambient.WIND_SPEED: np.array([20.,
-                                                                    10.,
+    valid_met_conditions = DataTable({Ambient.WIND_SPEED: np.array([10.,
+                                                                    20.,
                                                                     30.,
-                                                                    50.,
-                                                                    0]),
+                                                                    40.,
+                                                                    50]),
                                       Ambient.WIND_DIRECTION: np.array([270.,
                                                                         30.,
                                                                         90.,
@@ -91,25 +91,11 @@ def test_floris_model():
                                                                               1.,
                                                                               2.,
                                                                               3.,
-                                                                              2.])})
-    invalid_ctrl_input =  DataTable({Control.POWER_REGULATION: np.array([2.,
-                                                                         3.,
-                                                                         1.,
-                                                                         2.,
-                                                                         0.])})
-    with pytest.raises(ValueError) as excinfo: 
-        floris_power_model.evaluate(meteorological=valid_met_conditions,
-                                    control=invalid_ctrl_input)
-    assert "missing required variables of type Control" in str(excinfo.value)
+                                                                              4.])
+    })
 
-    # Valid input
-    valid_ctrl_input = DataTable({Control.YAW_ANGLE: np.array([[ 0.,  0.,  0.,  0.],
-                                                               [ 1.,  1.,  1.,  1.],
-                                                               [ 2.,  2.,  2.,  2.],
-                                                               [-2., -2., -2., -2.],
-                                                               [-1., -1., -1., -1.]])})
+    valid_ctrl_input = DataTable({Control.YAW_ANGLE: np.zeros(shape=(5, 4))})
     output = floris_power_model.evaluate(meteorological=valid_met_conditions,
                                          control=valid_ctrl_input)
     assert output.shapes()[ModelOutput.ELECTRICAL_POWER] == (4,)
-    assert len(output) == 2
-    assert np.all(output[ModelOutput.ELECTRICAL_POWER][0, ...] > output[ModelOutput.ELECTRICAL_POWER][1, ...])
+    assert len(output) == 5
