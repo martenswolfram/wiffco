@@ -15,7 +15,7 @@ def test_symbolic_function():
     param_dict = parse_json_file(path=json_path)
     symbolic_function = symbolic_function_from_dict(param_dict=param_dict)
     
-    met_condition = DataTable({Ambient.WIND_SPEED: np.array([20,
+    met_condition = DataTable({Ambient.WIND_SPEED_MPS: np.array([20,
                                                              10,
                                                              20])})
     ctrl_input = DataTable({Control.POWER_REGULATION: np.array([[2, 2],

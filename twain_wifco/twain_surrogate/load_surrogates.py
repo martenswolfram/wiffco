@@ -34,6 +34,7 @@ def dmg_equivalent_loads(floris_model: floris.FlorisModel,
     ti = floris_model.core.flow_field.turbulence_intensities
     sati = ti[np.newaxis, :, np.newaxis] * np.ones(shape=(4, 1, n_turbines))
     yaw_angles = floris_model.core.farm.yaw_angles[np.newaxis, ...]
+    
     # No power regulation for now
     power_demands = np.full_like(yaw_angles, fill_value=100)
 

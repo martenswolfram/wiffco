@@ -17,7 +17,7 @@ def test_scattered_plant_model():
     power_damage_scattered_model = plant_model_from_dict(param_dict=param_dict)
             
     # Invalid input
-    valid_met_condition = DataTable({Ambient.WIND_SPEED: np.array([20, 10, 20])})
+    valid_met_condition = DataTable({Ambient.WIND_SPEED_MPS: np.array([20, 10, 20])})
     invalid_ctrl_input =  DataTable({Control.YAW_ANGLE: np.array([2, 1, 2])})
     with pytest.raises(ValueError) as excinfo: 
         power_damage_scattered_model.evaluate(meteorological=valid_met_condition,
@@ -39,7 +39,7 @@ def test_symbolic_model():
     power_damage_symbolic_model = plant_model_from_dict(param_dict=param_dict)
             
     # Invalid input
-    valid_met_condition = DataTable({Ambient.WIND_SPEED: np.array([20,
+    valid_met_condition = DataTable({Ambient.WIND_SPEED_MPS: np.array([20,
                                                                    10,
                                                                    20])})
     invalid_ctrl_input =  DataTable({Control.YAW_ANGLE: np.array([2,
@@ -77,12 +77,12 @@ def test_floris_model():
     floris_power_model = plant_model_from_dict(param_dict=param_dict)
        
     # Invalid input
-    valid_met_conditions = DataTable({Ambient.WIND_SPEED: np.array([10.,
+    valid_met_conditions = DataTable({Ambient.WIND_SPEED_MPS: np.array([10.,
                                                                     20.,
                                                                     30.,
                                                                     40.,
                                                                     50]),
-                                      Ambient.WIND_DIRECTION: np.array([270.,
+                                      Ambient.WIND_DIRECTION_DEG: np.array([270.,
                                                                         30.,
                                                                         90.,
                                                                         60.,

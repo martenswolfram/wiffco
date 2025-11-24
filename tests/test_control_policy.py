@@ -18,7 +18,7 @@ def test_discrete_control_policy():
         
     # retrieve control setpoints for dicrete ambient conditions
     # Invalid ambient condition keys
-    invalid_amb_conditions = DataTable({Ambient.WIND_SPEED: np.array([20, 10])})
+    invalid_amb_conditions = DataTable({Ambient.WIND_SPEED_MPS: np.array([20, 10])})
     
     with pytest.raises(ValueError) as excinfo:
         simple_control_policy.get_control(ambient=invalid_amb_conditions)
@@ -26,9 +26,9 @@ def test_discrete_control_policy():
 
     # Valid ambient condition
     valid_ambient_conditions = DataTable(
-        {Ambient.WIND_SPEED: np.array([20, 20]),
-         Ambient.WIND_DIRECTION: np.array([180, 60]),
-         Ambient.ELECTRICITY_PRICE: np.array([5, 5])})
+        {Ambient.WIND_SPEED_MPS: np.array([20, 20]),
+         Ambient.WIND_DIRECTION_DEG: np.array([180, 60]),
+         Ambient.ELECTRICITY_PRICE_EPKWH: np.array([5, 5])})
     expected_output =  DataTable({Control.POWER_REGULATION: np.array([4, 2]),
                                   Control.YAW_ANGLE: np.array([8, 6])})
 

@@ -1,4 +1,4 @@
-from typing import Dict, Any, Generic
+from typing import Dict, Any
 from abc import abstractmethod
 from enum import Enum
 import numpy as np
@@ -7,10 +7,8 @@ from twain_wifco.interface import (
     Ambient,
     DataTable,
     Interface,
-    DataType,
-    MAP_STR_TO_ENUM
+    DataType
 )
-
 
 class SystematicAmbientSample:
     """A systematic sample of ambient data points with weights.
@@ -48,6 +46,21 @@ class AmbientStatistics(Component):
             SystematicAmbientSample: The generated sample.
         """
         pass
+
+    @abstractmethod
+    def map_to_discrete(self,
+                        support: DataTable[Ambient]
+                        ) -> "DiscreteAmbientStatistics":
+        """Create a DiscreteAmbientStatistics object based on support
+        
+        Args:
+            support (DataTable[Ambient]): discrete support points
+
+        Returns:
+            DiscreteAmbientStatistics: The created discrete statistics
+        """
+        
+
 
 class AmbientStatisticsType(Enum):
     DISCRETE_STATISTICS = "discrete_statistics"
@@ -116,6 +129,15 @@ class DiscreteAmbientStatistics(AmbientStatistics):
             normalized_weights=weights / probability_covered,
             probability_covered=probability_covered
         )
+    
+    def map_to_discrete(self, support: DataTable[Ambient]) -> "DiscreteAmbientStatistics":
+        nearest_support_indices = support.find_nearest_points(self._ordered_ambient_support)
+        probabilities = np.bincount(nearest_support_indices,
+                                    weights=self._ordered_probabilities,
+                                    minlength=len(support))
+        return DiscreteAmbientStatistics(name=self.component_name + "_mapped",
+                                         ambient_support=support,
+                                         probabilities=probabilities)
 
 def statistics_from_dict(param_dict: Dict[str, Any]) -> AmbientStatistics:
     """Construct DiscreteStatistics from a dictionary.

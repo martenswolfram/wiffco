@@ -6,7 +6,7 @@
             "power_regulation": "pr"            
         },
         "ambient": {
-            "wind_speed": "ws"
+            "wind_speed_mps": "ws"
         }
     },
     "output_functions": {

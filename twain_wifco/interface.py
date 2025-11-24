@@ -25,28 +25,25 @@ class DataEnum(Enum):
 
 class Ambient(DataEnum):
     """Enumeration of ambient (environmental and contextual) variables."""
-    WIND_SPEED = "wind_speed"
-    WIND_DIRECTION = "wind_direction"
+    WIND_SPEED_MPS = "wind_speed_mps"
+    WIND_DIRECTION_DEG = "wind_direction_deg"
     TURBULENCE_INTENSITY = "turbulence_intensity"
-    ELECTRICITY_PRICE = "electricity_price"
+    ELECTRICITY_PRICE_EPKWH = "electricity_price_epkwh"
 
 class Control(DataEnum):
     """Enumeration of control variables."""
     POWER_REGULATION = "power_regulation"
-    YAW_ANGLE = "yaw_angle"
-
+    YAW_ANGLE = "yaw_angle_deg"
 
 class ModelOutput(DataEnum):
     """Enumeration of model output variables."""
     ELECTRICAL_POWER = "electrical_power"
     DAMAGE_RATE = "damage_rate"
 
-
 class Aggregate(DataEnum):
     """Enumeration of aggregated variables (derived from outputs and ambient conditions)."""
     REVENUE_RATE = "revenue_rate"
     DAMAGE_RATE = "damage_rate"
-
 
 class AccumulatedMetric(DataEnum):
     """Enumeration of accumulated (time-integrated) metrics."""
@@ -66,7 +63,6 @@ MAP_ENUM_TO_STR: Dict[Type[DataEnum], str] = {
     ModelOutput: "model_output",
     Aggregate: "aggregate",
     AccumulatedMetric: "accumulated_metric"}
-
 
 # ======================================================================
 # TYPE DEFINITIONS
@@ -88,13 +84,13 @@ def get_default_value(data_var: DataVariable,
     if shape is None:
         # Cannot provide default for variable shape
         return None
-    if data_var == Ambient.ELECTRICITY_PRICE:
+    if data_var == Ambient.ELECTRICITY_PRICE_EPKWH:
         return np.zeros(shape=shape)
     elif data_var == Control.POWER_REGULATION:
         return np.ones(shape=shape)
     elif data_var == Control.YAW_ANGLE:
         return np.zeros(shape=shape)
-    elif data_var == Ambient.WIND_SPEED:
+    elif data_var == Ambient.WIND_SPEED_MPS:
         return np.zeros(shape=shape)
     raise ValueError(f"No default value defined for data variable '{data_var}'.")
 
@@ -102,9 +98,9 @@ def get_default_value(data_var: DataVariable,
 def get_abs_tol(data_var: DataVariable) -> float:
     """Return the absolute tolerance for a specific data variable."""
     mapping = {
-        Ambient.WIND_DIRECTION: 0.001,
-        Ambient.WIND_SPEED: 0.001,
-        Ambient.ELECTRICITY_PRICE: 0.001,
+        Ambient.WIND_DIRECTION_DEG: 0.001,
+        Ambient.WIND_SPEED_MPS: 0.001,
+        Ambient.ELECTRICITY_PRICE_EPKWH: 0.001,
         Control.POWER_REGULATION: 0.001,
         Aggregate.DAMAGE_RATE: 0.001,
         AccumulatedMetric.ACCRUED_DAMAGE: 0.001
@@ -230,12 +226,19 @@ class DataTable(Generic[DataType]):
             out += f"{var}:\n{data}\n"
         return out
 
-    def find_matching_points(self, data_table: "DataTable[DataType]") -> int:
-        """Find the row indices corresponding to a given DataTable."""
+    def find_matching_points(self, other_data_table: "DataTable[DataType]") -> int:
+        """Find the row indices corresponding to rows in other DataTable."""
         # Find matching row indices
         row_indices = [next((i for i, ref_row in enumerate(self.to_matrix()) if np.allclose(
-            ref_row, query_row, atol=self.abs_tols_vec())), -1) for query_row in data_table.to_matrix()]
-        return row_indices
+            ref_row, query_row, atol=self.abs_tols_vec())), -1) for query_row in other_data_table.to_matrix()]
+        return row_indices # size = len(other_data_table)
+
+    def find_nearest_points(self, other_data_table: "DataTable[DataType]") -> int:
+        """Find the nearest-row indices corresponding to rows in other DataTable."""
+        # Find nearest row indices
+        diff = self.to_matrix()[np.newaxis, :, :] - other_data_table.to_matrix()[:, np.newaxis, :]
+        dists = np.linalg.norm(diff, axis=2)
+        return np.argmin(dists, axis=1) # size = len(other_data_table)
 
     def update_point_from_vector(self,
                                  order: List[DataVariable],
@@ -344,22 +347,9 @@ class DataTable(Generic[DataType]):
                 extracted_data = {key: self.data[key][indices] for key in self.order}
         
         return DataTable(data=extracted_data)
-
-@dataclass(eq=False, repr=False)
-class DataPoint(DataTable[DataType]):
-    """A specialization of DataTable that contains exactly one data point."""
     
-    def __post_init__(self):
-        super().__post_init__()
-        if self.size != 1:
-            raise ValueError("DataPoint must contain exactly one row (size == 1).")
-    
-    @classmethod
-    def from_table(cls, table: "DataTable[DataType]", index: int) -> "DataPoint[DataType]":
-        """Create a DataPoint from one row of a DataTable."""
-        if index < 0 or index >= len(table):
-            raise IndexError("Index out of range for DataTable.")
-        return cls({k: table.data[k][index:index+1] for k in table.order}, table.order)
+    def copy(self):
+        return DataTable(data={key: key_data.copy() for key, key_data in self.data.items()})
 
 # ======================================================================
 # INTERFACE AND COMPONENT CLASSES

@@ -9,7 +9,6 @@ from twain_wifco.interface import (
     Aggregate,
     AccumulatedMetric,
     DataTable,
-    DataPoint,
     Interface)
 
 # ----------------------------

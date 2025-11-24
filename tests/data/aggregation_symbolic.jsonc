@@ -3,7 +3,7 @@
     "aggregation_type": "symbolic",
     "input_symbol_mappings": {
         "ambient": {
-            "electricity_price": "epr"
+            "electricity_price_epkwh": "epr"
         },
         "model_output": {
             "electrical_power": "epw",

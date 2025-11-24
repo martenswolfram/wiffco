@@ -21,7 +21,7 @@ def test_simple_product_aggregation():
                                                                         [2, 3]]),
                                 ModelOutput.DAMAGE_RATE: np.array([[4, 2],
                                                                    [7, 6]])}),
-        ambient=DataTable({Ambient.ELECTRICITY_PRICE: np.array([3, 1])}))
+        ambient=DataTable({Ambient.ELECTRICITY_PRICE_EPKWH: np.array([3, 1])}))
     expected_output = DataTable({Aggregate.REVENUE_RATE: np.array([(5 + 3) * 3,
                                                                    (2 + 3) * 1]),
                                  Aggregate.DAMAGE_RATE: np.array([[4, 2],

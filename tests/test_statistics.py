@@ -13,19 +13,19 @@ def test_statistics():
     
     ordered_prevalence = np.array([0.4, 0.25, 0.19, 0.1, 0.05, 0.01])
     ordered_support_data = DataTable({
-            Ambient.WIND_SPEED: np.array([ 20, 
+            Ambient.WIND_SPEED_MPS: np.array([ 20, 
                                            10, 
                                            30, 
                                            20, 
                                             5, 
                                            10]),
-            Ambient.WIND_DIRECTION: np.array([180, 
+            Ambient.WIND_DIRECTION_DEG: np.array([180, 
                                               240, 
                                               120, 
                                                60, 
                                               300, 
                                                 0]),
-            Ambient.ELECTRICITY_PRICE: np.array([ 5,
+            Ambient.ELECTRICITY_PRICE_EPKWH: np.array([ 5,
                                                   5,
                                                   2,
                                                   5,
@@ -72,3 +72,23 @@ def test_statistics():
         sys_sample_min_prob = discrete_ambient_statistics.systematic_sample(min_prob=min_prob)
         assert sys_sample_min_prob.probability_covered >= min_prob
     
+    # map to different support
+    reduced_support = DataTable({
+            Ambient.WIND_SPEED_MPS: np.array([10,
+                                              20,
+                                               5,
+                                              10]),
+            Ambient.WIND_DIRECTION_DEG: np.array([240,
+                                                   60,
+                                                  300,
+                                                    0]),
+            Ambient.ELECTRICITY_PRICE_EPKWH: np.array([2,
+                                                       5,
+                                                       7,
+                                                       7])})
+    new_discrete_ambient_statistics = discrete_ambient_statistics.map_to_discrete(
+        support=reduced_support
+    )
+    assert new_discrete_ambient_statistics._ordered_ambient_support == reduced_support
+    assert len(new_discrete_ambient_statistics._ordered_probabilities) == len(reduced_support)
+    assert np.isclose(np.sum(new_discrete_ambient_statistics._ordered_probabilities), 1)

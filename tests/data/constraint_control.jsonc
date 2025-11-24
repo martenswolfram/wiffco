@@ -6,7 +6,7 @@
             "upper": 3.5,
             "lower": 1.5
         },
-        "yaw_angle": { // null-constraint only for testing
+        "yaw_angle_deg": { // null-constraint only for testing
             "upper": null,
             "lower": null
         }

@@ -16,8 +16,8 @@ csv_path = config_dir / "wind_rose.csv"
 
 statistics_data = parse_csv_file(csv_path=csv_path,
                                  delimiter=";")
-support_names={"wind_dir": Ambient.WIND_DIRECTION,
-               "wind_speed": Ambient.WIND_SPEED}
+support_names={"wind_dir": Ambient.WIND_DIRECTION_DEG,
+               "wind_speed_mps": Ambient.WIND_SPEED_MPS}
 prevalence_name="prevalence"
                                                     
 wind_rose_statistics = statistics_from_table(
