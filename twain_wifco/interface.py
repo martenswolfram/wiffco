@@ -43,6 +43,7 @@ class ModelOutput(DataEnum):
 
 class Aggregate(DataEnum):
     """Enumeration of aggregated variables (derived from outputs and ambient conditions)."""
+    ELECTRICAL_POWER_KW = "electrical_power_kw"
     REVENUE_RATE = "revenue_rate"
     DAMAGE_RATE = "damage_rate"
     DEL = "del"
@@ -50,6 +51,7 @@ class Aggregate(DataEnum):
 class AccumulatedMetric(DataEnum):
     """Enumeration of accumulated (time-integrated) metrics."""
     REVENUE_EUR = "revenue_eur"
+    ENERGY_PRODUCED = "energy_produced"
     ACCRUED_DAMAGE = "accrued_damage"
     ACCRUED_DEL = "accrued_del"
 
@@ -239,7 +241,7 @@ class DataTable(Generic[DataType]):
     def find_nearest_points(self, other_data_table: "DataTable[DataType]") -> int:
         """Find the nearest-row indices corresponding to rows in other DataTable."""
         # Find nearest row indices
-        diff = self.to_matrix()[np.newaxis, :, :] - other_data_table.to_matrix()[:, np.newaxis, :]
+        diff = self.to_matrix()[np.newaxis, :, :] - other_data_table.to_matrix(order=self.order)[:, np.newaxis, :]
         dists = np.linalg.norm(diff, axis=2)
         return np.argmin(dists, axis=1) # size = len(other_data_table)
 

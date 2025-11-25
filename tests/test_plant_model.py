@@ -74,7 +74,7 @@ def test_symbolic_model():
 def test_floris_model():
     json_path = test_data_folder / "model_wf_surrogate.jsonc"
     param_dict = parse_json_file(path=json_path)
-    floris_power_model = plant_model_from_dict(param_dict=param_dict)
+    floris_power_del_model = plant_model_from_dict(param_dict=param_dict)
        
     # Invalid input
     valid_met_conditions = DataTable({Ambient.WIND_SPEED_MPS: np.array([10.,
@@ -95,7 +95,7 @@ def test_floris_model():
     })
 
     valid_ctrl_input = DataTable({Control.YAW_ANGLE_DEG: np.zeros(shape=(5, 4))})
-    output = floris_power_model.evaluate(meteorological=valid_met_conditions,
+    output = floris_power_del_model.evaluate(meteorological=valid_met_conditions,
                                          control=valid_ctrl_input)
     assert output.shapes()[ModelOutput.ELECTRICAL_POWER_KW] == (4,)
     assert len(output) == 5

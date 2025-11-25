@@ -205,7 +205,7 @@ class GridSearch(ControlPolicyOptimization):
         self.control_grid_vectors = control_grid_vectors
     
     def optimize_policy(self,
-                        ctrl_eval_sys: ControlEvaluationSystem,
+                        control_eval_system: ControlEvaluationSystem,
                         ambient_statistics: AmbientStatistics):
         
         logger.info(f"GridSearch: Find optimal control policy")
@@ -249,14 +249,14 @@ class GridSearch(ControlPolicyOptimization):
         
         # Find admissible scenarios and their aggregates
         admissible_aggregates, instant_admissible = \
-            ctrl_eval_sys.aggregate_from_amb_constr_eval(
+            control_eval_system.aggregate_from_amb_constr_eval(
             ambient=ambient_tiled,
             control=control_repeated)
         if len(instant_admissible) == 0:
             raise ValueError("Failed to find admissible policy due to instantaneous constraints-violation.")
         
         # Compute acc metrics for admissible aggregates
-        admissible_metrics_accumulation = ctrl_eval_sys.metrics_accumulation.acc_metrics(
+        admissible_metrics_accumulation = control_eval_system.metrics_accumulation.acc_metrics(
             aggregate=admissible_aggregates)
         pass
         
@@ -311,17 +311,17 @@ class GridSearch(ControlPolicyOptimization):
         
         # Evaluate acc metrics constraint
         acc_metrics_admissible = np.arange(num_admissible_policies)
-        if ctrl_eval_sys.constraint_accumulated is not None:
-            acc_metrics_admissible = ctrl_eval_sys.constraint_accumulated.evaluate_satisfied(
+        if control_eval_system.constraint_accumulated is not None:
+            acc_metrics_admissible = control_eval_system.constraint_accumulated.evaluate_satisfied(
                 constraint_input=admissible_metrics_accumulations)
         if len(acc_metrics_admissible) == 0:
             raise ValueError("Failed to find feasible policy due to acc. constraints-violation.")
         
-        admissible_multi_metrics_reduction = ctrl_eval_sys.multi_metrics_reduction.evaluate(
+        admissible_multi_metrics_reduction = control_eval_system.multi_metrics_reduction.evaluate(
             acc_metrics=admissible_metrics_accumulations.extract(acc_metrics_admissible))
         
         # Find the optimal control strategy that satisfies the constraints
-        if ctrl_eval_sys.multi_metrics_reduction.maximize:
+        if control_eval_system.multi_metrics_reduction.maximize:
             best_admissible_index = np.argmax(admissible_multi_metrics_reduction)
         else:
             best_admissible_index = np.argmin(admissible_multi_metrics_reduction)
@@ -355,7 +355,7 @@ class GridSearch(ControlPolicyOptimization):
             ambient_support_data=ambient,
             control_out_data=control_out_data)
     
-        final_acc_metrics = ctrl_eval_sys.expected_acc_metrics(
+        final_acc_metrics = control_eval_system.expected_acc_metrics(
             ambient_statistics=ambient_statistics,
             control_policy=optimal_policy)
         logger.info(f"Grid-search optimization final control policy:\n"
@@ -485,15 +485,15 @@ class ContinuousOptimizationManager:
 
 class SimultaneousOptimization(ControlPolicyOptimization):
     def __init__(self,
-                 max_num_amb_cond: int,
                  control_shapes: Dict[Control, Tuple[int, ...]], 
                  scipy_method: str,
-                 scipy_options: Dict[str, Any]):
-        self._max_num_amb_cond = max_num_amb_cond
+                 scipy_options: Dict[str, Any],
+                 max_num_amb_cond: int | None = None):
         self._control_shapes = control_shapes
         self._scipy_method = scipy_method
         self._scipy_options = scipy_options
-
+        self._max_num_amb_cond = max_num_amb_cond
+        
     def optimize_policy(self,
                         control_eval_system: ControlEvaluationSystem,
                         ambient_statistics: AmbientStatistics):
@@ -576,16 +576,16 @@ class SimultaneousOptimization(ControlPolicyOptimization):
         return optimal_control_policy
      
 def simultaneous_optimization_from_dict(param_dict: Dict[str, Any | Dict]):
-    max_num_amb_cond = param_dict["max_num_ambients"]
+    max_num_amb_cond = param_dict.get("max_num_ambients")
     control_shapes = {Control(ctrl_var): tuple(shape) for \
                       ctrl_var, shape in param_dict["control_shapes"].items()}
     scipy_method = param_dict["scipy_method"]
     scipy_options = param_dict["scipy_options"]
     return SimultaneousOptimization(
-        max_num_amb_cond=max_num_amb_cond,
         control_shapes=control_shapes,
         scipy_method=scipy_method,
-        scipy_options=scipy_options)
+        scipy_options=scipy_options,
+        max_num_amb_cond=max_num_amb_cond)
 
 class LagrangianLambda:
     def __init__(self,
@@ -680,15 +680,14 @@ class LagrangianLambda:
 
 class LagrangianRelaxation(ControlPolicyOptimization):
     def __init__(self,
-                 max_num_amb_cond: int,
                  control_shapes: Dict[Control, Tuple[int, ...]], 
                  alpha_0: float,
                  max_iter: int,
                  constraint_tol: float,
                  lagrangian_lambda_tol: float,
                  scipy_method: str,
-                 scipy_options: Dict[str, Any]):
-        self._max_num_amb_cond = max_num_amb_cond
+                 scipy_options: Dict[str, Any],
+                 max_num_amb_cond: int | None = None):
         self._control_shapes = control_shapes
         self._alpha_0 = alpha_0
         self._max_iter = max_iter
@@ -696,6 +695,7 @@ class LagrangianRelaxation(ControlPolicyOptimization):
         self._lagrangian_lambda_tol = lagrangian_lambda_tol
         self._scipy_method = scipy_method
         self._scipy_options = scipy_options
+        self._max_num_amb_cond = max_num_amb_cond
         
     def optimize_policy(self,
                         control_eval_system: ControlEvaluationSystem,
@@ -807,7 +807,7 @@ class LagrangianRelaxation(ControlPolicyOptimization):
         return opt_mgr._control_policy
         
 def lagrangian_relaxation_from_dict(param_dict: Dict[str, Any]):
-    max_num_amb_cond = param_dict["max_num_ambients"]
+    max_num_amb_cond = param_dict.get("max_num_ambients")
     control_shapes = {Control(ctrl_var): tuple(shape) for \
                       ctrl_var, shape in param_dict["control_shapes"].items()}
     alpha_0 = param_dict["alpha_0"]
@@ -817,14 +817,14 @@ def lagrangian_relaxation_from_dict(param_dict: Dict[str, Any]):
     scipy_method = param_dict["scipy_method"]
     scipy_options = param_dict["scipy_options"]
     return LagrangianRelaxation(
-        max_num_amb_cond=max_num_amb_cond,
         control_shapes=control_shapes,
         alpha_0=alpha_0,
         max_iter=max_iter,
         constraint_tol=constraint_tol,
         lagrangian_lambda_tol=lagrangian_lambda_tol,
         scipy_method=scipy_method,
-        scipy_options=scipy_options)
+        scipy_options=scipy_options,
+        max_num_amb_cond=max_num_amb_cond)
 
 def control_optimization_from_dict(
     param_dict: Dict[str, Any]):

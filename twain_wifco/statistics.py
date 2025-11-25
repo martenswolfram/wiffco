@@ -1,4 +1,5 @@
 from typing import Dict, Any
+from matplotlib import pyplot as plt
 from abc import abstractmethod
 from enum import Enum
 import numpy as np
@@ -166,9 +167,10 @@ def statistics_from_dict(param_dict: Dict[str, Any]) -> AmbientStatistics:
         raise NotImplementedError("Only discrete ambient statistics implemented.")
 
 def statistics_from_table(data_dict: Dict[str, np.ndarray],
-                          support_names: Dict[str, DataType],
+                          support_names: Dict[str, Ambient],
                           prevalence_name: str,
-                          statistics_name: str = "statistics_from_table"):
+                          statistics_name: str = "statistics_from_table",
+                          fill_variables: Dict[Ambient, np.ndarray] = None):
 
     table_data = {}
     prevalence = None
@@ -179,6 +181,13 @@ def statistics_from_table(data_dict: Dict[str, np.ndarray],
         elif h_str == prevalence_name:
             prevalence = data
     order = list(table_data.keys())
+    size = table_data[order[0]].shape[0]
+    if fill_variables is not None:
+        for fill_var, value in fill_variables.items():
+            order.append(fill_var)
+            table_data[fill_var] = np.repeat(np.array(value)[np.newaxis, ...],
+                                             repeats=size,
+                                             axis=0)
     
     if prevalence is not None and len(table_data):
         probabilities = prevalence / np.sum(prevalence)
@@ -189,3 +198,16 @@ def statistics_from_table(data_dict: Dict[str, np.ndarray],
             probabilities=probabilities)
     else:
         raise ValueError("Could not parse table data to statistics")
+
+def plot_statistics_2d(discrete_statistics: DiscreteAmbientStatistics):
+    if len(discrete_statistics._ordered_ambient_support.order) != 2:
+        raise ValueError("Expected 2D-data table.")
+    support = discrete_statistics._ordered_ambient_support
+    var1 = support.order[0]
+    var2 = support.order[1]
+
+    plt.scatter(support[var1], support[var2], marker='o',
+                c=discrete_statistics._ordered_probabilities)
+    plt.xlabel(var1.value)
+    plt.ylabel(var2.value)
+    plt.show()
