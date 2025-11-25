@@ -1,0 +1,16 @@
+{
+    "name": "symbolic_aggregation",
+    "aggregation_type": "symbolic",
+    "input_symbol_mappings": {
+        "model_output": {
+            "electrical_power_kw": "epw",
+            "del": "dl"
+        }
+    },
+    "output_functions": {
+        "aggregate": {
+            "electrical_power_kw": "sum(epw)", // `sum` has been added to be interpreted as `np.sum`
+            "del": "dl"
+        }
+    }
+}

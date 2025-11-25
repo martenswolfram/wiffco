@@ -1,0 +1,15 @@
+{
+    "name": "revenue_damage_accumulation",
+    "accumulation_type": "discounted_integration",
+    "integration_mappings":{
+        "energy_produced": {
+            "aggregate": "electrical_power_kw",
+            "discount_rate": 0.0
+        },
+        "accrued_del": {
+            "aggregate": "del",
+            "discount_rate": 0.0
+        }
+    },
+    "duration": 20
+}
