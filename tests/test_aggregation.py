@@ -17,11 +17,11 @@ def test_simple_product_aggregation():
     
     # Output aggregation
     aggregated_output = simple_product_aggregation.compute_aggregate(
-        model_output=DataTable({ModelOutput.ELECTRICAL_POWER: np.array([[5, 3],
+        model_output=DataTable({ModelOutput.ELECTRICAL_POWER_KW: np.array([[5, 3],
                                                                         [2, 3]]),
                                 ModelOutput.DAMAGE_RATE: np.array([[4, 2],
                                                                    [7, 6]])}),
-        ambient=DataTable({Ambient.ELECTRICITY_PRICE_EPKWH: np.array([3, 1])}))
+        ambient=DataTable({Ambient.ELECTRICITY_PRICE_EURPKWH: np.array([3, 1])}))
     expected_output = DataTable({Aggregate.REVENUE_RATE: np.array([(5 + 3) * 3,
                                                                    (2 + 3) * 1]),
                                  Aggregate.DAMAGE_RATE: np.array([[4, 2],

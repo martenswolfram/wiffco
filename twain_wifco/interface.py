@@ -28,27 +28,30 @@ class Ambient(DataEnum):
     WIND_SPEED_MPS = "wind_speed_mps"
     WIND_DIRECTION_DEG = "wind_direction_deg"
     TURBULENCE_INTENSITY = "turbulence_intensity"
-    ELECTRICITY_PRICE_EPKWH = "electricity_price_epkwh"
+    ELECTRICITY_PRICE_EURPKWH = "electricity_price_eurpkwh"
 
 class Control(DataEnum):
     """Enumeration of control variables."""
     POWER_REGULATION = "power_regulation"
-    YAW_ANGLE = "yaw_angle_deg"
+    YAW_ANGLE_DEG = "yaw_angle_deg"
 
 class ModelOutput(DataEnum):
     """Enumeration of model output variables."""
-    ELECTRICAL_POWER = "electrical_power"
+    ELECTRICAL_POWER_KW = "electrical_power_kw"
     DAMAGE_RATE = "damage_rate"
+    DEL = "del"
 
 class Aggregate(DataEnum):
     """Enumeration of aggregated variables (derived from outputs and ambient conditions)."""
     REVENUE_RATE = "revenue_rate"
     DAMAGE_RATE = "damage_rate"
+    DEL = "del"
 
 class AccumulatedMetric(DataEnum):
     """Enumeration of accumulated (time-integrated) metrics."""
-    REVENUE = "revenue"
+    REVENUE_EUR = "revenue_eur"
     ACCRUED_DAMAGE = "accrued_damage"
+    ACCRUED_DEL = "accrued_del"
 
 MAP_STR_TO_ENUM: Dict[str, Type[DataEnum]] = {
     "ambient": Ambient,
@@ -84,11 +87,11 @@ def get_default_value(data_var: DataVariable,
     if shape is None:
         # Cannot provide default for variable shape
         return None
-    if data_var == Ambient.ELECTRICITY_PRICE_EPKWH:
+    if data_var == Ambient.ELECTRICITY_PRICE_EURPKWH:
         return np.zeros(shape=shape)
     elif data_var == Control.POWER_REGULATION:
         return np.ones(shape=shape)
-    elif data_var == Control.YAW_ANGLE:
+    elif data_var == Control.YAW_ANGLE_DEG:
         return np.zeros(shape=shape)
     elif data_var == Ambient.WIND_SPEED_MPS:
         return np.zeros(shape=shape)
@@ -100,7 +103,7 @@ def get_abs_tol(data_var: DataVariable) -> float:
     mapping = {
         Ambient.WIND_DIRECTION_DEG: 0.001,
         Ambient.WIND_SPEED_MPS: 0.001,
-        Ambient.ELECTRICITY_PRICE_EPKWH: 0.001,
+        Ambient.ELECTRICITY_PRICE_EURPKWH: 0.001,
         Control.POWER_REGULATION: 0.001,
         Aggregate.DAMAGE_RATE: 0.001,
         AccumulatedMetric.ACCRUED_DAMAGE: 0.001

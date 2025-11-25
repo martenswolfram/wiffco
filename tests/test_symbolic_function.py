@@ -29,7 +29,7 @@ def test_symbolic_function():
 
     expected_result = DataTable(
         data={
-            ModelOutput.ELECTRICAL_POWER: np.array([
+            ModelOutput.ELECTRICAL_POWER_KW: np.array([
                 [2**0.5 * (20 / 10)**2, 2**0.5 * (20 / 10)**2],
                 [3**0.5 * (10 / 10)**2, 3**0.5 * (10 / 10)**2],
                 [2**0.5 * (20 / 10)**2, 2**0.5 * (20 / 10)**2]]),

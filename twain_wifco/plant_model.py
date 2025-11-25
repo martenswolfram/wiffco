@@ -198,11 +198,11 @@ class WindFarmSurrogateModel(PlantModel):
 
         model_output_shapes = {}
         for out_var in output_variables:
-            if out_var == ModelOutput.ELECTRICAL_POWER:
+            if out_var == ModelOutput.ELECTRICAL_POWER_KW:
                 # power for each turbine
                 model_output_shapes[out_var] = (self._n_turbines,)
-            elif out_var == ModelOutput.DAMAGE_RATE:
-                # damage components for each turbine
+            elif out_var == ModelOutput.DEL:
+                # del components for each turbine
                 model_output_shapes[out_var] = (self._n_turbines,
                                                 len(self.damage_components))
         self.output_interface = Interface(
@@ -225,12 +225,12 @@ class WindFarmSurrogateModel(PlantModel):
         output_data = {}
         for output, shape in self.output_interface.shapes[ModelOutput].items():
             match output:
-                case ModelOutput.ELECTRICAL_POWER:
+                case ModelOutput.ELECTRICAL_POWER_KW:
                     if shape == ():
                         output_data[output] = self._floris_model.get_farm_power()
                     else:
                         output_data[output] = self._floris_model.get_turbine_powers().reshape((num_points,) + shape)
-                case ModelOutput.DAMAGE_RATE:
+                case ModelOutput.DEL:
                     output_data[output] = \
                         dmg_equivalent_loads(floris_model=self._floris_model,
                                              damage_components=self.damage_components)

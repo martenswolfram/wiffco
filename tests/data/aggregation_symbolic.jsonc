@@ -3,10 +3,10 @@
     "aggregation_type": "symbolic",
     "input_symbol_mappings": {
         "ambient": {
-            "electricity_price_epkwh": "epr"
+            "electricity_price_eurpkwh": "epr"
         },
         "model_output": {
-            "electrical_power": "epw",
+            "electrical_power_kw": "epw",
             "damage_rate": "dr"
         }
     },

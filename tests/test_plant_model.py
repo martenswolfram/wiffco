@@ -18,7 +18,7 @@ def test_scattered_plant_model():
             
     # Invalid input
     valid_met_condition = DataTable({Ambient.WIND_SPEED_MPS: np.array([20, 10, 20])})
-    invalid_ctrl_input =  DataTable({Control.YAW_ANGLE: np.array([2, 1, 2])})
+    invalid_ctrl_input =  DataTable({Control.YAW_ANGLE_DEG: np.array([2, 1, 2])})
     with pytest.raises(ValueError) as excinfo: 
         power_damage_scattered_model.evaluate(meteorological=valid_met_condition,
                                         control=invalid_ctrl_input)
@@ -27,7 +27,7 @@ def test_scattered_plant_model():
     # Valid input
     valid_ctrl_input = DataTable({Control.POWER_REGULATION: np.array([2, 3, 2])})
     expected_output =  DataTable({ModelOutput.DAMAGE_RATE:  np.array([4 * 4, 1 * 9, 4 * 4]),
-                                  ModelOutput.ELECTRICAL_POWER: np.array([4 * 1.4, 1 * 1.7, 4 * 1.4])})
+                                  ModelOutput.ELECTRICAL_POWER_KW: np.array([4 * 1.4, 1 * 1.7, 4 * 1.4])})
 
     output = power_damage_scattered_model.evaluate(meteorological=valid_met_condition,
                                                    control=valid_ctrl_input)
@@ -42,7 +42,7 @@ def test_symbolic_model():
     valid_met_condition = DataTable({Ambient.WIND_SPEED_MPS: np.array([20,
                                                                    10,
                                                                    20])})
-    invalid_ctrl_input =  DataTable({Control.YAW_ANGLE: np.array([2,
+    invalid_ctrl_input =  DataTable({Control.YAW_ANGLE_DEG: np.array([2,
                                                                   1,
                                                                   2])})
     with pytest.raises(ValueError) as excinfo: 
@@ -60,7 +60,7 @@ def test_symbolic_model():
                 [[2**2 * (20 / 10)**2, 2**2 * (20 / 10)**2],
                 [3**2 * (10 / 10)**2, 3**2 * (10 / 10)**2],
                 [2**2 * (20 / 10)**2, 2**2 * (20 / 10)**2]]),
-            ModelOutput.ELECTRICAL_POWER: np.array(
+            ModelOutput.ELECTRICAL_POWER_KW: np.array(
                 [[2**0.5 * (20 / 10)**2, 2**0.5 * (20 / 10)**2],
                 [3**0.5 * (10 / 10)**2, 3**0.5 * (10 / 10)**2],
                 [2**0.5 * (20 / 10)**2, 2**0.5 * (20 / 10)**2]])
@@ -94,8 +94,8 @@ def test_floris_model():
                                                                               4.])
     })
 
-    valid_ctrl_input = DataTable({Control.YAW_ANGLE: np.zeros(shape=(5, 4))})
+    valid_ctrl_input = DataTable({Control.YAW_ANGLE_DEG: np.zeros(shape=(5, 4))})
     output = floris_power_model.evaluate(meteorological=valid_met_conditions,
                                          control=valid_ctrl_input)
-    assert output.shapes()[ModelOutput.ELECTRICAL_POWER] == (4,)
+    assert output.shapes()[ModelOutput.ELECTRICAL_POWER_KW] == (4,)
     assert len(output) == 5

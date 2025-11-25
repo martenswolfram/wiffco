@@ -28,9 +28,9 @@ def test_discrete_control_policy():
     valid_ambient_conditions = DataTable(
         {Ambient.WIND_SPEED_MPS: np.array([20, 20]),
          Ambient.WIND_DIRECTION_DEG: np.array([180, 60]),
-         Ambient.ELECTRICITY_PRICE_EPKWH: np.array([5, 5])})
+         Ambient.ELECTRICITY_PRICE_EURPKWH: np.array([5, 5])})
     expected_output =  DataTable({Control.POWER_REGULATION: np.array([4, 2]),
-                                  Control.YAW_ANGLE: np.array([8, 6])})
+                                  Control.YAW_ANGLE_DEG: np.array([8, 6])})
 
     control_setpoints = simple_control_policy.get_control(ambient=valid_ambient_conditions)
     assert control_setpoints == expected_output

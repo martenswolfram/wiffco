@@ -11,7 +11,7 @@
                                  4]
         },
         "out_data": {
-            "electrical_power": [  0,  
+            "electrical_power_kw": [  0,  
                                     1,  
                                     1.4,
                                     1.7,
@@ -33,7 +33,7 @@
                             40]
         },
         "out_data": {
-            "electrical_power": [ 0,  
+            "electrical_power_kw": [ 0,  
                                     1,  
                                     4,
                                     9,

@@ -11,7 +11,7 @@
     },
     "output_functions": {
         "model_output": {
-            "electrical_power": "pr**0.5 * (ws / 10)**2",
+            "electrical_power_kw": "pr**0.5 * (ws / 10)**2",
             "damage_rate": "pr**2 * (ws / 10)**2"
         }
     }

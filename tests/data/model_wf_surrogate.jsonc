@@ -5,6 +5,6 @@
     "wind_farm_layout_file": "tests/data/la_haute_borne/wf_layout.csv", // optional
     "ambient_variables": ["wind_speed_mps", "wind_direction_deg", "turbulence_intensity"],
     "control_variables": ["yaw_angle_deg"],
-    "output_variables": ["electrical_power", "damage_rate"],
+    "output_variables": ["electrical_power_kw", "del"],
     "damage_components": ["blade_root", "shaft", "tower_base", "yaw_bearings"]
 }

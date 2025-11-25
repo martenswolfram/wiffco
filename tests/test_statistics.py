@@ -25,7 +25,7 @@ def test_statistics():
                                                60, 
                                               300, 
                                                 0]),
-            Ambient.ELECTRICITY_PRICE_EPKWH: np.array([ 5,
+            Ambient.ELECTRICITY_PRICE_EURPKWH: np.array([ 5,
                                                   5,
                                                   2,
                                                   5,
@@ -82,7 +82,7 @@ def test_statistics():
                                                    60,
                                                   300,
                                                     0]),
-            Ambient.ELECTRICITY_PRICE_EPKWH: np.array([2,
+            Ambient.ELECTRICITY_PRICE_EURPKWH: np.array([2,
                                                        5,
                                                        7,
                                                        7])})

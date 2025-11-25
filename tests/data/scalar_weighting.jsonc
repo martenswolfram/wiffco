@@ -3,6 +3,6 @@
     "multi_metrics_reduction_type": "scalar_weighting",
     "maximize": true,
     "metric_weights": {
-        "revenue": 1
+        "revenue_eur": 1
     }
 }
