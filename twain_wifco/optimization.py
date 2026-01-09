@@ -729,7 +729,10 @@ class LagrangianRelaxation(ControlPolicyOptimization):
 
         # outer-iteration counter
         for t in range(self._max_iter):
+            logger.debug(f"Outer iteration: {t}")
+        
             for i_ac in range(opt_mgr.num_ambient):
+                logger.debug(f"Ambient condition: {i_ac}")
                 # Separate optimization for each ambient condition
                 # COST FUNCTION
                 def cost_function(ctrl_setpoints_vec, i_ac=i_ac):

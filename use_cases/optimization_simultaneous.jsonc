@@ -2,7 +2,7 @@
     "optimization_method": "simultaneous_optimization", 
     // "max_num_ambients": 10,
     "control_shapes": {
-        "yaw_angle_deg": [4]
+        "yaw_angle_deg": [13]
     },
     "scipy_method": "SLSQP",
     "scipy_options": {"disp": true}

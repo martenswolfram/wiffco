@@ -61,7 +61,6 @@ class MultiMetricsReduction(Component):
             Callable: Cost function that returns a scalar.
         """
         def eval_cost(x):
-            print(x)
             acc_metrics_eval = eval_metrics_from_x(x)
             result = self.evaluate(acc_metrics=acc_metrics_eval)
             return -result if self.maximize else result
