@@ -26,7 +26,7 @@ def test_simple_product_accumulation():
 
     expected_acc_metrics = accumulated_metrics.expected_value(probabilities=np.array([[0.25, 0.75, 0.5],
                                                                                       [0.75, 0.25, 0.5]]))
-    assert np.all(expected_acc_metrics[AccumulatedMetric.REVENUE] > 0)
+    assert np.all(expected_acc_metrics[AccumulatedMetric.REVENUE_EUR] > 0)
     assert np.array_equal(expected_acc_metrics[AccumulatedMetric.ACCRUED_DAMAGE], np.array([[50, 50],
                                                                                             [70, 70],
                                                                                             [60, 60]])) 

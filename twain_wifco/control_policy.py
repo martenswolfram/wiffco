@@ -39,7 +39,7 @@ class DiscreteControlPolicy(Component):
     ) -> DataTable[Control]:
         
         self.validate_input(input_tables=[ambient])
-        point_indices = self._ambient_support_data.find_matching_points(data_table=ambient)
+        point_indices = self._ambient_support_data.find_matching_points(other_data_table=ambient)
         return self._control_out_data.extract(indices=point_indices)
 
     def random_perturbation(self,
@@ -79,8 +79,8 @@ def discrete_control_policy_from_dict(
 
     The dictionary is expected to contain numeric data for each ambient and control variable:
         {
-            "ambient_support_data": { "wind_speed": [...], "wind_direction": [...] },
-            "control_out_data": { "power_regulation": [...], "yaw_angle": [...] }
+            "ambient_support_data": { "wind_speed_mps": [...], "wind_direction_deg": [...] },
+            "control_out_data": { "power_regulation": [...], "yaw_angle_deg": [...] }
         }
 
     Args:

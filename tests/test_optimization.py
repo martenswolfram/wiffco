@@ -108,7 +108,7 @@ def test_grid_search():
         param_dict=param_dict)
     
     # Optimization
-    optimal_policy = grid_search.optimize_policy(ctrl_eval_sys=control_evaluation_system,
+    optimal_policy = grid_search.optimize_policy(control_eval_system=control_evaluation_system,
                                                  ambient_statistics=ambient_statistics)
     
     # Evaluate result

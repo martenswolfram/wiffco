@@ -12,7 +12,7 @@ def test_metrics_reduction():
     scalar_metrics_weighting = multi_metrics_reduction_from_dict(
         param_dict=param_dict)
         
-    acc_metrics = DataTable({AccumulatedMetric.REVENUE: np.array([17,
+    acc_metrics = DataTable({AccumulatedMetric.REVENUE_EUR: np.array([17,
                                                                   13]),
                              AccumulatedMetric.ACCRUED_DAMAGE: np.array([23,
                                                                          24])})

@@ -1,9 +1,0 @@
-{
-    "name": "floris_power_model",
-    "model_type": "floris",
-    "floris_config_file": "tests/data/floris_default_inputs.yaml",
-    "wind_farm_layout_file": "tests/data/la_haute_borne/wf_layout.csv", // optional
-    "ambient_variables": ["wind_speed", "wind_direction", "turbulence_intensity"],
-    "control_variables": ["yaw_angle"],
-    "output_variables": ["electrical_power"]
-}

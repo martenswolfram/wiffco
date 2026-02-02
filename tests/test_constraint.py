@@ -19,7 +19,7 @@ def test_control_constraint():
     constraint_satisfied = control_constraint.evaluate_satisfied(
         constraint_input=DataTable(
             {
-                Control.YAW_ANGLE: np.array([0,
+                Control.YAW_ANGLE_DEG: np.array([0,
                                              0]),
                 Control.POWER_REGULATION: np.array([[0, 0],
                                                     [5, 5]])
@@ -30,7 +30,7 @@ def test_control_constraint():
     constraint_satisfied = control_constraint.evaluate_satisfied(
         constraint_input=DataTable(
             {
-                Control.YAW_ANGLE: np.array([0,
+                Control.YAW_ANGLE_DEG: np.array([0,
                                              0]),
                 Control.POWER_REGULATION: np.array([[2, 2],
                                                     [3, 3]])
@@ -71,13 +71,13 @@ def test_acc_metrics_constraint():
     constraint_satisfied = accumulated_constraint.evaluate_satisfied(
         constraint_input=DataTable({AccumulatedMetric.ACCRUED_DAMAGE: np.array([[700],
                                                                                 [700]]),
-                                    AccumulatedMetric.REVENUE: np.array([0,
+                                    AccumulatedMetric.REVENUE_EUR: np.array([0,
                                                                          0])}))
     assert len(constraint_satisfied) == 0
     
     constraint_satisfied = accumulated_constraint.evaluate_satisfied(
         constraint_input=DataTable({AccumulatedMetric.ACCRUED_DAMAGE: np.array([[300],
                                                                                 [300]]),
-                                    AccumulatedMetric.REVENUE: np.array([0,
+                                    AccumulatedMetric.REVENUE_EUR: np.array([0,
                                                                          0])}))
     assert len(constraint_satisfied) == 2

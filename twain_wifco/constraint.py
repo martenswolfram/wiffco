@@ -1,8 +1,6 @@
-from typing import Dict, Any, List, Generic, Callable, Tuple, Type
-from abc import abstractmethod
+from typing import Dict, List, Callable, Tuple
 import numpy as np
 from scipy.optimize import NonlinearConstraint, Bounds
-from enum import Enum
 from dataclasses import dataclass
 from twain_wifco.interface import (
     Component,
@@ -11,10 +9,8 @@ from twain_wifco.interface import (
     AccumulatedMetric,
     get_abs_tol,
     MAP_STR_TO_ENUM,
-    DataVariable,
     DataType,
     DataTable,
-    DataPoint,
     Interface
 )
 
@@ -145,7 +141,7 @@ class AccumulatedConstraint(Constraint):
                          accumulated_evaluation: Callable):
         
         def eval_constraints(x):
-            accumulated_table: DataPoint[AccumulatedMetric] = accumulated_evaluation(x)
+            accumulated_table: DataTable[AccumulatedMetric] = accumulated_evaluation(x)
             return accumulated_table.to_vector(order=self._var_order) 
         lb, ub = self.get_flat_bounds(var_shapes_dict=accumulated_shapes_dict,
                                       num_points=1)

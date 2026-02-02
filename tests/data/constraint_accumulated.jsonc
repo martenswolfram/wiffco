@@ -6,7 +6,7 @@
             "upper": 500,
             "lower": null
         },
-        "revenue": { // null-constraint only for testing
+        "revenue_eur": { // null-constraint only for testing
             "upper": null,
             "lower": null
         }

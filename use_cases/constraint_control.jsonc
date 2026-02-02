@@ -1,0 +1,10 @@
+{
+    "name": "control_constraint",
+    "constraint_type": "control",
+    "bounds": {
+        "yaw_angle_deg": {
+            "upper": 30,
+            "lower": -30
+        }
+    }
+}

@@ -1,6 +1,7 @@
 from typing import Dict, Any, List
 from abc import abstractmethod
 from enum import Enum
+import floris
 
 from twain_wifco.interface import (
     DataTable,
@@ -20,11 +21,15 @@ from twain_wifco.symbolic import (
     SymbolicFunction
 )
 
-from twain_wifco.floris_model.floris_config import (
-    FlorisModel,
+from twain_wifco.floris_model.floris_interface import (
     wifco2floris,
     configure_floris_model
-    ) 
+)
+
+from twain_wifco.twain_surrogate.load_surrogates import (
+    DamageComponent,
+    dmg_equivalent_loads
+)
 
 
 # ======================================================================
@@ -65,7 +70,7 @@ class ModelType(Enum):
     """Enumeration of available plant model types."""
     FACTORIZED_SCATTERED_INTERPOLATOR = "factorized_scattered_interpolator"
     SYMBOLIC = "symbolic"
-    FLORIS = "floris"
+    WIND_FARM_SURROGATE = "wind_farm_surrogate"
 
 
 # ======================================================================
@@ -173,24 +178,35 @@ def symbolic_model_from_dict(param_dict: Dict[str, Any]) -> SymbolicModel:
         symbolic_function=symbolic_function
     )
 
-class FlorisWindFarmModel(PlantModel):
+class WindFarmSurrogateModel(PlantModel):
 
     def __init__(self,
                  name: str,
-                 floris_model: FlorisModel,
+                 floris_model: floris.FlorisModel,
                  ambient_variables: List[Ambient] = [],
                  control_variables: List[Control] = [],
-                 output_variables: List[ModelOutput] = []):
+                 output_variables: List[ModelOutput] = [],
+                 damage_components: List[DamageComponent]= []):
         
         self.component_name = name
         self._floris_model = floris_model
         self._n_turbines = self._floris_model.n_turbines
+        self.damage_components = damage_components
         self.input_interface = Interface(
             all_shapes={Ambient: {amb_var: () for amb_var in ambient_variables},
                         Control: {ctrl_var: (self._n_turbines,) for ctrl_var in control_variables}})
 
+        model_output_shapes = {}
+        for out_var in output_variables:
+            if out_var == ModelOutput.ELECTRICAL_POWER_KW:
+                # power for each turbine
+                model_output_shapes[out_var] = (self._n_turbines,)
+            elif out_var == ModelOutput.DEL:
+                # del components for each turbine
+                model_output_shapes[out_var] = (self._n_turbines,
+                                                len(self.damage_components))
         self.output_interface = Interface(
-            all_shapes={ModelOutput: {out_var: (self._n_turbines,) for out_var in output_variables}})
+            all_shapes={ModelOutput: model_output_shapes})
 
     def _evaluate(
         self,
@@ -209,33 +225,44 @@ class FlorisWindFarmModel(PlantModel):
         output_data = {}
         for output, shape in self.output_interface.shapes[ModelOutput].items():
             match output:
-                case ModelOutput.ELECTRICAL_POWER:
+                case ModelOutput.ELECTRICAL_POWER_KW:
                     if shape == ():
                         output_data[output] = self._floris_model.get_farm_power()
                     else:
                         output_data[output] = self._floris_model.get_turbine_powers().reshape((num_points,) + shape)
+                case ModelOutput.DEL:
+                    output_data[output] = \
+                        dmg_equivalent_loads(floris_model=self._floris_model,
+                                             damage_components=self.damage_components)
+                    pass
                 case _:
                     raise ValueError(f"Model output {output} not provided by FLORIS model.")
 
         return DataTable(output_data)
     
 
-def floris_model_from_dict(param_dict: Dict[str, Any]):
-    name = param_dict.get("name", "FLORIS wind farm model")
+def wind_farm_surrogate_model_from_dict(param_dict: Dict[str, Any]):
+    name = param_dict.get("name", "Wind farm surrogate model")
     floris_model = configure_floris_model(
         floris_config_path_str=param_dict["floris_config_file"],
         wind_farm_layout_path_str=param_dict.get("wind_farm_layout_file", None)
     )
 
-    ambient_variables = [Ambient(amb_var) for amb_var in param_dict["ambient_variables"]]
-    control_variables = [Control(ctrl_var) for ctrl_var in param_dict["control_variables"]]
-    output_variables = [ModelOutput(out_var) for out_var in param_dict["output_variables"]]
-    
-    return FlorisWindFarmModel(name=name,
-                               floris_model=floris_model,
-                               ambient_variables=ambient_variables,
-                               control_variables=control_variables,
-                               output_variables=output_variables)
+    ambient_variables = [Ambient(amb_var) for \
+                         amb_var in param_dict["ambient_variables"]]
+    control_variables = [Control(ctrl_var) for \
+                         ctrl_var in param_dict["control_variables"]]
+    output_variables = [ModelOutput(out_var) for \
+                        out_var in param_dict["output_variables"]]
+    damage_components = [DamageComponent(dmg_component) for \
+                         dmg_component in param_dict.get("damage_components", [])]
+
+    return WindFarmSurrogateModel(name=name,
+                                  floris_model=floris_model,
+                                  ambient_variables=ambient_variables,
+                                  control_variables=control_variables,
+                                  output_variables=output_variables,
+                                  damage_components=damage_components)
 
 def plant_model_from_dict(
     param_dict: Dict[str, Any]):
@@ -246,8 +273,8 @@ def plant_model_from_dict(
     elif model_type == ModelType.SYMBOLIC:
         return symbolic_model_from_dict(
             param_dict=param_dict)
-    elif model_type == ModelType.FLORIS:
-        return floris_model_from_dict(
+    elif model_type == ModelType.WIND_FARM_SURROGATE:
+        return wind_farm_surrogate_model_from_dict(
             param_dict=param_dict)
     else:
         raise NotImplementedError(f"Only factorized_scattered_interpolator, symbolic and"
