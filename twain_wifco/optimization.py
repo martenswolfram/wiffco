@@ -591,6 +591,7 @@ class LagrangianLambda:
     def __init__(self,
                  bounds: Dict[AccumulatedMetric, TwoSidedBound],
                  acc_metrics_shapes: Dict[AccumulatedMetric, Tuple[int, ...]],
+                 alpha_0: float,
                  lambda_abs_tol: float):
         
         # Shapes of constrained accumulated metrics
@@ -624,7 +625,7 @@ class LagrangianLambda:
             np.array([bounds[var].lower for var in self.lower_bound_order]),
             repeats=lower_sizes)
         # Combine as upper bound vector by inverting sign of lower bound 
-        self.upper_bound_vector = np.hstack([upper_bound_vector, - lower_bound_vector])
+        self.unified_upper_bound_vector = np.hstack([upper_bound_vector, - lower_bound_vector])
         
         # Tolerances for vectors (combine upper and lower bounds)
         upper_constraint_tol_vector = np.repeat(
@@ -641,18 +642,21 @@ class LagrangianLambda:
         self._lambda_high = np.full_like(self._lagrangian_lambda, fill_value=np.inf)
         self._lambda_abs_tol = lambda_abs_tol
 
-    def vector_eval(self, acc_metric: DataTable[AccumulatedMetric]):
+        # Step size
+        self._alpha_0 = alpha_0
+
+    def unified_vector_eval(self, acc_metric: DataTable[AccumulatedMetric]):
         # Invert sign for lower bounds 
         return np.hstack([acc_metric.to_vector(order=self.upper_bound_order),
                           - acc_metric.to_vector(order=self.lower_bound_order)])
 
     def dot_product(self, acc_metric: DataTable[AccumulatedMetric]):
         return self._lagrangian_lambda.dot(
-            self.vector_eval(acc_metric=acc_metric))
+            self.unified_vector_eval(acc_metric=acc_metric))
         
     def process_constraint_violation(self, acc_metric: DataTable[AccumulatedMetric]):
         # Compute violation (upper and lower bounds combined)
-        violation = self.vector_eval(acc_metric=acc_metric) - self.upper_bound_vector
+        violation = self.unified_vector_eval(acc_metric=acc_metric) - self.unified_upper_bound_vector
         
         # Update clipping
         self._lambda_low = np.where(violation > 0,
@@ -668,7 +672,7 @@ class LagrangianLambda:
                 self._lagrangian_lambda[i_constr] = (lam_high + lam_low) / 2
             else:
                 step = np.sign(violation[i_constr])
-                self._lagrangian_lambda[i_constr] += step * 0.01
+                self._lagrangian_lambda[i_constr] += step * self._alpha_0
         if np.all(violation < self.constraint_tol_vector) and \
             np.all(np.abs(self._lambda_high - self._lambda_low) < \
                    self._lambda_abs_tol):
@@ -715,6 +719,7 @@ class LagrangianRelaxation(ControlPolicyOptimization):
             llambda = LagrangianLambda(
                 bounds=acc_bounds,
                 acc_metrics_shapes=opt_mgr._acc_metrics_shapes,
+                alpha_0=self._alpha_0,
                 lambda_abs_tol=self._lagrangian_lambda_tol
             )
         
