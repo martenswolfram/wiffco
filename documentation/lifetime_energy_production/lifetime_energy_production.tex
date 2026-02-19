@@ -1,0 +1,285 @@
+\documentclass{article} 
+\usepackage{mathtools, amssymb, hyperref, makecell}
+\title{Lifetime Energy Production: Discussion}
+% \author{Wolfram Martens}
+\date{\today} % Sets date for date compiled
+
+\newtheorem{remark}{Remark}
+\begin{document}
+    \maketitle
+    \tableofcontents
+
+    \section{Preliminaries}
+    \subsection{Symbols}
+    \begin{center}
+        \begin{tabular}{ c | c  | c | c}
+            Variable & Symbol & Unit & Comments\\
+            \hline
+            \hline
+            \makecell{Number of discrete\\ ambient conditions considered} & $N$ & 1 & \\ 
+            \hline
+            Ambient condition $n$& $a_n$ & n.a. & \makecell{Single ambient\\ condition assumed}\\
+            \hline
+            \makecell{Control setpoint for\\
+            ambient condition $n$}
+             & $u_n$ & n.a. & \makecell{Single control\\input assumed}\\ 
+            \hline
+            \makecell{Statistical prevalence of\\
+            ambient condition $n$} & $\pi_n$ & 1 &\\
+            \hline
+            \makecell{Electrical power\\(energy produced per day)} & $p(u, a)$ & $\text{J}\text{d}^{-1}$ & \makecell{Function of\\control setpoint $u$\\and ambient condition $a$}\\
+            \hline
+            \makecell{Time elapsed} & $t$ & d &\\
+            \hline
+            \makecell{Time elapsed while ambient\\ condition $a_n$ is present} & $t_n$ & d &\\
+            \hline
+            \makecell{Overall health\\budget} & $H^\text{total}$ & 1 &\\
+            \hline
+            \makecell{Health budget\\ consumed per day} & $h(u, a)$ & $\text{d}^{-1}$ &\makecell{Function of \\ control setpoint $u$\\ and ambient condition $a$}
+        \end{tabular}
+    \end{center}
+
+    \subsection{Assumptions}
+    \begin{itemize}
+        \item \textbf{Long-term analysis:} The considered lifetimes are assumed long enough for the statistical distributions to represent the actual prevalence of ambient conditions.
+        \item \textbf{No temporal effects:} Switching between ambient conditions and control setpoints incurs no cost. As a result, for simplification, it can be assumed that the different statistical ambient conditions occur as a single sequence over the lifetime of the power plant.
+        \item \textbf{Stationary control setpoints:} Unless stated otherwise, we assign exactly one control setpoint for each ambient condition. See Section \ref{subsec:proof_stationarity} for a sketch of a proof that this holds for optimal control strategies in the variable-lifetime scenario.
+    \end{itemize}
+        
+    \subsection{Energy Production, Health Budget consumption and Lifetime}
+    We assume a categorical distribution over a discrete set of ambient conditions $a_n, 0 = 1, \dots, N - 1$.
+    \begin{align}
+        \pi_n \coloneqq \pi(a_n), \quad \sum_{n = 0}^{N - 1} \pi_n = 1.
+    \end{align}
+    In this section, we further assume that for each ambient condition $a_n$ the control input is constant, which we denote $u_n$, and denote by $\boldsymbol{u} = (u_0, \dots, u_{N - 1})$ a control strategy that assigns a control input to each ambient condition.
+
+    We assume that all considered elapsed times $t$ are long enough for the prevalence of the ambient conditions to represent the true frequency,
+    \begin{align}
+        t = \sum_{n = 0}^{N - 1}\underbrace{\pi_n t}_{t_n},
+    \end{align}
+    where $t_n$ represents the time that has elapsed while ambient condition $a_n$ was present.
+
+    For each ambient condition we can compute the produced energy as a function of $t_n$ and the chosen control setpoint $u_n$,
+    \begin{align}
+        E_n(t_n, u_n) = t_n p(u_n, a_n),
+    \end{align}
+    and the overall energy produced up until time $t$ reads
+    \begin{align}
+        E(t, \boldsymbol{u}) &= \sum_{n = 0}^{N - 1}E_n(t_n, u_n)\\
+        &= \sum_{n = 0}^{N - 1}t_n p(u_n, a_n)\\
+        &= t \sum_{n = 0}^{N - 1}\pi_n p(u_n, a_n).\label{eq:energy_produced}
+    \end{align}
+    Similarly, the health budget consumed until time $t$ reads
+    \begin{align}
+        H(t, \boldsymbol{u}) = t \sum_{n = 0}^{N - 1}\pi_n h(u_n, a_n).\label{eq:consumed_H}
+    \end{align}
+
+    \section{Variable Lifetime Energy Production}
+    \subsection{Lifetime Energy Production}
+    In this scenario we consider the lifetime $L(\boldsymbol{u})$ that results for a given control strategy $\boldsymbol{u}$ until the overall health budget $H^\text{total}$ is used up according to \eqref{eq:consumed_H}
+    \begin{align}
+        H^\text{total} = H(L(\boldsymbol{u}), \boldsymbol{u}) = L(\boldsymbol{u}) \sum_{n = 0}^{N - 1}\pi_n h(u_n, a_n),
+    \end{align}
+    which yields the resulting lifetime
+    \begin{align}
+        L(\boldsymbol{u}) = \frac{H^\text{total}}{\sum_{n = 0}^{N - 1}\pi_n h(u_n, a_n)}.\label{eq:lifetime}
+    \end{align}
+    The energy produced over the entire lifetime $E^\text{L}(\boldsymbol{u})$ follows from \eqref{eq:energy_produced} and reads
+    \begin{align}
+        E^\text{L}(\boldsymbol{u}) &= L(\boldsymbol{u}) \sum_{n = 0}^{N - 1}\pi_n p(u_n, a_n),
+    \end{align}
+    and using \eqref{eq:lifetime}
+    \begin{align}
+        E^\text{L}(\boldsymbol{u}) &= H^\text{total} \frac{\sum_{n = 0}^{N - 1} \pi_n p(u_n, a_n)}{\sum_{n = 0}^{N - 1} \pi_n h(u_n, a_n)}.\label{eq:lifetime_energy}
+    \end{align}
+    Note also that the ``individual lifetime'' $L_n(\boldsymbol{u})$, i.e. the time that is spent at each ambient condition $a_n$,
+    \begin{align}
+        L_n(\boldsymbol{u}) =  \pi_n L(\boldsymbol{u})
+    \end{align}
+    is a function of \textit{all} control variables $\boldsymbol{u}$, rather than just $u_n$.
+
+    \subsection{Stationarity of control setpoints}\label{subsec:proof_stationarity}
+    We use the expression for the lifetime energy production \eqref{eq:lifetime_energy} to prove that optimal control strategies assign exactly one control setpoint to each ambient condition.
+
+    Assuming $H^\text{total} = 1$ for simplicity, we have
+    \begin{align}
+        E^\text{L}(\boldsymbol{u}) &= \frac{\sum_{n = 0}^{N - 1} \pi_n p(u_n, a_n)}{\sum_{n = 0}^{N - 1} \pi_n h(u_n, a_n)}\\
+        &= \frac{\pi_0 p(u_0, a_0) + \bar{P}}{\pi_0 h(u_0, a_0) + \bar{H}}\label{eq:lte_split}
+    \end{align}
+    with $\bar{P} = \sum_{n = 1}^{N - 1} \pi_n p(u_n, a_n)$ and $\bar{H} = \sum_{n = 1}^{N - 1} \pi_n h(u_n, a_n)$.
+    
+    Let
+    \begin{align}
+        E^\text{L}(\boldsymbol{u}|\kappa, u_0') &= \frac{\pi_0 ((1 - \kappa) p(u_0, a_0) + \kappa p(u_0', a_0)) + \bar{P}}{\pi_0 ((1 - \kappa) h(u_0, a_0) + \kappa h(u_0', a_0)) + \bar{H}}\label{eq:monot_lte}
+    \end{align}
+    denote the lifetime energy production that results if $u_0'$ is applied instead of $u_0$ for part of $t_0$, with $0 < \kappa < 1$. We choose $n = 0$ without loss of generality, and the following proof would equally hold for any other $n$.
+    
+    The modified lifetime energy production $E^\text{L}(\boldsymbol{u}|\kappa, u_0')$ in \eqref{eq:monot_lte} is a fraction of two linear functions in $\kappa$, which is either (without proof)
+    \begin{itemize}
+        \item constant
+        \item monotonically increasing, or
+        \item monotonically decreasing
+    \end{itemize}
+    with respect to $\kappa$.
+
+    Now, we assume that there exists a control setpoint $u'_0$ such that
+    \begin{align}
+        E^\text{L}(\boldsymbol{u}) < E^\text{L}(\boldsymbol{u}|\kappa, u_0') 
+    \end{align}
+    for $0 < \kappa <1 $, which implies that using $u_0'$ for a part of $t_0$ yields a larger lifetime energy production than applying $u_0$ throughout $t_0$. Due to monotonicity of $E^\text{L}(\boldsymbol{u}|\kappa, u_0')$ we have, 
+    \begin{align}
+        \underbrace{E^\text{L}(\boldsymbol{u}) }_{\kappa = 0} < \underbrace{E^\text{L}(\boldsymbol{u}|\kappa, u_0')}_{0 < \kappa < 1} < \underbrace{E^\text{L}(\boldsymbol{u}')}_{\kappa = 1},
+    \end{align}
+    where $\boldsymbol{u}'$ denotes the control strategy in which $u_0$ is entirely replaced by $u_0'$. We conclude that any combination of two control setpoints $u_n, u_n'$ for ambient condition $a_n$ performs equal or worse than either of the setpoints alone, in particular than the single optimal control setpoint $u_n^*$.
+    
+    \begin{remark}
+        \label{rem:other_amb_cond} $\bar{P}$ and $\bar{H}$ in \eqref{eq:lte_split} assumed stationary control setpoints for the other ambient conditions $a_1, \dots, a_{N - 1}$. However, this is not a necessary assumption for the above proof, because $\bar{P}$ and $\bar{H}$ for non-stationary setpoints would still be constant with respect to $\kappa$.
+    \end{remark}
+    
+    \begin{remark}
+        Similar to Remark \ref{rem:other_amb_cond}, it should be possible to extend the proof to also cover more than two setpoints per ambient condition, by assuming non-stationary control setpoints instead of $u_0$ in the $(1 - \kappa)$-expressions in \eqref{eq:monot_lte}.
+    \end{remark}
+
+    \subsection{Optimal control strategy}
+    We are interested in optimal control strategies $\boldsymbol{u}^*$ such that the lifetime energy production is maximized,
+    \begin{align}
+        \boldsymbol{u}^* &= \arg \max_{\boldsymbol{u}} E^\text{L}(\boldsymbol{u})\\
+        &= \arg \max_{\boldsymbol{u}} \frac{\sum_{n = 0}^{N - 1} \pi_n p(u_n, a_n)}{\sum_{n = 0}^{N - 1} \pi_n h(u_n, a_n)},\label{eq:frau_program}
+    \end{align}
+    because $H^\text{total}$ is a positive constant. Equation \eqref{eq:frau_program} is a fractional program
+    \begin{align}
+        \boldsymbol{u}^* &= \arg \max_{\boldsymbol{u}} \frac{F(\boldsymbol{u})}{G(\boldsymbol{u})},
+    \end{align}
+    with
+    \begin{align}
+        F(\boldsymbol{u}) &= \sum_{n = 0}^{N - 1} \pi_n p(u_n, a_n)\\
+        G(\boldsymbol{u}) &= \sum_{n = 0}^{N - 1} \pi_n h(u_n, a_n).
+    \end{align}
+
+    See \url{https://en.wikipedia.org/wiki/Fractional_programming} for de\-tails and solution strategies.
+
+    \subsection{Illustrating examples}
+    We consider a simple scenario with only two ambient conditions $a_0, a_1$. The resulting lifetime according to \eqref{eq:lifetime} is
+    \begin{align}
+        L(\boldsymbol{u}) = L(u_1, u_2) = \frac{H^\text{total}}{\pi_0 h(u_0, a_0) + \pi_1 h(u_1, a_1)},
+    \end{align}
+    and the lifetime energy production according to \eqref{eq:lifetime_energy} is
+    \begin{align}
+        E^\text{L}(\boldsymbol{u}) = E^\text{L}(u_1, u_2) &= L(u_1, u_2) \left(\pi_0 p(u_0, a_0) + \pi_1 p(u_1, a_1)\right)\\
+        &= H^\text{total} \frac{\pi_0 p(u_0, a_0) + \pi_1 p(u_1, a_1)}{\pi_0 h(u_0, a_0) + \pi_1 h(u_1, a_1)}.
+    \end{align}
+    In the following, we further assume a binary control input $u_n \in \{0, 1\}$. For this simple setting, optimal control strategies can be found via exhaustive search over all possible control strategies.
+    
+    \subsubsection{Greedy vs. joint optimization}\label{subsubsec:greedy_vs_joint}
+    We first assume an energy production and health budget consumption model according to Table \ref{tab:toy_example_1}:
+    \begin{table}[h!]
+        \begin{center}
+            \begin{tabular}{ c | c  | c}
+                 & $a_0$ & $a_1$\\
+                \hline
+                $u = 0$ & \makecell{$p = 0$\\$h = 1$} & \makecell{$p = 0$\\$h = 1$}\\ 
+                \hline
+                $u = 1$ & \makecell{$p = 1$\\$h = 2$}  & \makecell{$p = 5$ \\$h = 3$}
+            \end{tabular}
+            \caption{Parameters example I, Units: $[p] = \text{J}\text{d}^{-1}, [h] = \text{d}^{-1}$}
+        \label{tab:toy_example_1}
+        \end{center}
+    \end{table}
+    
+    In this example, the first control setting ($u = 0$) can be considered an idling state, in which no energy is produced for both ambient conditions. Note, however, that health budget consumption is non-zero (and identical in both ambient conditions) for this control setting. The second control setting ($u = 1$) produces energy in both ambient conditions, at the cost of increasing health budget consumption.
+
+    We first consider the ``greedy'' optimal control strategy that assumes for each ambient condition $n$ that it will be present at all times ($\pi_n = 1$). It is trivial to see that for both ambient conditions, $u = 1$ outperforms $u = 0$, because $u = 0$ would result in consuming up the entire health budget without ever producing any energy.
+
+    Now, we further assume equal prevalence for both ambient conditions, $\pi_0 = \pi_1 = 0.5$, and evaluate lifetime and lifetime energy production for greedy and joint control optimization. The health budget is assumed as $H = 100$ for the following numerical results.
+
+    \begin{itemize}
+        \item Greedy control ($\tilde{u}_0 = 1, \tilde{u}_1 = 1$):
+        \begin{itemize}
+            \item Resulting lifetime $L(\tilde{u}_0, \tilde{u}_1) = 40\ \text{d}$ 
+            \item Resulting lifetime energy production $E^\text{L}(\tilde{u}_0, \tilde{u}_1) = 120\ \text{J}$
+        \end{itemize}
+        \item Optimal control ($u^*_0 = 0, u^*_1 = 1$):
+        \begin{itemize}
+            \item Resulting lifetime $L(u^*_0, u^*_1) = 50\ \text{d}$
+            \item Resulting lifetime energy production $E^\text{L}(u^*_0, u^*_1) = 125\ \text{J}$
+        \end{itemize}
+    \end{itemize}
+
+    It turns out that, given the parameters in Table \ref{tab:toy_example_1}, it is beneficial to set the idling state ($u = 0$) during ambient condition $a_0$, and only activate energy production ($u = 1$) during ambient condition $a_1$. While the health budget consumption $h$ increases for both ambient conditions, the stronger increase in power production (relative to health budget consumption) for ambient condition $a_1$ makes this ambient condition more efficient for energy production.
+
+    The above example demonstrates that ``greedy'' control (independent optimization for each ambient condition) is in general not optimal, depending on the energy production and health budget consumption models and the ambient condition statistics. Further, recalling that the greedy scenario corresponds to extreme prevalence assumptions for the ambient conditions, it illustrates that the assumed prevalence has a direct effect on the optimization problem.
+
+    \subsubsection{Optimal control over long horizons}\label{subsec:long_horizon}
+    In this example, we consider the energy production and health budget consumption model shown in Table \ref{tab:toy_example_2}:
+    \begin{table}[h!]
+        \begin{center}
+            \begin{tabular}{ c | c  | c}
+                 & $a_0$ & $a_1$\\
+                \hline
+                $u = 0$ & \makecell{$p = 0$\\$\boldsymbol{h = 0.1}$} & \makecell{$p = 0$\\$\boldsymbol{h = 0.1}$}\\ 
+                \hline
+                $u = 1$ & \makecell{$p = 1$\\$h = 2$}  & \makecell{$p = 5$ \\$h = 3$}
+            \end{tabular}
+            \caption{Parameters example II, Units: $[p] = \text{J}\text{d}^{-1}, [h] = \text{d}^{-1}$}
+        \label{tab:toy_example_2}
+        \end{center}
+    \end{table}
+
+    This scenario is almost identical to the previous one, only that the health budget consumption in the idling state is 0.1 instead of 1 for both ambient conditions (\textbf{highlighted} in the table). Further, we assume now that the first ambient condition is a lot more prevalent than the second, $\pi_0 = 0.95, \pi_1 = 0.05$. The greedy vs. optimal control strategies for this scenario yield
+    \begin{itemize}
+        \item Greedy control ($\tilde{u}_0 = 1, \tilde{u}_1 = 1$):
+        \begin{itemize}
+            \item Resulting lifetime $L(\tilde{u}_0, \tilde{u}_1) = 48.8$ d 
+            \item Resulting lifetime energy production $E^\text{L}(\tilde{u}_0, \tilde{u}_1) = 58.5$ J
+        \end{itemize}
+        \item Optimal control ($u^*_0 = 0, u^*_1 = 1$):
+        \begin{itemize}
+            \item Resulting lifetime $L(u^*_0, u^*_1) = 408.2$ d
+            \item Resulting lifetime energy production $E^\text{L}(u^*_0, u^*_1) = 102.0$ J
+        \end{itemize}
+    \end{itemize}
+    
+    The optimal control strategy for this example, again, suggests to idle during ambient condition $a_0$, and only produce power during the much more efficient ambient condition $a_1$. While the lifetime energy production is almost twice as high for the optimal control strategy (102.0 J vs. 58.5 J), the greedy strategy produces this energy over a much shorter period of time (48.8 d vs. 408.2 d). Strictly adhering to an optimal control strategy leads to the power plant idling 95\% of the time (ambient condition $a_0$), and actively producing power only 5\% of the time (ambient condition $a_1$). It is questionable whether this behavior would indeed be desirable in practice due to economic considerations.
+   
+    \subsubsection{Implementation}
+    The example results were computed using the script \href{https://gitlab.tudelft.nl/fault-tolerant-control_DCSC/twain/twain-math/-/blob/main/lifetime_energy_production/lifetime_toy_example.py}{lifetime\_toy\_example.py} at \url{https://gitlab.tudelft.nl/fault-tolerant-control_DCSC/twain/twain-math/}.
+
+    \subsection{Conclusions}
+    
+    \subsubsection{Joint optimization problem}
+    Even the seemingly simple scenario of maximizing energy production, while taking into account the power plant's lifetime, results in a non-trivial fractional programming optimization problem. We should analyze if there are any conditions under which greedy control is optimal or, even better, if some measures of sub-optimality can be identified.
+    
+    \subsubsection{Meaningfulness of optimization problem}
+    It can be questioned whether the strict optimization of lifetime energy production is meaningful in practice (see example II above, Section \ref{subsec:long_horizon}). One way to avoid arbitrarily long lifetimes would be including discount factors for the energy production, which weigh energy produced in the near future higher than in the far future.
+    
+    \section{Constrained Lifetime Energy Production}
+    \subsection{Lifetime Energy Production}
+    In this scenario we assume a fixed certified lifetime $L^\text{cert}$ of the powerplant. The goal is to find control strategies $\boldsymbol{u}$ that maximize the lifetime energy production
+    \begin{align}
+        E^\text{L}(\boldsymbol{u}) &= L^\text{cert} \sum_{n = 0}^{N - 1} \pi_n p(u_n, a_n),
+    \end{align}
+    while ensuring that the health budget consumed at $t = L^\text{cert}$ is no larger than the overall health budget,
+    \begin{align}
+        H(L^\text{cert}) & = L^\text{cert} \sum_{n = 0}^{N - 1} \pi_n h(u_n, a_n) \le H^\text{total}.
+    \end{align}
+    This corresponds to a constrained optimization problem,
+    \begin{align}
+        \boldsymbol{u}^* =& \arg \max_{\boldsymbol{u}} L^\text{cert} \sum_{n = 0}^{N - 1} \pi_n p(u_n, a_n)\\
+        &\text{s.t. } L^\text{cert} \sum_{n = 0}^{N - 1} \pi_n h(u_n, a_n)\le H^\text{total},
+    \end{align}
+    or 
+    \begin{align}
+        \boldsymbol{u}^* =& \arg \max_{\boldsymbol{u}} \sum_{n = 0}^{N - 1} L^\text{cert} _n p(u_n, a_n)\\
+        &\text{s.t. } \sum_{n = 0}^{N - 1} L^\text{cert} _n h(u_n, a_n) - H^\text{total} \le 0,
+    \end{align}
+    \subsection{Stationarity of control setpoints}
+    Although we will continue to assume stationary control setpoints $u_n$ for each ambient condition $a_n$, we note that such control strategies are not necessarily optimal for the fixed-lifetime problem (contrary to the variable-lifetime optimization problem, as discussed in \ref{subsec:proof_stationarity}). Although even simpler counter-examples could be fabricated (for example assuming a single ambient condition for all time), we go back to the model for power production and health-budget consumption proposed in Section \ref{subsubsec:greedy_vs_joint} (see Table \ref{tab:toy_example_1}).
+
+    We assume again a health budget of $H^\text{total} = 100$ and equal ambient-condition prevalence $\pi_0 = \pi_1 = 0.5$, but this time with a fixed lifetime of $L^\text{cert} = 200$ days. The ``certified lifetime per ambient condition'' equals 100 days, and we see immediately that persistent active power production ($u_n = 1$) for either of the ambient conditions would violate the health budget constraint. The only permissible stationary control strategy would hence be idling ($u_0 = u_1 = 0$) for the entire certified lifetime, resulting in zero overall power produced. However, selecting active power production ($u_n = 1$) for either of the ambient conditions for some (arbitrarily short) period of time, and idling for the rest of the time, would result in a positive power production, while still satisfying the health budget constraint, illustrating that stationary control setpoints cannot be optimal in this scenario.
+    
+
+
+
+
+
+\end{document} % This is the end of the document

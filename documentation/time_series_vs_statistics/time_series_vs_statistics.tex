@@ -1,0 +1,138 @@
+\documentclass{article} 
+\usepackage{mathtools, amssymb, hyperref, makecell}
+\title{Time-series and statistical data}
+% \author{Wolfram Martens}
+\date{\today} % Sets date for date compiled
+
+\newtheorem{remark}{Remark}
+\begin{document}
+    \maketitle
+    \tableofcontents
+    \section{Ambient condition random process}
+    Let
+    \begin{align}
+        \boldsymbol{A}_t = \left(\begin{array}{c}
+            A_{1, t}\\
+            \vdots\\
+            A_{S_a, t}
+        \end{array}\right)
+    \end{align}
+    denote an $S_a$-dimensional vector-valued random process with time index $t$, where each $a_s, s \in \{1, \dots, S\}$ represents an ambient condition according to \href{https://confluence.tudelft.nl/spaces/FTC/pages/209716272/Software+Implementation#Software\%2FImplementation-Ambientconditions}{Confluence: Ambient Conditions}.
+
+    We assume that $\boldsymbol{A}_t$ is stationary, such that its joint probability density function
+    \begin{align}
+        f(\boldsymbol{a}) \coloneqq f(a_0, \cdots, a_{S - 1})
+    \end{align} 
+    does not change over time.
+
+    In practice, instead of a continuous pdf $f(\boldsymbol{a})$, we are often given a discrete probability mass function (PMF)
+    \begin{align}
+        \rho_i \coloneqq \text{Pr}(\boldsymbol{A}_t &= \boldsymbol{a}_i), \quad i \in 1, \cdots, I,\\
+        \text{with }\sum_{i = 1}^I \rho_i &= 1.
+    \end{align}
+    
+
+    \section{Wind Farm Models}
+    A wind farm model (WFM) is represented by a vector-valued function $\mu: \mathbb{R}^{S_c} \times \mathbb{R}^{S_a} \rightarrow \mathbb{R}^{S_o}$
+    \begin{align}
+        \boldsymbol{y} = \mu(\boldsymbol{u}, \boldsymbol{a}),
+    \end{align}
+    where $\boldsymbol{u} \in \mathbb{R}^{S_c}, \boldsymbol{a} \in \mathbb{R}^{S_a}$ and $\boldsymbol{y} \in \mathbb{R}^{S_o}$
+    denote the control input, ambient condition and model output vector, respectively.
+
+    We further define a control policy $\pi: \mathbb{R}^{S_a} \rightarrow \mathbb{R}^{S_c}$,
+    which assigns a control input
+    \begin{align}
+        \boldsymbol{u} = \pi(\boldsymbol{a})
+    \end{align}
+    to each ambient condition. The considered control policies are \textit{static} in the sense that they map exactly one control input to each ambient condition at all times.
+
+    If the statistics of $\boldsymbol{A}_t$ are given in the form of a discrete PMF, the static control policy is denoted
+    \begin{align}
+        \mathbf{u} \coloneqq (\boldsymbol{u}_1,)
+    \end{align}
+
+    For a given control policy $\pi$, we can define a parametrized version of the WFM (PWFM) that is a function only of the ambient condition, 
+    \begin{align}
+        \mu^\pi: \mathbb{R}^{S_a} \rightarrow \mathbb{R}^{S_o},
+    \end{align}
+    such that
+    \begin{align}
+        \boldsymbol{y} = \mu^\pi(\boldsymbol{a}) \coloneqq \mu(\pi(\boldsymbol{a}), \boldsymbol{a}).
+    \end{align}
+    
+    \section{Accumulated Metric}
+    For a given time interval $t \in [0, T]$ and model output $\boldsymbol{y}(t)$ we define a vector of integral-metrics 
+    \begin{align}
+        \boldsymbol{m}(T)= \int_0^T \boldsymbol{y}(t)\ \text{d}t.
+    \end{align}
+    For given ambient condition data and $\boldsymbol{a}(t), t \in [0, T]$ and control policy $\pi$, the integral metric reads
+    \begin{align}
+        \boldsymbol{m}(T)= \int_0^T \mu(\boldsymbol{a}(t))\ \text{d}t,
+    \end{align}
+    where the superscript in $\mu^\pi$ has been omitted for legibility.
+    \begin{remark}
+        The concept of integral-metrics can be extended to more general \textit{accumulated metrics},
+        \begin{align}
+        {\boldsymbol{m}}^\phi(T)= \int_0^T \phi(\boldsymbol{y}(t), t)\ \text{d}t,
+        \end{align}
+        where $\phi$ denotes a vector-valued function of the model outputs and time. This can be used for example to consider discounting rates over time.
+    \end{remark}
+
+    \section{Expected value for integral metrics}
+    \subsection{Simple Time-Integration}
+    We are interested in the expected value of an integral metric $\mathbb{E}\left[{\boldsymbol{m}}(T)\right]$, where the expectation is taken over $f(\boldsymbol{a})$. We have
+    \begin{align}
+        \mathbb{E}\left[{\boldsymbol{m}}(T)\right]&= \mathbb{E}\left[\int_0^T \mu(\boldsymbol{a}(t))\ \text{d}t\right]\\
+        &= \int_0^T \mathbb{E}\left[\mu(\boldsymbol{a}(t))\right]\ \text{d}t\label{eq:expected_acc_metric}
+    \end{align}
+    due to fundamental rules of integration and linearity of the expectation value. Due to stationarity of the ambient conditions, we have
+    \begin{align}
+        \mathbb{E}\left[\mu(\boldsymbol{a}(t))\right] = \mathbb{E}\left[\mu(\boldsymbol{a})\right],
+    \end{align}
+    which is a constant (in time $t$), and the expected value is computed as
+    \begin{align}
+        \mathbb{E}\left[{\boldsymbol{m}}(T)\right] &= T\ \mathbb{E}\left[\mu(\boldsymbol{a})\right] \\
+        &=T\int_{S(\boldsymbol{a})}\mu(\boldsymbol{a})\ f(\boldsymbol{a}) \text{d} \boldsymbol{a}.
+    \end{align}
+    If, instead of a continuous pdf $f(\boldsymbol{a})$, a discrete point mass distribution
+    \begin{align}
+        \rho_i \coloneqq \text{Pr}(\boldsymbol{A} &= \boldsymbol{a}_i), \quad i \in 1, \cdots, I,\\
+        \text{with }\sum_{i = 1}^I \rho_i &= 1
+    \end{align}
+    is given, then the expectation is computed as   
+    \begin{align}
+        \mathbb{E}\left[{\boldsymbol{m}}(T)\right] &= T\sum_{i = 1}^I \mu^\pi(\boldsymbol{a}_i) \rho_i.
+    \end{align}
+    \subsection{Discounted Time-Integration}
+    We further consider the case where a discount factor $0<\gamma \le 1$ is applied over time,
+    \begin{align}
+        \phi(\boldsymbol{y}, t) = \gamma^t \boldsymbol{y}.
+    \end{align}
+    The expectation of the accumulated metric then reads according to \eqref{eq:expected_acc_metric}
+    \begin{align}
+        \mathbb{E}\left[{\boldsymbol{m}^\phi}(T)\right] &= \int_0^T \mathbb{E}\left[\phi\left(\mu(\boldsymbol{a}(t)), t\right)\right]\ \text{d}t\\
+        &= \int_0^T \mathbb{E}\left[\gamma^t\mu(\boldsymbol{a}(t))\right]\ \text{d}t\\
+        &= \mathbb{E}\left[\mu(\boldsymbol{a})\right]\int_0^T \gamma^t\ \text{d}t\\
+        &= \mathbb{E}\left[\mu(\boldsymbol{a})\right] \frac{\gamma^T - 1}{\log(\gamma)}
+    \end{align}
+    If instead the discount is defined in discrete time $t$,
+    \begin{align}
+        {\boldsymbol{m}}^\phi(T)= \sum_{t = 0}^{T - 1}\gamma^t \mu(\boldsymbol{a}(t))
+    \end{align}
+    we get
+    \begin{align}
+        \mathbb{E}\left[{\boldsymbol{m}^\phi}(T)\right] &= \mathbb{E}\left[\sum_{t = 0}^{T - 1}\gamma^t \mu(\boldsymbol{a}(t))\right]\\
+        &= \mathbb{E}\left[\mu(\boldsymbol{a})\right]\sum_{t = 0}^{T - 1}\gamma^t\\
+        &= \mathbb{E}\left[\mu(\boldsymbol{a})\right]\frac{1 - \gamma^T}{1 - \gamma}.
+    \end{align}
+    The discount factor could be derived from a yearly discount rate, for example, in which case the model output $\mu(\boldsymbol{a})$ needs to correspond to a yearly rate.
+
+    Note that the yearly discount factor is usually computed from a yearly discount rate $r$,
+    \begin{align}
+        \gamma = \frac{1}{1 + r}.
+    \end{align}
+
+    It is also important to note that the effect of the discount is applied as an external factor to the expectation value in both the discrete and continuous case. 
+    
+\end{document}
