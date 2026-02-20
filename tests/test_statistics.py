@@ -1,9 +1,9 @@
 import pathlib
 import pytest
 import numpy as np
-from twain_wifco.config import parse_json_file
-from twain_wifco.statistics import statistics_from_dict
-from twain_wifco.interface import Ambient, DataTable
+from wiffco.config import parse_json_file
+from wiffco.statistics import statistics_from_dict
+from wiffco.interface import Ambient, DataTable
 
 def test_statistics():
     test_data_folder = pathlib.Path(__file__).parent / "data"

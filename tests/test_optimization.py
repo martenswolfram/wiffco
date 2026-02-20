@@ -3,13 +3,13 @@ import numpy as np
 import pytest
 from typing import Dict
 import logging
-from twain_wifco.config import (
+from wiffco.config import (
     parse_json_file,
     control_evaluation_system_from_json)
-from twain_wifco.control_policy import DiscreteControlPolicy
-from twain_wifco.statistics import statistics_from_dict, AmbientStatistics
-from twain_wifco.interface import Control
-from twain_wifco.optimization import (
+from wiffco.control_policy import DiscreteControlPolicy
+from wiffco.statistics import statistics_from_dict, AmbientStatistics
+from wiffco.interface import Control
+from wiffco.optimization import (
     control_optimization_from_dict,
     ControlEvaluationSystem,
     GridSearch,

@@ -1,9 +1,9 @@
 import pathlib
 import pytest
 import numpy as np
-from twain_wifco.config import parse_json_file
-from twain_wifco.plant_model import plant_model_from_dict
-from twain_wifco.interface import (
+from wiffco.config import parse_json_file
+from wiffco.plant_model import plant_model_from_dict
+from wiffco.interface import (
     Ambient,
     Control,
     ModelOutput,

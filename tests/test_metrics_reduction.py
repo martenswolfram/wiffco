@@ -1,8 +1,8 @@
 import pathlib
 import numpy as np
-from twain_wifco.config import parse_json_file
-from twain_wifco.multi_metrics_reduction import multi_metrics_reduction_from_dict
-from twain_wifco.interface import AccumulatedMetric, DataTable
+from wiffco.config import parse_json_file
+from wiffco.multi_metrics_reduction import multi_metrics_reduction_from_dict
+from wiffco.interface import AccumulatedMetric, DataTable
 
     
 def test_metrics_reduction():

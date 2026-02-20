@@ -1,9 +1,9 @@
 import pathlib
 import pytest
 import numpy as np
-from twain_wifco.config import parse_json_file
-from twain_wifco.symbolic import symbolic_function_from_dict
-from twain_wifco.interface import (
+from wiffco.config import parse_json_file
+from wiffco.symbolic import symbolic_function_from_dict
+from wiffco.interface import (
     DataTable,
     ModelOutput,
     Control,
