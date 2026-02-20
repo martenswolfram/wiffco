@@ -2,7 +2,7 @@ from typing import Dict, Any, Callable, Tuple, List, Type
 import numpy as np
 import sympy as sp
 
-from twain_wifco.interface import (
+from wiffco.interface import (
     DataTable,
     MAP_ENUM_TO_STR,
     DataEnum,

@@ -1,7 +1,7 @@
 import pathlib
 import csv
 import floris
-from twain_wifco.interface import (
+from wiffco.interface import (
     DataVariable,
     Ambient,
     Control)

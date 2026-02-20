@@ -1,10 +1,9 @@
 [project]
-name = "twain-wifco"
+name = "wiffco"
 version = "0.0.1"
-description = "TWAIN WInd Farm Control Optimization"
+description = "WInd Farm Flow Control Optimization"
 authors = [
-  { name = "Bart Wolleswinkel", email = "b.wolleswinkel@tudelft.nl"},
-  { name = "Wolfram Martens", email = "w.martens@tudelft.nl" }
+  { name = "Wolfram Martens", email = "wolfram.martens@yahoo.com" }
 ]
 
 readme = "README.md"

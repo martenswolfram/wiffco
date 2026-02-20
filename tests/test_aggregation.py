@@ -1,8 +1,8 @@
 import pathlib
 import numpy as np
-from twain_wifco.config import parse_json_file
-from twain_wifco.aggregation import aggregation_from_dict
-from twain_wifco.interface import (
+from wiffco.config import parse_json_file
+from wiffco.aggregation import aggregation_from_dict
+from wiffco.interface import (
     Ambient,
     ModelOutput,
     Aggregate,

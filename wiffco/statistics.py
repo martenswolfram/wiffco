@@ -3,7 +3,7 @@ from matplotlib import pyplot as plt
 from abc import abstractmethod
 from enum import Enum
 import numpy as np
-from twain_wifco.interface import (
+from wiffco.interface import (
     Component,
     Ambient,
     DataTable,

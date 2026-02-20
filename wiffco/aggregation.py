@@ -3,7 +3,7 @@ from typing import Dict, Any
 from abc import abstractmethod
 from enum import Enum
 
-from twain_wifco.interface import (
+from wiffco.interface import (
     Component,
     Ambient,
     ModelOutput,
@@ -12,7 +12,7 @@ from twain_wifco.interface import (
     DataTable,
 )
 
-from twain_wifco.symbolic import (
+from wiffco.symbolic import (
     symbolic_function_from_dict,
     SymbolicFunction
 )

@@ -7,31 +7,31 @@ from scipy.sparse import coo_matrix
 from functools import lru_cache
 import itertools
 from enum import Enum
-from twain_wifco.interface import (
+from wiffco.interface import (
     Ambient,
     Control,
     get_abs_tol,
     AccumulatedMetric,
     DataTable
 )
-from twain_wifco.statistics import (
+from wiffco.statistics import (
     AmbientStatistics,
     DiscreteAmbientStatistics
 )
-from twain_wifco.control_policy import (
+from wiffco.control_policy import (
     DiscreteControlPolicy,
     default_discrete_policy
 )
-from twain_wifco.plant_model import PlantModel
-from twain_wifco.aggregation import Aggregation
-from twain_wifco.metrics_accumulation import MetricsAccumulation
-from twain_wifco.constraint import (
+from wiffco.plant_model import PlantModel
+from wiffco.aggregation import Aggregation
+from wiffco.metrics_accumulation import MetricsAccumulation
+from wiffco.constraint import (
     ControlConstraint,
     AggregateConstraint,
     AccumulatedConstraint,
     TwoSidedBound
 )
-from twain_wifco.multi_metrics_reduction import MultiMetricsReduction
+from wiffco.multi_metrics_reduction import MultiMetricsReduction
 
 logger = logging.getLogger(__name__)
 
@@ -654,36 +654,33 @@ class LagrangianLambda:
         return self._lagrangian_lambda.dot(
             self.unified_vector_eval(acc_metric=acc_metric))
         
-    def process_constraint_violation(self, acc_metric: DataTable[AccumulatedMetric]):
-        # Compute violation (upper and lower bounds combined)
-        violation = self.unified_vector_eval(acc_metric=acc_metric) - self.unified_upper_bound_vector
-        
-        # Update clipping
-        self._lambda_low = np.where(violation > 0,
-                                         self._lagrangian_lambda,
-                                         self._lambda_low)
-        self._lambda_high = np.where(violation < 0,
-                                          self._lagrangian_lambda,
-                                          self._lambda_high)
-        # Bisection approach
-        for i_constr, (lam_low, lam_high) in enumerate(zip(self._lambda_low,
-                                                           self._lambda_high)):
-            if np.isinf(lam_high):
-                # Expansion phase
-                step = np.sign(violation[i_constr])
-                self._lagrangian_lambda[i_constr] += step * self._alpha_0
-            else:
-                # Bisection phase
-                self._lagrangian_lambda[i_constr] = (lam_high + lam_low) / 2
-        
-        if np.all(violation < self.constraint_tol_vector) and \
-            np.all(np.abs(self._lambda_high - self._lambda_low) < \
-                   self._lambda_abs_tol):
-            # Convergence
+    def process_constraint_violation(
+        self, 
+        acc_metric: DataTable[AccumulatedMetric]):
+
+        # Compute violation
+        violation = (
+            self.unified_vector_eval(acc_metric=acc_metric)
+            - self.unified_upper_bound_vector
+        )
+
+        # Step size
+        alpha = self._alpha_0
+
+        # Subgradient ascent
+        self._lagrangian_lambda += alpha * violation
+
+        # Projection to lambda >= 0
+        self._lagrangian_lambda = np.maximum(
+            self._lagrangian_lambda,
+            0.0
+        )
+
+        # Convergence check
+        if np.all(np.maximum(violation, 0.0) < self.constraint_tol_vector):
             return True
-        else:
-            # No convergence
-            return False
+
+        return False
 
 class LagrangianRelaxation(ControlPolicyOptimization):
     def __init__(self,

@@ -2,7 +2,7 @@ from typing import Dict, List, Callable, Tuple
 import numpy as np
 from scipy.optimize import NonlinearConstraint, Bounds
 from dataclasses import dataclass
-from twain_wifco.interface import (
+from wiffco.interface import (
     Component,
     Control,
     Aggregate,

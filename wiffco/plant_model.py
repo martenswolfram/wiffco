@@ -3,7 +3,7 @@ from abc import abstractmethod
 from enum import Enum
 import floris
 
-from twain_wifco.interface import (
+from wiffco.interface import (
     DataTable,
     Component,
     Ambient,
@@ -11,22 +11,22 @@ from twain_wifco.interface import (
     ModelOutput,
     Interface,
 )
-from twain_wifco.scattered_interpolation import (
+from wiffco.scattered_interpolation import (
     ScatteredInterpolatorParams,
     ScatteredInterpolator,
     scattered_interpolator_params_from_dict,
 )
-from twain_wifco.symbolic import (
+from wiffco.symbolic import (
     symbolic_function_from_dict,
     SymbolicFunction
 )
 
-from twain_wifco.floris_model.floris_interface import (
+from wiffco.floris_model.floris_interface import (
     wifco2floris,
     configure_floris_model
 )
 
-from twain_wifco.twain_surrogate.load_surrogates import (
+from wiffco.twain_surrogate.load_surrogates import (
     DamageComponent,
     dmg_equivalent_loads
 )

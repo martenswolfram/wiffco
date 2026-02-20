@@ -2,7 +2,7 @@ from typing import Dict, Any, Generic, TypeVar, Type
 from enum import Enum
 import numpy as np
 from scipy.interpolate import RBFInterpolator, LinearNDInterpolator, make_interp_spline
-from twain_wifco.interface import (
+from wiffco.interface import (
     DataTable,
     DataTable,
     DataType

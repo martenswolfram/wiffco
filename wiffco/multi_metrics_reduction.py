@@ -2,7 +2,7 @@ from typing import Dict, Any
 import numpy as np
 from abc import abstractmethod
 from enum import Enum
-from twain_wifco.interface import (
+from wiffco.interface import (
     Component,
     AccumulatedMetric,
     DataTable,

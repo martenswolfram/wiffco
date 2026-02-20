@@ -2,7 +2,7 @@ from typing import List
 import numpy as np
 import floris
 from enum import Enum
-from twain_wifco.twain_surrogate import (
+from wiffco.twain_surrogate import (
     ANN_DEL_BladeRoot,
     ANN_DEL_Shaft,
     ANN_DEL_TowerBase,

@@ -1,24 +1,24 @@
 import numpy as np
 import logging
 import pathlib
-from twain_wifco.config import parse_csv_file, parse_json_file
-from twain_wifco.statistics import statistics_from_table
-from twain_wifco.interface import Ambient, DataTable
-from twain_wifco.optimization import (
+from wiffco.config import parse_csv_file, parse_json_file
+from wiffco.statistics import statistics_from_table
+from wiffco.interface import Ambient, DataTable
+from wiffco.optimization import (
     ControlEvaluationSystem,
     control_optimization_from_dict
 )
-from twain_wifco.plant_model import plant_model_from_dict
-from twain_wifco.aggregation import aggregation_from_dict
-from twain_wifco.metrics_accumulation import metrics_accumulation_from_dict
-from twain_wifco.constraint import constraint_from_dict
-from twain_wifco.multi_metrics_reduction import multi_metrics_reduction_from_dict
+from wiffco.plant_model import plant_model_from_dict
+from wiffco.aggregation import aggregation_from_dict
+from wiffco.metrics_accumulation import metrics_accumulation_from_dict
+from wiffco.constraint import constraint_from_dict
+from wiffco.multi_metrics_reduction import multi_metrics_reduction_from_dict
 
 
-# logging.basicConfig(
-#     level=logging.DEBUG,
-#     format="%(asctime)s [%(levelname)s] %(message)s"
-# )
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s [%(levelname)s] %(message)s"
+)
 
 # Config data
 data_set = "from_bart"

@@ -2,9 +2,9 @@ from typing import Dict, Any
 from abc import abstractmethod
 from enum import Enum
 import numpy as np 
-from twain_wifco.statistics import (
+from wiffco.statistics import (
     AmbientStatistics)
-from twain_wifco.interface import (
+from wiffco.interface import (
     Component,
     Aggregate,
     AccumulatedMetric,

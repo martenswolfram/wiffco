@@ -1,0 +1,469 @@
+\documentclass{article} 
+\usepackage{mathtools, amssymb, hyperref, makecell, algorithm, algpseudocode}
+\title{Lagrangian relaxation for accumulated metric constraints}
+% \author{Wolfram Martens}
+\date{\today} % Sets date for date compiled
+
+\newtheorem{remark}{Remark}
+\begin{document}
+
+\maketitle
+\tableofcontents
+\section{Ambient condition statistics}\label{sec:ambient}
+We assume that the statistics of ambient conditions are described in the form of a probability mass function (PMF)
+\begin{align}
+    p_A(a_n) = P(A=a_n),\quad n = 1, \dots, N
+\end{align}
+where $A$ is a discrete random variable denoting the ambient condition. We will use
+\begin{align}
+    \boldsymbol{a} &:= (a_1, \dots, a_N),\\
+    \boldsymbol{p} &:= (p_1, \dots, p_N)\nonumber\\
+                   &:= (p_A(a_1), \cdots, p_A(a_N))
+\end{align}
+to denote the set of all considered discrete ambient conditions and their corresponding probabilities.
+
+\subsection*{Remarks}
+\begin{itemize}
+    \item Of course, the discrete PMF is an approximation of an underlying continuous probability density function over random ambient conditions. In practice, any observed ambient condition will be assigned to one of the discrete ambient conditions (the ``closest'' one, ideally).
+    \item All probability distributions are assumed stationary and ergodic, so that $\boldsymbol{p}$ does not change over time.
+    \item We use lower-case $a$ to denote a single ambient condition, although the following considerations equally hold for multi-dimensional ambient conditions (e.g. wind speed, wind direction, electricity price, ...).
+\end{itemize}
+
+\section{Plant model}
+We assume steady-state plant models $f$ of the form
+\begin{align}
+    y = f(a, u),
+\end{align}
+where $a$ denotes an ambient condition according to Section \ref{sec:ambient} and $u$ denotes a control setpoint. 
+\subsection*{Remarks}
+\begin{itemize}
+    \item Unlike the discrete set of ambient conditions, the control input $u$ and the plant model $f$ are assumed continuous.
+    \item Only steady-state, time-invariant models are considered, so no internal dynamics or time-dependent behavior are modelled.
+    \item Similar to $a$ we use lower-case $u$ to denote a control input, although the control can be multi-dimensional (yaw-steering, power regulation, etc. for multiple turbines, ...). We will refer to a specific set of control inputs as a control setpoint (although this may in fact refer to a set of setpoints).
+\end{itemize}
+
+\section{Control policy}
+We are interested in control policies
+\begin{align}
+    u = \pi(a|\boldsymbol{\theta})
+\end{align}
+that assign to any ambient condition $a$ a control input $u$, and that are parametrizable by a set of parameters $\boldsymbol{\theta}$. If we limit $a$ to the discrete set of ambient conditions $\boldsymbol{a}$ from Section \ref{sec:ambient}, a \textit{discrete} control policy is specified by a set of discrete control setpoints
+\begin{align}
+    \boldsymbol{u}^\pi(\boldsymbol{\theta}) = (u^\pi_1(\boldsymbol{\theta}), \dots, u^\pi_N(\boldsymbol{\theta})).
+\end{align}
+In the following, we further assume that the policy parameters $\boldsymbol{\theta}$ are specified for each discrete ambient condition separately,
+\begin{align}
+    \boldsymbol{\theta} = (\theta_1, \dots, \theta_N),
+\end{align}
+and
+\begin{align}
+    \boldsymbol{u}^\pi(\boldsymbol{\theta}) = (u^\pi_1(\theta_1), \dots, u^\pi_N(\theta_N)).
+\end{align}
+A \textit{separable} discrete control policy is hence parametrized by a set of parameters $\boldsymbol{\theta}$, with individual $\theta_n$ for each considered ambient condition $a_n$.
+\subsection*{Remarks}
+\begin{itemize}
+    \item Again, $\theta_n$ can also represent a set of parameters for each ambient condition.
+    \item In the most common setting, each $\theta_n$ simply represents the control setpoint $u_n$ for ambient condition $a_n$.
+    \item For a given control policy $\pi$, the plant model becomes a function of only the ambient condition,
+    \begin{align}
+        y = f^\pi(a | \pi),
+    \end{align}
+    or in terms of the policy parameters,
+    \begin{align}
+        y = f^\pi(a | \boldsymbol{\theta}).
+    \end{align}
+    \item For discrete ambient conditions we write
+    \begin{align}
+        f_n^\pi(\boldsymbol{\theta}) := f^\pi(a_n | \boldsymbol{\theta}),
+    \end{align}
+    \item Similar to the plant model and ambient condition statistics we consider only stationary control policies that do not change over time.
+\end{itemize}
+
+\section{Metric accumulation}
+We are eventually interested in \textit{accumulated metrics} of the form
+\begin{align}
+    F = \int_0^T f(a(t), u(t)) \text{d}t,
+\end{align}
+or given a control policy $\pi$,
+\begin{align}
+    F^\pi(\boldsymbol{\theta}) = \int_0^T f(a(t) | \boldsymbol{\theta}) \text{d}t,
+\end{align}
+where $T$ denotes a considered time horizon, and $a(t)$ varies over time.
+
+For given ambient condition statistics, we are interested in the expectation of $F^\pi(\boldsymbol{\theta})$,
+\begin{align}
+    \mathbb{E}\left[F^\pi(\boldsymbol{\theta})\right]&= \mathbb{E}\left[\int_0^T f(a(t) | \boldsymbol{\theta}) \text{d}t\right]\\
+    &= \int_0^T \mathbb{E}\left[f(a(t) | \boldsymbol{\theta})\right]\ \text{d}t,
+\end{align}
+according to fundamental rules of integration and linearity of the expectation value. Due to stationarity of the ambient conditions, the expectation value is constant over time and can be taken out of the integral,
+\begin{align}
+    \mathbb{E}\left[F^\pi(\boldsymbol{\theta})\right]&= \mathbb{E}\left[f(a| \boldsymbol{\theta})\right]\ \int_0^T \text{d}t\nonumber\\
+    &= T\ \mathbb{E}\left[f(a| \boldsymbol{\theta})\right].
+\end{align}
+The constant expectation $\mathbb{E}\left[f(a| \boldsymbol{\theta})\right]$ is computed according to the ambient condition statistics. More specifically, for the discrete ambient condition PMF we get 
+\begin{align}
+    \mathbb{E}\left[f(a | \boldsymbol{\theta})\right] = \sum_{n = 1}^N p_n f(a_n | \boldsymbol{\theta}),
+\end{align}
+or for separable policy parameters,
+\begin{align}
+    \mathbb{E}\left[f(a | \boldsymbol{\theta})\right] = \sum_{n = 1}^N p_n f_n(\theta_n).
+\end{align}
+Finally, the expected value of the accumulated metric $F^\pi$ is computed as 
+\begin{align}
+    \mathbb{E}\left[F^\pi(\boldsymbol{\theta})\right]&= T\ \sum_{n = 1}^N p_n f_n(\theta_n).
+\end{align}
+\subsection*{Remarks}
+\begin{itemize}
+    \item In the following we skip the explicit mentioning of the expectation value $\mathbb{E}\left[\cdot\right]$, and will simply refer to the expected accumulated metric as $F^\pi$. Note that in practice this converges to the actual accumulated metric for large enough integration periods $T$.
+\end{itemize}
+
+\section{Constrained Optimization problem formulation}
+We are interested in scenarios where two or more accumulated metrics are in conflict with each other. For simplicity, we assume a single \textit{objective} metric $F^\pi$ which is to be maximized and results from integration of a model output $f$, and a single \textit{cost} metric $G^\pi$, which must not exceed a certain threshold $G^\text{max}$, and results from integration of a second model output $g$. The optimization problem reads
+\begin{align}
+    \boldsymbol{\theta}^* = \arg \max_{\boldsymbol{\theta}} F^\pi(\boldsymbol{\theta}), \quad \text{s.t. }G^\pi(\boldsymbol{\theta}) \le G^\text{max},
+\end{align}
+where the expectation values have been skipped for simplicity. Assuming a separable discrete control policy, we get
+\begin{align}
+    \boldsymbol{\theta}^* = \arg \max_{\boldsymbol{\theta}} T\ \sum_{n = 1}^N p_n f_n(\theta_n), \quad \text{s.t. }T\ \sum_{n = 1}^N p_n g_n(\theta_n) \le G^\text{max},
+\end{align}
+or 
+\begin{align}
+    \boldsymbol{\theta}^* = \arg \max_{\boldsymbol{\theta}} \sum_{n = 1}^N p_n f_n(\theta_n), \quad \text{s.t. }\sum_{n = 1}^N p_n g_n(\theta_n) \le G_T^\text{max},\label{eq:optim_final}
+\end{align}
+where the constant $T$ has been removed from the objective expression, and
+\begin{align}
+    G_T^\text{max} = \frac{G^\text{max}}{T}.
+\end{align}
+\subsection*{Remarks}
+\begin{itemize}
+    \item We observe that the objective function $F^\pi$ can be separated for each ambient condition $n$, and coupling of the full problem arises only due to the constraint on $G^\pi$.
+    \item Note that we use the term ``cost'' here for an accumulated metric that is considered ``bad'', which is usually not interpretable as a monetary cost. In particular, it is not a cost that can be directly subtracted from the objective function (such as e.g. operational expenditures vs. revenue), in which case the problem would readily formulated as an unconstrained optimization problem with a combined objective function.
+    \item Again, in practice we will see a set of accumulated metric constraints rather than a single quantity, as suggested in \eqref{eq:optim_final}. The typical example in the context of wind farm optimization would be accumulated \textit{damage equivalent loads}, which may need to be evaluated for multiple components at every wind turbine. 
+\end{itemize}
+
+
+
+\section{Lagrangian Relaxation}
+Direct solution of \eqref{eq:optim_final} implies simultaneous optimization for the policy parameters $\boldsymbol{\theta}$ subject to the constraint equation(s), which would quickly result in high-dimensional and hence intractable problems. The basic idea of Lagrangian Relaxation is to reformulate the problem as an unconstrained optimization problem that approximates the original problem, by means of Lagrangian variables $\lambda$.
+
+We introduce the Lagrangian (assuming a single constraint for now)
+\begin{align}
+    \mathcal{L}(\boldsymbol{\theta}, \lambda) = F^\pi(\boldsymbol{\theta}) -\lambda \bigl(G^\pi(\boldsymbol{\theta})-G_T^{\max}\bigr),\qquad
+    \lambda \ge 0,\label{eq:lagrangian}
+\end{align}
+and consider the unconstrained optimization problem of maximizing $\mathcal{L}(\boldsymbol{\theta}, \lambda)$, which yields the \textit{dual function} of the problem,
+\begin{align}
+    q(\lambda) &=\max_{\boldsymbol{\theta}}
+    \mathcal{L}(\boldsymbol{\theta},\lambda)\\
+    &=\lambda G_T^{\max} + F^\pi(\boldsymbol{\theta}) - \lambda G^\pi(\boldsymbol{\theta}).
+    % -
+    % \lambda g(\theta_n)
+    % \right).
+\end{align}
+
+% The problem is reformulated (assuming a single constraint for now),
+% \begin{align}
+%     \boldsymbol{\theta}^* &= \arg \max_{\boldsymbol{\theta}} \left[F^\pi(\boldsymbol{\theta}) - \lambda\left(G^\pi(\boldsymbol{\theta}) - G^\text{max}\right)\right], \quad \lambda \ge 0\nonumber\\
+%     &= \arg \max_{\boldsymbol{\theta}} \left[F^\pi(\boldsymbol{\theta}) - \lambda G^\pi(\boldsymbol{\theta})\right], \quad \lambda \ge 0\nonumber
+% \end{align}
+
+Looking at the Lagrangian \eqref{eq:lagrangian} we observe:
+\begin{itemize}
+    \item For $\lambda > 0$, constraint violations are indeed subtracted from the objective function, similar to a virtual penalty/cost subtracted from it. As mentioned earlier, this is typically not meaningful in the considered problems, and $\lambda$ can be considered a conversion factor to allow such a combination of objective and cost.
+    \item For $\lambda = 0$, the problem reduces to the original problem, but without the constraints. Unless the problem is solved trivially (constraint is inactive at the maximum of $F^\pi$), this will result in a constraint violation.  
+    \item For increasing $\lambda$, more weight is put on satisfying the constraint than on maximizing the (original) objective function. In particular, for large $\lambda$, the constraint will typically be ``over-satisfied'', in that $G^\pi(\boldsymbol{\theta})< G^\text{max}_T$ (strictly).
+    \item Assuming a certain well-behavedness of the problem (convex $F^\pi(\boldsymbol{\theta})$, concave $G^\pi(\boldsymbol{\theta})$), there exists a unique sweet spot $\lambda^*$ that results in $G^\pi(\boldsymbol{\theta}) = G^\text{max}_T$ and hence exact solution of the original constrained problem (if the constraint is active).
+\end{itemize}
+
+Mathematically, we note that for any constraint-feasible $\boldsymbol{\theta}$, the Lagrangian is greater or equal to the primal objective function, $\mathcal{L}(\boldsymbol{\theta}, \lambda) \ge F^\pi(\boldsymbol{\theta})$. Further, due to 
+\begin{align}
+    \max_{\boldsymbol{\theta}} \mathcal{L}(\boldsymbol{\theta},\lambda) \ge \mathcal{L}(\boldsymbol{\theta^*},\lambda),
+\end{align}
+the dual function $q(\lambda)$ represents an upper bound for the primal objective function at $\boldsymbol{\theta^*}$,
+\begin{align}
+    q(\lambda) \ge F^\pi(\boldsymbol{\theta^*}),
+\end{align}
+with equality only if the constraint is exactly satisfied for $\lambda > 0$. We hence conclude that the optimal $\boldsymbol{\theta^*}$ is found 
+
+
+The great advantage of Lagrangian Relaxation for the given problem lies in the fact that the sum expressions in $F^\pi(\boldsymbol{\theta})$ and $G^\pi(\boldsymbol{\theta})$ can be combined in the dual function,
+\begin{align}
+    q(\lambda) &=\max_{\boldsymbol{\theta}}
+    \mathcal{L}(\boldsymbol{\theta},\lambda)\\
+    &=\lambda G_T^{\max} + F^\pi(\boldsymbol{\theta}) - \lambda G^\pi(\boldsymbol{\theta})\\
+    &=\lambda G_T^{\max} + \sum_{n = 1}^N \max_{\theta_n} p_n \left( f^\pi_n(\theta_n) - \lambda g^\pi_n(\theta_n)\right).
+\end{align}
+
+The task of finding The dual problem
+\begin{align}
+    \min_{\lambda \ge 0} q(\lambda)
+\end{align}
+is solved with a bisection approach using the subgradient of the dual function,
+\begin{align}
+q'(\lambda) = G_T^{\max} - G(\boldsymbol{\theta}^*(\lambda)).
+\end{align}
+
+\begin{algorithm}
+    \caption{Dual Minimization with Expansion + Bisection}
+    \begin{algorithmic}[1]
+
+        \State Choose tolerances $\varepsilon > 0$
+        \State Choose initial stepsize $\alpha_0 > 0$
+        \State $\lambda \gets 0$
+
+        \Comment{Expansion phase}
+        \Repeat
+            \ForAll{$n$ (in parallel)}
+                \State
+                $\displaystyle
+                \theta_n^*(\lambda)
+                \gets
+                \arg\max_{\theta_n}
+                p_n \left(
+                f(\theta_n)
+                - \lambda g(\theta_n)
+                \right)
+                $
+            \EndFor
+
+            \State Compute 
+            $\displaystyle
+            G(\theta^*(\lambda))
+            =
+            \sum_n p_n g(\theta_n^*(\lambda))
+            $
+
+            \State $s(\lambda) \gets G^{\max} - G(\theta^*(\lambda))$
+
+            \If{$s(\lambda) < 0$}
+                \State $\lambda \gets \lambda + \alpha_0$
+            \EndIf
+        \Until{$s(\lambda) \ge 0$}
+
+        \State $\lambda_{\min} \gets \lambda - \alpha_0$
+        \State $\lambda_{\max} \gets \lambda$
+
+        \Comment{Bisection phase}
+        \While{$\lambda_{\max} - \lambda_{\min} > \varepsilon$}
+            \State $\lambda \gets \frac{1}{2}(\lambda_{\min} + \lambda_{\max})$
+
+            \ForAll{$n$}
+                \State
+                $\displaystyle
+                \theta_n^*(\lambda)
+                \gets
+                \arg\max_{\theta_n}
+                p_n \left(
+                f(\theta_n)
+                - \lambda g(\theta_n)
+                \right)
+                $
+            \EndFor
+
+            \State Compute $G(\theta^*(\lambda))$
+            \State $s(\lambda) \gets G^{\max} - G(\theta^*(\lambda))$
+
+            \If{$s(\lambda) < 0$}
+                \State $\lambda_{\min} \gets \lambda$
+            \Else
+                \State $\lambda_{\max} \gets \lambda$
+            \EndIf
+        \EndWhile
+
+        \State \Return $\theta^*(\lambda)$
+
+    \end{algorithmic}
+\end{algorithm}
+% The great advantage of Lagrangian Relaxation for the given problem lies in the fact that, for a given $\lambda \ge 0$, the sum expressions in $F^\pi(\boldsymbol{\theta})$ and $G^\pi(\boldsymbol{\theta})$ can be combined,
+% \begin{align}
+%     \boldsymbol{\theta}^* &= \arg \max_{\boldsymbol{\theta}} \left[F^\pi(\boldsymbol{\theta}) - \lambda G^\pi(\boldsymbol{\theta})\right], \quad \lambda \ge 0\nonumber\\
+%     &= \arg \max_{\boldsymbol{\theta}} \left[\sum_{n = 1}^N p_n f_n(\theta_n) - \lambda\sum_{n = 1}^N p_n g_n(\theta_n)\right]\\
+%     &= \arg \max_{\boldsymbol{\theta}} \left[\sum_{n = 1}^N p_n \left(f_n(\theta_n) - \lambda g_n(\theta_n)\right)\right]\\
+%     &\Rightarrow \arg \max_{\theta_n} \left(f_n(\theta_n) - \lambda g_n(\theta_n)\right), \quad n = 1, \dots, N.
+% \end{align}
+% Now, instead of solving the combined (high-dimensional) optimization problem for $\boldsymbol{\theta}$, we obtain a set of separate optimization problems for each ambient condition $n$.
+
+% The problem that remains is to find $\lambda^*$, such that the constraint equation is satisfied exactly. 
+
+Primal problem
+\begin{align}
+    \max_{\theta} \quad & F(\theta) \\
+    \text{s.t.} \quad & G(\theta) \le G^{\max}
+\end{align}
+
+\begin{align}
+F(\theta) &= \sum_n p_n f(\theta_n), \\
+G(\theta) &= \sum_n p_n g(\theta_n).
+\end{align}
+
+Lagrangian
+\begin{align}
+\mathcal{L}(\theta,\lambda)
+=
+F(\theta)
+-
+\lambda \bigl(G(\theta)-G^{\max}\bigr),
+\qquad
+\lambda \ge 0.
+\end{align}
+
+Dual function
+\begin{align}
+q(\lambda)
+&=
+\max_{\theta}
+\mathcal{L}(\theta,\lambda)
+\\
+&=
+\lambda G^{\max}
++
+\sum_n
+\max_{\theta_n}
+p_n \left(
+f(\theta_n)
+-
+\lambda g(\theta_n)
+\right).
+\end{align}
+
+Dual problem
+\begin{align}
+\min_{\lambda \ge 0} q(\lambda).
+\end{align}
+
+Subgradient of the dual function
+\begin{align}
+q'(\lambda)
+=
+G^{\max}
+-
+G(\theta^*(\lambda)).
+\end{align}
+% In the following we will consider competing objectives, which we will condense into an objective function $F$ and a cost function $G$. For example, $F$ can be considered the total revenue of a power plant over a certain 
+
+% \begin{align}
+%     \boldsymbol{A}_t = \left(\begin{array}{c}
+%         A_{1, t}\\
+%         \vdots\\
+%         A_{S_a, t}
+%     \end{array}\right)
+% \end{align}
+% denote an $S_a$-dimensional vector-valued random process with time index $t$, where each $a_s, s \in \{1, \dots, S\}$ represents an ambient condition according to \href{https://confluence.tudelft.nl/spaces/FTC/pages/209716272/Software+Implementation#Software\%2FImplementation-Ambientconditions}{Confluence: Ambient Conditions}.
+
+% We assume that $\boldsymbol{A}_t$ is stationary, such that its joint probability density function
+% \begin{align}
+%     f(\boldsymbol{a}) \coloneqq f(a_0, \cdots, a_{S - 1})
+% \end{align} 
+% does not change over time.
+
+% In practice, instead of a continuous pdf $f(\boldsymbol{a})$, we are often given a discrete probability mass function (PMF)
+% \begin{align}
+%     \rho_i \coloneqq \text{Pr}(\boldsymbol{A}_t &= \boldsymbol{a}_i), \quad i \in 1, \cdots, I,\\
+%     \text{with }\sum_{i = 1}^I \rho_i &= 1.
+% \end{align}
+
+
+% \section{Wind Farm Models}
+% A wind farm model (WFM) is represented by a vector-valued function $\mu: \mathbb{R}^{S_c} \times \mathbb{R}^{S_a} \rightarrow \mathbb{R}^{S_o}$
+% \begin{align}
+%     \boldsymbol{y} = \mu(\boldsymbol{u}, \boldsymbol{a}),
+% \end{align}
+% where $\boldsymbol{u} \in \mathbb{R}^{S_c}, \boldsymbol{a} \in \mathbb{R}^{S_a}$ and $\boldsymbol{y} \in \mathbb{R}^{S_o}$
+% denote the control input, ambient condition and model output vector, respectively.
+
+% We further define a control policy $\pi: \mathbb{R}^{S_a} \rightarrow \mathbb{R}^{S_c}$,
+% which assigns a control input
+% \begin{align}
+%     \boldsymbol{u} = \pi(\boldsymbol{a})
+% \end{align}
+% to each ambient condition. The considered control policies are \textit{static} in the sense that they map exactly one control input to each ambient condition at all times.
+
+% If the statistics of $\boldsymbol{A}_t$ are given in the form of a discrete PMF, the static control policy is denoted
+% \begin{align}
+%     \mathbf{u} \coloneqq (\boldsymbol{u}_1,)
+% \end{align}
+
+% For a given control policy $\pi$, we can define a parametrized version of the WFM (PWFM) that is a function only of the ambient condition, 
+% \begin{align}
+%     \mu^\pi: \mathbb{R}^{S_a} \rightarrow \mathbb{R}^{S_o},
+% \end{align}
+% such that
+% \begin{align}
+%     \boldsymbol{y} = \mu^\pi(\boldsymbol{a}) \coloneqq \mu(\pi(\boldsymbol{a}), \boldsymbol{a}).
+% \end{align}
+
+% \section{Accumulated Metric}
+% For a given time interval $t \in [0, T]$ and model output $\boldsymbol{y}(t)$ we define a vector of integral-metrics 
+% \begin{align}
+%     \boldsymbol{m}(T)= \int_0^T \boldsymbol{y}(t)\ \text{d}t.
+% \end{align}
+% For given ambient condition data and $\boldsymbol{a}(t), t \in [0, T]$ and control policy $\pi$, the integral metric reads
+% \begin{align}
+%     \boldsymbol{m}(T)= \int_0^T \mu(\boldsymbol{a}(t))\ \text{d}t,
+% \end{align}
+% where the superscript in $\mu^\pi$ has been omitted for legibility.
+% \begin{remark}
+%     The concept of integral-metrics can be extended to more general \textit{accumulated metrics},
+%     \begin{align}
+%     {\boldsymbol{m}}^\phi(T)= \int_0^T \phi(\boldsymbol{y}(t), t)\ \text{d}t,
+%     \end{align}
+%     where $\phi$ denotes a vector-valued function of the model outputs and time. This can be used for example to consider discounting rates over time.
+% \end{remark}
+
+% \section{Expected value for integral metrics}
+% \subsection{Simple Time-Integration}
+% We are interested in the expected value of an integral metric $\mathbb{E}\left[{\boldsymbol{m}}(T)\right]$, where the expectation is taken over $f(\boldsymbol{a})$. We have
+% \begin{align}
+%     \mathbb{E}\left[{\boldsymbol{m}}(T)\right]&= \mathbb{E}\left[\int_0^T \mu(\boldsymbol{a}(t))\ \text{d}t\right]\\
+%     &= \int_0^T \mathbb{E}\left[\mu(\boldsymbol{a}(t))\right]\ \text{d}t\label{eq:expected_acc_metric}
+% \end{align}
+% due to fundamental rules of integration and linearity of the expectation value. Due to stationarity of the ambient conditions, we have
+% \begin{align}
+%     \mathbb{E}\left[\mu(\boldsymbol{a}(t))\right] = \mathbb{E}\left[\mu(\boldsymbol{a})\right],
+% \end{align}
+% which is a constant (in time $t$), and the expected value is computed as
+% \begin{align}
+%     \mathbb{E}\left[{\boldsymbol{m}}(T)\right] &= T\ \mathbb{E}\left[\mu(\boldsymbol{a})\right] \\
+%     &=T\int_{S(\boldsymbol{a})}\mu(\boldsymbol{a})\ f(\boldsymbol{a}) \text{d} \boldsymbol{a}.
+% \end{align}
+% If, instead of a continuous pdf $f(\boldsymbol{a})$, a discrete point mass distribution
+% \begin{align}
+%     \rho_i \coloneqq \text{Pr}(\boldsymbol{A} &= \boldsymbol{a}_i), \quad i \in 1, \cdots, I,\\
+%     \text{with }\sum_{i = 1}^I \rho_i &= 1
+% \end{align}
+% is given, then the expectation is computed as   
+% \begin{align}
+%     \mathbb{E}\left[{\boldsymbol{m}}(T)\right] &= T\sum_{i = 1}^I \mu^\pi(\boldsymbol{a}_i) \rho_i.
+% \end{align}
+% \subsection{Discounted Time-Integration}
+% We further consider the case where a discount factor $0<\gamma \le 1$ is applied over time,
+% \begin{align}
+%     \phi(\boldsymbol{y}, t) = \gamma^t \boldsymbol{y}.
+% \end{align}
+% The expectation of the accumulated metric then reads according to \eqref{eq:expected_acc_metric}
+% \begin{align}
+%     \mathbb{E}\left[{\boldsymbol{m}^\phi}(T)\right] &= \int_0^T \mathbb{E}\left[\phi\left(\mu(\boldsymbol{a}(t)), t\right)\right]\ \text{d}t\\
+%     &= \int_0^T \mathbb{E}\left[\gamma^t\mu(\boldsymbol{a}(t))\right]\ \text{d}t\\
+%     &= \mathbb{E}\left[\mu(\boldsymbol{a})\right]\int_0^T \gamma^t\ \text{d}t\\
+%     &= \mathbb{E}\left[\mu(\boldsymbol{a})\right] \frac{\gamma^T - 1}{\log(\gamma)}
+% \end{align}
+% If instead the discount is defined in discrete time $t$,
+% \begin{align}
+%     {\boldsymbol{m}}^\phi(T)= \sum_{t = 0}^{T - 1}\gamma^t \mu(\boldsymbol{a}(t))
+% \end{align}
+% we get
+% \begin{align}
+%     \mathbb{E}\left[{\boldsymbol{m}^\phi}(T)\right] &= \mathbb{E}\left[\sum_{t = 0}^{T - 1}\gamma^t \mu(\boldsymbol{a}(t))\right]\\
+%     &= \mathbb{E}\left[\mu(\boldsymbol{a})\right]\sum_{t = 0}^{T - 1}\gamma^t\\
+%     &= \mathbb{E}\left[\mu(\boldsymbol{a})\right]\frac{1 - \gamma^T}{1 - \gamma}.
+% \end{align}
+% The discount factor could be derived from a yearly discount rate, for example, in which case the model output $\mu(\boldsymbol{a})$ needs to correspond to a yearly rate.
+
+% Note that the yearly discount factor is usually computed from a yearly discount rate $r$,
+% \begin{align}
+%     \gamma = \frac{1}{1 + r}.
+% \end{align}
+
+% It is also important to note that the effect of the discount is applied as an external factor to the expectation value in both the discrete and continuous case. 
+    
+\end{document}

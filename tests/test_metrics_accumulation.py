@@ -1,8 +1,8 @@
 import pathlib
 import numpy as np
-from twain_wifco.config import parse_json_file
-from twain_wifco.metrics_accumulation import metrics_accumulation_from_dict
-from twain_wifco.interface import (
+from wiffco.config import parse_json_file
+from wiffco.metrics_accumulation import metrics_accumulation_from_dict
+from wiffco.interface import (
     AccumulatedMetric, 
     Aggregate,
     DataTable)

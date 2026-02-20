@@ -1,7 +1,7 @@
 from typing import Dict, Any, Tuple
 import numpy as np
 
-from twain_wifco.interface import (
+from wiffco.interface import (
     DataTable,
     DataTable,
     Component,

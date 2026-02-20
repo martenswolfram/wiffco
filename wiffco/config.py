@@ -3,12 +3,12 @@ import pathlib
 import csv
 import ast
 import numpy as np
-from twain_wifco.plant_model import plant_model_from_dict
-from twain_wifco.aggregation import aggregation_from_dict
-from twain_wifco.metrics_accumulation import metrics_accumulation_from_dict
-from twain_wifco.constraint import constraint_from_dict
-from twain_wifco.multi_metrics_reduction import multi_metrics_reduction_from_dict
-from twain_wifco.optimization import ControlEvaluationSystem
+from wiffco.plant_model import plant_model_from_dict
+from wiffco.aggregation import aggregation_from_dict
+from wiffco.metrics_accumulation import metrics_accumulation_from_dict
+from wiffco.constraint import constraint_from_dict
+from wiffco.multi_metrics_reduction import multi_metrics_reduction_from_dict
+from wiffco.optimization import ControlEvaluationSystem
 
 def parse_json_file(path):
     with open(path, "r") as json_file:

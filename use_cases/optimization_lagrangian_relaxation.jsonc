@@ -4,7 +4,7 @@
     "control_shapes": {
         "yaw_angle_deg": [13]
     },
-    "alpha_0": 0.1,
+    "alpha_0": 0.00001,
     "max_iter": 100,
     "constraint_tol": 0.001,
     "lagrangian_lambda_tol": 1e-5,

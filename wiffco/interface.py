@@ -13,7 +13,7 @@ from scipy.sparse import coo_matrix
 from dataclasses import dataclass
 from abc import ABC
 from enum import Enum
-from twain_wifco.utils import print_table
+from wiffco.utils import print_table
 
 # ======================================================================
 # ENUMERATIONS
