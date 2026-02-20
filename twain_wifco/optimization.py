@@ -668,11 +668,14 @@ class LagrangianLambda:
         # Bisection approach
         for i_constr, (lam_low, lam_high) in enumerate(zip(self._lambda_low,
                                                            self._lambda_high)):
-            if lam_high < np.inf:
-                self._lagrangian_lambda[i_constr] = (lam_high + lam_low) / 2
-            else:
+            if np.isinf(lam_high):
+                # Expansion phase
                 step = np.sign(violation[i_constr])
                 self._lagrangian_lambda[i_constr] += step * self._alpha_0
+            else:
+                # Bisection phase
+                self._lagrangian_lambda[i_constr] = (lam_high + lam_low) / 2
+        
         if np.all(violation < self.constraint_tol_vector) and \
             np.all(np.abs(self._lambda_high - self._lambda_low) < \
                    self._lambda_abs_tol):
@@ -803,6 +806,11 @@ class LagrangianRelaxation(ControlPolicyOptimization):
             else:
                 # We are done
                 break
+            logger.info(f"Lagrangian relaxation optimization after {t + 1} external iterations:\n"
+                    f"Current control policy:\n"
+                    f"{opt_mgr._control_policy}"
+                    f"Current accumulated metrics:\n"
+                    f"{expected_acc_metric}")
             
         final_acc_metrics = opt_mgr._control_eval_system.expected_acc_metrics(
                         ambient_statistics=ambient_statistics,
