@@ -1,0 +1,19 @@
+{
+    "name": "revenue_damage_accumulation",
+    "accumulation_type": "discounted_integration",
+    "integration_mappings":{
+        "revenue_eur": {
+            "aggregate": "revenue_rate",
+            "discount_rate": 0.05
+        },
+        "accrued_damage": {
+            "aggregate": "damage_rate",
+            "discount_rate": 0.0
+        },
+        "accrued_damage_2": {
+            "aggregate": "damage_rate_2",
+            "discount_rate": 0.0
+        }
+    },
+    "duration": 20
+}

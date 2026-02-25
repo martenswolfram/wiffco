@@ -465,5 +465,46 @@ G(\theta^*(\lambda)).
 % \end{align}
 
 % It is also important to note that the effect of the discount is applied as an external factor to the expectation value in both the discrete and continuous case. 
-    
+
+Simplified algorithm:
+\begin{algorithm}
+    \caption{Lagrangian Relaxation}
+    \begin{algorithmic}[1]
+
+        \State $\lambda \gets 0$
+        
+        \Repeat
+        \Comment{Outer iteration}
+            \ForAll{$n$ (independent)}
+                \State
+                $\displaystyle
+                \theta_n^*(\lambda)
+                \gets
+                \arg\max_{\theta_n}
+                p_n \left(
+                A(\theta_n)
+                - \lambda B(\theta_n)
+                \right)
+                $
+                \Comment{Separate optimization}
+            \EndFor
+
+            \State Compute 
+            $\displaystyle
+            B(\theta^*(\lambda)) = \sum_n p_n B(\theta_n^*(\lambda))
+            $
+            \Comment{Evaluate constraint}
+            \State $violation(\lambda) = B(\theta^*(\lambda)) - B^\text{max}$
+            \If{$violation(\lambda) < 0$}
+                \State $\lambda \gets \lambda - \alpha$
+            \ElsIf{$violation(\lambda) > 0$}
+                \State $\lambda \gets \lambda + \alpha$
+            \EndIf
+        \Until{$|violation(\lambda)| < tolerance$}
+        \Comment{Constraint satisfied}
+
+    \end{algorithmic}
+\end{algorithm}
+
+
 \end{document}

@@ -1,0 +1,11 @@
+{
+    "name": "discrete_evaluation_system",
+    "relative_directory": "./",
+    "plant_model_file": "model_symbolic.jsonc",
+    "aggregation_file": "aggregation_symbolic.jsonc",
+    "constraint_control_file": "constraint_control.jsonc",
+    "constraint_aggregate_file": "constraint_aggregate.jsonc",
+    "constraint_accumulated_file": "constraint_accumulated.jsonc",
+    "metrics_accumulation_file": "discounted_integration.jsonc",
+    "metrics_reduction_file": "scalar_weighting.jsonc"
+}

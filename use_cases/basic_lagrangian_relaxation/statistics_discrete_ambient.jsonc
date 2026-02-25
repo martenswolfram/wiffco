@@ -1,0 +1,31 @@
+{
+    "name": "discrete_ambient_statistics",
+    "statistics_type": "discrete_statistics",
+    "data_type": "ambient",
+    "ambient_support": {
+        "wind_speed_mps": [10,
+                           20,
+                           30,
+                           20,
+                           10,
+                            5],
+        "wind_direction_deg": [  0,
+                                60,
+                               120,
+                               180,
+                               240,
+                               300],
+        "electricity_price_eurpkwh": [7,
+                                    5,
+                                    2,
+                                    5,
+                                    5,
+                                    7]
+    },
+    "prevalence": [0.01,
+                    0.1,
+                   0.19,
+                    0.4,
+                   0.25,
+                   0.05]
+}

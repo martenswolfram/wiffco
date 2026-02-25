@@ -1,0 +1,8 @@
+{
+    "name": "scalar_metrics_weighting",
+    "multi_metrics_reduction_type": "scalar_weighting",
+    "maximize": true,
+    "metric_weights": {
+        "revenue_eur": 1
+    }
+}

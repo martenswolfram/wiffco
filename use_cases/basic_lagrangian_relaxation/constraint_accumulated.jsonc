@@ -1,0 +1,14 @@
+{
+    "name": "accumulated_constraint",
+    "constraint_type": "accumulated_metric",
+    "bounds": {
+        "accrued_damage": {
+            "upper": 500,
+            "lower": null
+        },
+        "accrued_damage_2": {
+            "upper": 200,
+            "lower": null
+        }
+    }    
+}

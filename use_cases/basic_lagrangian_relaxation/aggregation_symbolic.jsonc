@@ -1,0 +1,21 @@
+{
+    "name": "symbolic_aggregation",
+    "aggregation_type": "symbolic",
+    "input_symbol_mappings": {
+        "ambient": {
+            "electricity_price_eurpkwh": "epr"
+        },
+        "model_output": {
+            "electrical_power_kw": "epw",
+            "damage_rate": "dr",
+            "damage_rate_2": "dr_2"
+        }
+    },
+    "output_functions": {
+        "aggregate": {
+            "revenue_rate": "sum(epw) * epr", // `sum` has been added to be interpreted as `np.sum`
+            "damage_rate": "dr",
+            "damage_rate_2": "dr_2"
+        }
+    }
+}

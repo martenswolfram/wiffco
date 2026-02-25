@@ -1,0 +1,14 @@
+{
+    "name": "control_constraint",
+    "constraint_type": "control",
+    "bounds": {
+        "power_regulation": {
+            "upper": 3.5,
+            "lower": 1.5
+        },
+        "yaw_angle_deg": { // null-constraint only for testing
+            "upper": null,
+            "lower": null
+        }
+    }
+}

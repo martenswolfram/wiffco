@@ -1,5 +1,6 @@
 import pathlib
 import logging
+import os
 from wiffco.config import (
     parse_json_file,
     control_evaluation_system_from_json)
@@ -9,14 +10,13 @@ from wiffco.optimization import (
     LagrangianRelaxation)
 
 logging.basicConfig(
-    level=logging.DEBUG,
+    level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s"
 )
 
-current_file = pathlib.Path(__file__).resolve()
-project_root = current_file.parent.parent
+project_root = pathlib.Path(os.getcwd())
 
-data_dir = project_root / "tests" / "data" 
+data_dir = project_root / "use_cases" / "basic_lagrangian_relaxation"
 
 # System
 json_path = data_dir / "control_evaluation_system.jsonc"

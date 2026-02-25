@@ -1,0 +1,15 @@
+{
+    "optimization_method": "lagrangian_relaxation", 
+    "max_num_ambients": 10,
+    "control_shapes": {
+        "power_regulation": [3]
+    },
+    "alpha_0": 0.0001,
+    "max_iter": 300,
+    "constraint_tol": 0.0001,
+    "lagrangian_lambda_tol": 0.0000001,
+    "scipy_method": "SLSQP",
+    "scipy_options": {
+        "disp": false
+    }
+}

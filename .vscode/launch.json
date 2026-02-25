@@ -15,6 +15,18 @@
             }
         },
         {
+            "name": "Basic LR",
+            "type": "debugpy",
+            "request": "launch",
+            "python": "${workspaceFolder}/.venv/bin/python",
+            "program": "${workspaceFolder}/use_cases/basic_lagrangian_relaxation/basic_lagrangian_relaxation.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}" 
+            }
+        },
+        {
             "name": "Pytest",
             "type": "debugpy",
             "request": "launch",

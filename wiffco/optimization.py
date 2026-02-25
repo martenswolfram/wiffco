@@ -638,8 +638,6 @@ class LagrangianLambda:
         
         # Lagrangian lambdas, combined for upper and lower bounds
         self._lagrangian_lambda = np.zeros(shape=(upper_size + lower_size,), dtype=float)
-        self._lambda_low = np.zeros_like(self._lagrangian_lambda)
-        self._lambda_high = np.full_like(self._lagrangian_lambda, fill_value=np.inf)
         self._lambda_abs_tol = lambda_abs_tol
 
         # Step size
@@ -666,18 +664,17 @@ class LagrangianLambda:
 
         # Step size
         alpha = self._alpha_0
-
+        
+        lambda_old = self._lagrangian_lambda.copy()
         # Subgradient ascent
-        self._lagrangian_lambda += alpha * violation
-
-        # Projection to lambda >= 0
         self._lagrangian_lambda = np.maximum(
-            self._lagrangian_lambda,
-            0.0
-        )
-
+            0.0, self._lagrangian_lambda + alpha * violation)
+        
         # Convergence check
-        if np.all(np.maximum(violation, 0.0) < self.constraint_tol_vector):
+        if np.all(np.abs(violation) < self.constraint_tol_vector):
+            return True
+        
+        if np.linalg.norm(self._lagrangian_lambda - lambda_old) < self._lambda_abs_tol:
             return True
 
         return False
@@ -803,9 +800,8 @@ class LagrangianRelaxation(ControlPolicyOptimization):
             else:
                 # We are done
                 break
+            
             logger.info(f"Lagrangian relaxation optimization after {t + 1} external iterations:\n"
-                    f"Current control policy:\n"
-                    f"{opt_mgr._control_policy}"
                     f"Current accumulated metrics:\n"
                     f"{expected_acc_metric}")
             

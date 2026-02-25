@@ -39,6 +39,7 @@ class ModelOutput(DataEnum):
     """Enumeration of model output variables."""
     ELECTRICAL_POWER_KW = "electrical_power_kw"
     DAMAGE_RATE = "damage_rate"
+    DAMAGE_RATE_2 = "damage_rate_2"
     DEL = "del"
 
 class Aggregate(DataEnum):
@@ -46,6 +47,7 @@ class Aggregate(DataEnum):
     ELECTRICAL_POWER_KW = "electrical_power_kw"
     REVENUE_RATE = "revenue_rate"
     DAMAGE_RATE = "damage_rate"
+    DAMAGE_RATE_2 = "damage_rate_2"
     DEL = "del"
 
 class AccumulatedMetric(DataEnum):
@@ -53,6 +55,7 @@ class AccumulatedMetric(DataEnum):
     REVENUE_EUR = "revenue_eur"
     ENERGY_PRODUCED = "energy_produced"
     ACCRUED_DAMAGE = "accrued_damage"
+    ACCRUED_DAMAGE_2 = "accrued_damage_2"
     ACCRUED_DEL = "accrued_del"
 
 MAP_STR_TO_ENUM: Dict[str, Type[DataEnum]] = {
@@ -108,7 +111,9 @@ def get_abs_tol(data_var: DataVariable) -> float:
         Ambient.ELECTRICITY_PRICE_EURPKWH: 0.001,
         Control.POWER_REGULATION: 0.001,
         Aggregate.DAMAGE_RATE: 0.001,
-        AccumulatedMetric.ACCRUED_DAMAGE: 0.001
+        Aggregate.DAMAGE_RATE_2: 0.001,
+        AccumulatedMetric.ACCRUED_DAMAGE: 0.001,
+        AccumulatedMetric.ACCRUED_DAMAGE_2: 0.001
     }
     return mapping.get(data_var, 0.0)
 
